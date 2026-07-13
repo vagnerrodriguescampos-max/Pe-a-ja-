@@ -1,0 +1,35 @@
+{
+  "name": "Eu Pedi",
+  "short_name": "Eu Pedi",
+  "description": "Peça direto da sua loja favorita, sem comissão",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone"],
+  "background_color": "#ffffff",
+  "theme_color": "#E63946",
+  "orientation": "portrait-primary",
+  "categories": ["food", "shopping"],
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Painel Admin",
+      "short_name": "Admin",
+      "url": "/admin/pedidos",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}
