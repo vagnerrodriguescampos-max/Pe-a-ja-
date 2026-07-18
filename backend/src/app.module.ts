@@ -27,6 +27,8 @@ import { ScheduleModule } from '@nestjs/schedule';
       synchronize: false,
       logging: process.env.NODE_ENV !== 'production',
       namingStrategy: new SnakeNamingStrategy(),
+      // Supabase (e a maioria dos Postgres gerenciados) exige SSL. Defina DATABASE_SSL=true no host.
+      ssl: process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : false,
     }),
     ScheduleModule.forRoot(),
     ThrottlerModule.forRoot([{ name: 'default', ttl: 60_000, limit: 120 }]),

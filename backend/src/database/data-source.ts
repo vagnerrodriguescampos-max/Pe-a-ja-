@@ -11,4 +11,5 @@ export const AppDataSource = new DataSource({
   synchronize: false,
   namingStrategy: new SnakeNamingStrategy(),
   logging: process.env.NODE_ENV !== 'production',
+  ssl: process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : false,
 });
