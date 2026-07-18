@@ -1,0 +1,36 @@
+# Blueprint de deploy do backend no Render (plano grátis).
+# No painel do Render: New + → Blueprint → conecte este repositório.
+# O Render lê este arquivo e cria o serviço automaticamente.
+# Os valores marcados com sync:false você cola no painel (são segredos / dependem da URL final).
+services:
+  - type: web
+    name: peca-ja-backend
+    runtime: docker
+    repo: # (o Render preenche ao conectar o repositório)
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free
+    region: oregon
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_SSL
+        value: "true"
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      # --- Cole estes no painel do Render (Environment) ---
+      - key: DATABASE_URL          # connection string do Supabase (Settings → Database → URI)
+        sync: false
+      - key: JWT_SECRET            # segredo com 32+ caracteres
+        sync: false
+      - key: CORS_ORIGINS          # URL do frontend no Netlify (definimos depois)
+        sync: false
+      - key: FRONTEND_URL          # mesma URL do Netlify
+        sync: false
+      - key: VAPID_PUBLIC_KEY      # chave pública de push (já gerada no projeto)
+        sync: false
+      - key: VAPID_PRIVATE_KEY     # chave privada de push
+        sync: false
+      - key: ANTHROPIC_API_KEY     # opcional — só se for usar a IA do chat
+        sync: false
