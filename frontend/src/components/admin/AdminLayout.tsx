@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useAuthStore } from '@/stores/auth.store';
-import { LayoutGrid, UtensilsCrossed, Settings, LogOut, Menu, X, MessageSquare, BarChart2, Users, Gift, Download, Bell, BellOff } from 'lucide-react';
+import { LayoutGrid, UtensilsCrossed, Settings, LogOut, Menu, X, MessageSquare, BarChart2, Users, Gift, Download, Bell, BellOff, UserCog } from 'lucide-react';
 import { useInstallPrompt } from '@/hooks/useInstallPrompt';
 import { usePushNotification } from '@/hooks/usePushNotification';
 import toast from 'react-hot-toast';
@@ -12,11 +12,12 @@ import toast from 'react-hot-toast';
 const NAV = [
   { href: '/admin/pedidos', label: 'Pedidos', icon: LayoutGrid },
   { href: '/admin/chat', label: 'Chat', icon: MessageSquare },
-  { href: '/admin/dashboard', label: 'Dashboard', icon: BarChart2 },
+  { href: '/admin/dashboard', label: 'Dashboard', icon: BarChart2, adminOnly: true },
   { href: '/admin/clientes', label: 'Clientes', icon: Users },
-  { href: '/admin/fidelizacao', label: 'Fidelização', icon: Gift },
+  { href: '/admin/fidelizacao', label: 'Fidelização', icon: Gift, adminOnly: true },
   { href: '/admin/cardapio', label: 'Cardápio', icon: UtensilsCrossed },
-  { href: '/admin/configuracoes', label: 'Configurações', icon: Settings },
+  { href: '/admin/usuarios', label: 'Usuários', icon: UserCog, adminOnly: true },
+  { href: '/admin/configuracoes', label: 'Configurações', icon: Settings, adminOnly: true },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -46,6 +47,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   if (!isAuthenticated()) return null;
 
+  const ehAdmin = usuario?.papel === 'admin_loja' || usuario?.papel === 'super_admin';
+  const navItems = NAV.filter(item => !item.adminOnly || ehAdmin);
   const showPushButton = permission !== 'granted' && !subscribed;
 
   const SidebarExtras = () => (
@@ -87,7 +90,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </div>
         </div>
         <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-          {NAV.map(({ href, label, icon: Icon }) => (
+          {navItems.map(({ href, label, icon: Icon }) => (
             <Link key={href} href={href}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${
                 pathname === href ? 'bg-red-50 text-red-600' : 'text-gray-600 hover:bg-gray-50'
@@ -138,7 +141,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <p className="text-sm text-gray-500">{usuario?.nome}</p>
             </div>
             <nav className="px-3 py-4 space-y-1">
-              {NAV.map(({ href, label, icon: Icon }) => (
+              {navItems.map(({ href, label, icon: Icon }) => (
                 <Link key={href} href={href} onClick={() => setMenuAberto(false)}
                   className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium ${
                     pathname === href ? 'bg-red-50 text-red-600' : 'text-gray-600'

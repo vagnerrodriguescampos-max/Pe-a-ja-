@@ -29,7 +29,7 @@ const storage = diskStorage({
 
 @Controller('upload')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('admin_loja', 'super_admin')
+@Roles('admin_loja', 'super_admin', 'atendente')
 export class UploadController {
   @Post()
   @UseInterceptors(FileInterceptor('file', {

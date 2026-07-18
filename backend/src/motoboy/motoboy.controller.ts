@@ -7,7 +7,7 @@ import { CurrentLoja, CurrentUser } from '../auth/decorators/current-loja.decora
 
 // Rotas do admin
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('admin_loja', 'super_admin')
+@Roles('admin_loja', 'super_admin', 'atendente')
 @Controller('admin/motoboys')
 export class MotoboyAdminController {
   constructor(private motoboyService: MotoboyService) {}

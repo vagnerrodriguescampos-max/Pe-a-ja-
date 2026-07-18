@@ -38,7 +38,7 @@ export class RelatoriosController {
 }
 
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('admin_loja', 'super_admin')
+@Roles('admin_loja', 'super_admin', 'atendente')
 @Controller('admin/clientes')
 export class ClientesController {
   constructor(private relatoriosService: RelatoriosService) {}

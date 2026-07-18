@@ -6,7 +6,7 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentLoja } from '../auth/decorators/current-loja.decorator';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('admin_loja', 'super_admin')
+@Roles('admin_loja', 'super_admin', 'atendente')
 @Controller('admin/push')
 export class PushController {
   constructor(private pushService: PushService) {}

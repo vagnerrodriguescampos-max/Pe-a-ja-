@@ -47,7 +47,7 @@ export class PedidoPublicoController {
 }
 
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('admin_loja', 'super_admin')
+@Roles('admin_loja', 'super_admin', 'atendente')
 @UsePipes(new ValidationPipe({ whitelist: true, transform: true }))
 @Controller('admin/pedidos')
 export class PedidoAdminController {
@@ -58,8 +58,8 @@ export class PedidoAdminController {
     return this.pedidoService.listarPedidos(lojaId, status);
   }
 
-  // O app do motoboy usa esta mesma rota para marcar "entregue" — precisa liberar o papel motoboy aqui.
-  @Roles('admin_loja', 'super_admin', 'motoboy')
+  // O app do motoboy usa esta mesma rota para marcar "entregue" — por isso o papel motoboy também entra.
+  @Roles('admin_loja', 'super_admin', 'atendente', 'motoboy')
   @Patch(':id/status')
   async atualizarStatus(
     @CurrentLoja() lojaId: string,

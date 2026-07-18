@@ -57,7 +57,7 @@ export class CardapioPublicoController {
 
 // Rotas admin (protegidas por JWT)
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('admin_loja', 'super_admin')
+@Roles('admin_loja', 'super_admin', 'atendente')
 @UsePipes(new ValidationPipe({ whitelist: true, transform: true }))
 @Controller('admin')
 export class CardapioAdminController {

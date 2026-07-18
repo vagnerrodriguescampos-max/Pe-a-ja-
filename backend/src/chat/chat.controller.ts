@@ -50,7 +50,7 @@ export class ChatPublicoController {
 
 // Rotas admin — inbox do atendente
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('admin_loja', 'super_admin')
+@Roles('admin_loja', 'super_admin', 'atendente')
 @Controller('admin/chat')
 export class ChatAdminController {
   constructor(

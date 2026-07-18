@@ -51,3 +51,11 @@ export const adminUpdateConfigIA = (data: any) => api.patch('/admin/ia/config', 
 
 export const adminPushSubscribe = (data: any) => api.post('/admin/push/subscribe', data).then(r => r.data);
 export const adminPushUnsubscribe = (endpoint: string) => api.delete('/admin/push/unsubscribe', { data: { endpoint } }).then(r => r.data);
+
+// Gestão de usuários da loja
+export const adminListarUsuarios = () => api.get('/admin/usuarios').then(r => r.data);
+export const adminCriarUsuario = (data: { nome: string; email: string; senha: string; papel: string }) =>
+  api.post('/admin/usuarios', data).then(r => r.data);
+export const adminAtualizarUsuario = (id: string, data: { nome?: string; papel?: string; ativo?: boolean; senha?: string }) =>
+  api.patch(`/admin/usuarios/${id}`, data).then(r => r.data);
+export const adminRemoverUsuario = (id: string) => api.delete(`/admin/usuarios/${id}`).then(r => r.data);

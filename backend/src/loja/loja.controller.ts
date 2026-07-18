@@ -14,8 +14,9 @@ export class LojaController {
     return this.lojaService.findBySlug(slug);
   }
 
+  // Leitura liberada ao atendente: a tela de pedidos usa isto para mostrar o status da loja.
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin_loja', 'super_admin')
+  @Roles('admin_loja', 'super_admin', 'atendente')
   @Get('admin/loja')
   async getMyLoja(@CurrentLoja() lojaId: string) {
     return this.lojaService.findById(lojaId);

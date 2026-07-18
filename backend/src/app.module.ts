@@ -15,6 +15,7 @@ import { MotoboyModule } from './motoboy/motoboy.module';
 import { AiModule } from './ai/ai.module';
 import { PushModule } from './push/push.module';
 import { UploadModule } from './upload/upload.module';
+import { UsuarioModule } from './usuario/usuario.module';
 import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
@@ -41,6 +42,7 @@ import { ScheduleModule } from '@nestjs/schedule';
     AiModule,
     PushModule,
     UploadModule,
+    UsuarioModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
