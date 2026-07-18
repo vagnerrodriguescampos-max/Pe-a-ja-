@@ -11,9 +11,12 @@ import {
   UsePipes,
   ValidationPipe,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { PedidoService } from './pedido.service';
 import { LojaService } from '../loja/loja.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentLoja } from '../auth/decorators/current-loja.decorator';
 import { AtualizarStatusPedidoDto, CriarPedidoDto } from './dto/criar-pedido.dto';
 
@@ -24,7 +27,8 @@ export class PedidoPublicoController {
     private lojaService: LojaService,
   ) {}
 
-  // Criar pedido — recebe slug da loja na URL
+  // Criar pedido — recebe slug da loja na URL. Limite estrito: dificulta spam/abuso de pedidos falsos.
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @Post('loja/:slug/pedidos')
   @UsePipes(new ValidationPipe({ whitelist: true, transform: true }))
   async criarPedido(@Param('slug') slug: string, @Body() body: CriarPedidoDto) {
@@ -42,7 +46,8 @@ export class PedidoPublicoController {
   }
 }
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('admin_loja', 'super_admin')
 @UsePipes(new ValidationPipe({ whitelist: true, transform: true }))
 @Controller('admin/pedidos')
 export class PedidoAdminController {
@@ -53,6 +58,8 @@ export class PedidoAdminController {
     return this.pedidoService.listarPedidos(lojaId, status);
   }
 
+  // O app do motoboy usa esta mesma rota para marcar "entregue" — precisa liberar o papel motoboy aqui.
+  @Roles('admin_loja', 'super_admin', 'motoboy')
   @Patch(':id/status')
   async atualizarStatus(
     @CurrentLoja() lojaId: string,

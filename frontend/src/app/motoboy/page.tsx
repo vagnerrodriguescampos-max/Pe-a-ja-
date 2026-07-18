@@ -46,7 +46,7 @@ export default function MotoboyPage() {
       return;
     }
     carregarPedidos();
-    const socket = io(WS, { transports: ['websocket'] });
+    const socket = io(WS, { transports: ['websocket'], auth: { token } });
     socketRef.current = socket;
     return () => { socket.disconnect(); pararRastreamento(); };
   }, []);
@@ -69,7 +69,6 @@ export default function MotoboyPage() {
         setPosicaoAtual({ lat, lng });
         socketRef.current?.emit('motoboy:posicao', {
           pedidoId: pedido.id,
-          motoboyId: usuario?.id,
           lat,
           lng,
         });

@@ -1,9 +1,12 @@
 import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
 import { RelatoriosService } from './relatorios.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentLoja } from '../auth/decorators/current-loja.decorator';
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('admin_loja', 'super_admin')
 @Controller('admin/relatorios')
 export class RelatoriosController {
   constructor(private relatoriosService: RelatoriosService) {}
@@ -34,7 +37,8 @@ export class RelatoriosController {
   }
 }
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('admin_loja', 'super_admin')
 @Controller('admin/clientes')
 export class ClientesController {
   constructor(private relatoriosService: RelatoriosService) {}

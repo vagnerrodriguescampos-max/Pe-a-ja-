@@ -3,6 +3,8 @@ import { ChatService } from './chat.service';
 import { ChatGateway } from './chat.gateway';
 import { LojaService } from '../loja/loja.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentLoja, CurrentUser } from '../auth/decorators/current-loja.decorator';
 
 // Rotas públicas — widget do cliente
@@ -47,7 +49,8 @@ export class ChatPublicoController {
 }
 
 // Rotas admin — inbox do atendente
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('admin_loja', 'super_admin')
 @Controller('admin/chat')
 export class ChatAdminController {
   constructor(

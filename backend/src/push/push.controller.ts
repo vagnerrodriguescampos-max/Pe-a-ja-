@@ -1,9 +1,12 @@
 import { Body, Controller, Delete, Get, Post, UseGuards } from '@nestjs/common';
 import { PushService } from './push.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentLoja } from '../auth/decorators/current-loja.decorator';
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('admin_loja', 'super_admin')
 @Controller('admin/push')
 export class PushController {
   constructor(private pushService: PushService) {}

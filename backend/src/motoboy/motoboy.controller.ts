@@ -1,10 +1,13 @@
 import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
 import { MotoboyService } from './motoboy.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentLoja, CurrentUser } from '../auth/decorators/current-loja.decorator';
 
 // Rotas do admin
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('admin_loja', 'super_admin')
 @Controller('admin/motoboys')
 export class MotoboyAdminController {
   constructor(private motoboyService: MotoboyService) {}
@@ -25,7 +28,8 @@ export class MotoboyAdminController {
 }
 
 // Rotas do motoboy (autenticado com papel=motoboy)
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('motoboy')
 @Controller('motoboy')
 export class MotoboyController {
   constructor(private motoboyService: MotoboyService) {}

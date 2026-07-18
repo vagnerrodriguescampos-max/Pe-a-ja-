@@ -14,6 +14,8 @@ import {
 import { CardapioService } from './cardapio.service';
 import { LojaService } from '../loja/loja.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentLoja } from '../auth/decorators/current-loja.decorator';
 import {
   AtualizarCategoriaDto,
@@ -54,7 +56,8 @@ export class CardapioPublicoController {
 }
 
 // Rotas admin (protegidas por JWT)
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('admin_loja', 'super_admin')
 @UsePipes(new ValidationPipe({ whitelist: true, transform: true }))
 @Controller('admin')
 export class CardapioAdminController {

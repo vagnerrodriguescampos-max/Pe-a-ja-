@@ -1,14 +1,19 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { JwtModule } from '@nestjs/jwt';
 import { RastreamentoMotoboy } from './motoboy.entity';
 import { Pedido } from '../pedido/pedido.entity';
 import { Usuario } from '../auth/usuario.entity';
 import { MotoboyService } from './motoboy.service';
 import { MotoboyGateway } from './motoboy.gateway';
 import { MotoboyAdminController, MotoboyController, RastreamentoPublicoController } from './motoboy.controller';
+import { getJwtSecret } from '../auth/jwt.config';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([RastreamentoMotoboy, Pedido, Usuario])],
+  imports: [
+    TypeOrmModule.forFeature([RastreamentoMotoboy, Pedido, Usuario]),
+    JwtModule.register({ secret: getJwtSecret() }),
+  ],
   controllers: [MotoboyAdminController, MotoboyController, RastreamentoPublicoController],
   providers: [MotoboyService, MotoboyGateway],
   exports: [MotoboyService],

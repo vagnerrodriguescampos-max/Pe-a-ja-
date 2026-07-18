@@ -4,6 +4,8 @@ import { diskStorage } from 'multer';
 import { randomBytes } from 'crypto';
 import { join } from 'path';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
 
 const EXTENSION_BY_MIME: Record<string, string> = {
   'image/jpeg': '.jpg',
@@ -26,7 +28,8 @@ const storage = diskStorage({
 });
 
 @Controller('upload')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('admin_loja', 'super_admin')
 export class UploadController {
   @Post()
   @UseInterceptors(FileInterceptor('file', {

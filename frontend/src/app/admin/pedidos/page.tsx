@@ -33,7 +33,7 @@ export default function PedidosPage() {
   const [loading, setLoading] = useState(true);
   const [pedidoAberto, setPedidoAberto] = useState<Pedido | null>(null);
   const [motoboys, setMotoboys] = useState<any[]>([]);
-  const { usuario } = useAuthStore();
+  const { usuario, token } = useAuthStore();
 
   const carregarPedidos = useCallback(async () => {
     try {
@@ -52,11 +52,11 @@ export default function PedidosPage() {
 
   // WebSocket — receber pedidos novos e atualizações
   useEffect(() => {
-    if (!usuario?.loja_id) return;
+    if (!usuario?.loja_id || !token) return;
     const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:3001';
-    const socket: Socket = io(wsUrl, { transports: ['websocket'] });
+    const socket: Socket = io(wsUrl, { transports: ['websocket'], auth: { token } });
 
-    socket.emit('entrar_loja', usuario.loja_id);
+    socket.emit('entrar_loja');
 
     socket.on('pedido:novo', (pedido: Pedido) => {
       setPedidos(prev => [pedido, ...prev]);
@@ -69,7 +69,7 @@ export default function PedidosPage() {
     });
 
     return () => { socket.disconnect(); };
-  }, [usuario?.loja_id]);
+  }, [usuario?.loja_id, token]);
 
   async function atribuirMotoboy(pedidoId: string, motoboyId: string) {
     try {
