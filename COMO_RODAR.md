@@ -22,17 +22,17 @@ cp .env.example .env
 # Subir tudo
 docker-compose up --build -d
 
-# Rodar migrations
-docker-compose exec backend npm run migration:run
+# Rodar migrations (a imagem de produção não tem ts-node, use a variante :prod)
+docker-compose exec backend npm run migration:run:prod
 
-# Rodar seed (dados iniciais + shawarma da nanda)
-docker-compose exec backend npm run seed
+# Rodar seed (dados iniciais + loja de exemplo)
+docker-compose exec backend npm run seed:prod
 ```
 
-Acesse:
-- **Cardápio:** http://localhost:3000/loja/shawarma-da-nanda
+Acesse (slug e credenciais definidos em `backend/src/database/seeds/seed.ts`):
+- **Cardápio:** http://localhost:3000/loja/eu-pedi
 - **Admin:** http://localhost:3000/admin/login
-  - Email: `admin@shawarma.com`
+  - Email: `admin@eupedi.com`
   - Senha: `admin123`
 - **API:** http://localhost:3001
 
@@ -76,13 +76,22 @@ npm run dev
 
 ---
 
+## ✅ Testes
+
+```bash
+cd backend
+npm test
+```
+
+---
+
 ## 🗺️ Estrutura das URLs
 
 | URL | Descrição |
 |-----|-----------|
-| `/loja/shawarma-da-nanda` | Cardápio público |
-| `/loja/shawarma-da-nanda/checkout` | Checkout do pedido |
-| `/loja/shawarma-da-nanda/pedido/:id` | Acompanhamento em tempo real |
+| `/loja/:slug` | Cardápio público |
+| `/loja/:slug/checkout` | Checkout do pedido |
+| `/loja/:slug/pedido/:id` | Acompanhamento em tempo real |
 | `/admin/login` | Login do painel |
 | `/admin/pedidos` | Kanban de pedidos |
 | `/admin/cardapio` | Gerenciar cardápio |
