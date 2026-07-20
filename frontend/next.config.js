@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'standalone',
+  // 'standalone' é para o build Docker; no Netlify o runtime deles cuida do output.
+  ...(process.env.NETLIFY ? {} : { output: 'standalone' }),
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: '**' },

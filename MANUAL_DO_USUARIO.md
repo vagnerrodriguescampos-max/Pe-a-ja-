@@ -186,7 +186,33 @@ Relatórios com filtro de período:
 
 A tela também mostra estatísticas: clientes com carteira, saldo total emitido, recompensas de selos e campanhas ativas.
 
-### 1.10 Notificações no celular/computador
+### 1.10 Usuários — cadastre sua equipe
+
+**Onde:** menu **Usuários** (visível apenas para administradores)
+
+É onde o dono da loja dá acesso aos funcionários, cada um com o seu perfil:
+
+| Perfil | O que pode fazer |
+|---|---|
+| **Administrador** | Tudo: pedidos, cardápio, chat, relatórios, fidelização, configurações e esta tela de usuários |
+| **Atendente** | Opera o dia a dia: pedidos, chat, cardápio e clientes — **sem** acesso a usuários, relatórios, fidelização e configurações |
+| **Motoboy** | Usa apenas o app de entregas em `/motoboy` (lista de entregas + GPS) |
+
+**Como cadastrar um funcionário:**
+1. Clique em **"Novo usuário"**
+2. Preencha **nome**, **e-mail** (será o login) e **senha** (mínimo 6 caracteres)
+3. Escolha o **perfil de acesso** (Administrador, Atendente ou Motoboy)
+4. Clique em **"Criar usuário"** — pronto, o funcionário já pode entrar em `/admin/login` (ou `/motoboy/login` se for motoboy)
+
+**Editar/gerenciar:** o lápis ✏️ edita nome, perfil e senha (o e-mail de login não muda); a lixeira 🗑️ remove o acesso; também dá para **desativar** temporariamente um usuário sem excluí-lo.
+
+**Proteções automáticas:** você não consegue remover ou rebaixar a própria conta, nem deixar a loja sem pelo menos um administrador ativo — o sistema bloqueia.
+
+### 1.11 Ajuda dentro do painel
+
+No menu lateral há o botão **Ajuda** (❓), que abre este manual completo dentro do próprio painel — organizado por módulo, para consulta rápida durante a operação. Compartilhe com cada funcionário novo.
+
+### 1.12 Notificações no celular/computador
 
 - No menu lateral, clique em **"Ativar notificações"** e aceite a permissão do navegador
 - Você passa a receber um aviso de **novo pedido** mesmo com a aba do painel fechada
@@ -246,9 +272,7 @@ Após confirmar, o cliente cai na **página de acompanhamento** (guarde/comparti
 
 **Onde:** `/motoboy/login`
 
-O entregador faz login com e-mail e senha de uma conta com papel **motoboy**.
-
-> ⚠️ **Ainda não existe tela para cadastrar motoboys** — a conta precisa ser criada diretamente no banco de dados pelo responsável técnico. É uma limitação conhecida da versão atual.
+O entregador faz login com e-mail e senha de uma conta com perfil **motoboy** — criada pelo administrador da loja no menu **Usuários** (ver seção 1.10).
 
 **Fluxo de trabalho do entregador:**
 
@@ -278,6 +302,8 @@ O app do motoboy só acessa as rotas do entregador — não tem acesso ao painel
 | `/admin/dashboard` | Relatórios | Lojista |
 | `/admin/clientes` | Base de clientes | Lojista |
 | `/admin/fidelizacao` | Cashback, selos, VIP, marketing | Lojista |
+| `/admin/usuarios` | Cadastrar equipe e perfis de acesso | Lojista (admin) |
+| `/admin/ajuda` | Este manual dentro do painel | Lojista |
 | `/admin/configuracoes` | Dados da loja, entrega, PIX, IA | Lojista |
 | `/motoboy/login` | Entrar no app do entregador | Motoboy |
 | `/motoboy` | Entregas e GPS | Motoboy |
@@ -301,5 +327,5 @@ Pode (Configurações → Link do cardápio), mas os links antigos já divulgado
 **O que acontece se eu marcar "Entregue"?**
 O pedido finaliza, o cliente é notificado, e a fidelização processa: cashback creditado + 1 selo no cartão do cliente.
 
-**Cadastro de motoboy?**
-Ainda sem tela própria — peça ao responsável técnico para criar a conta com papel `motoboy`.
+**Como cadastro um motoboy ou atendente?**
+Menu **Usuários** → "Novo usuário" → escolha o perfil. O funcionário entra com o e-mail e senha que você definir (motoboys entram em `/motoboy/login`).

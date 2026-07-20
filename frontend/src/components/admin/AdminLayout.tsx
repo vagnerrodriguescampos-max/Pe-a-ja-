@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useAuthStore } from '@/stores/auth.store';
-import { LayoutGrid, UtensilsCrossed, Settings, LogOut, Menu, X, MessageSquare, BarChart2, Users, Gift, Download, Bell, BellOff, UserCog } from 'lucide-react';
+import { LayoutGrid, UtensilsCrossed, Settings, LogOut, Menu, X, MessageSquare, BarChart2, Users, Gift, Download, Bell, BellOff, UserCog, HelpCircle } from 'lucide-react';
 import { useInstallPrompt } from '@/hooks/useInstallPrompt';
 import { usePushNotification } from '@/hooks/usePushNotification';
 import toast from 'react-hot-toast';
@@ -18,6 +18,7 @@ const NAV = [
   { href: '/admin/cardapio', label: 'Cardápio', icon: UtensilsCrossed },
   { href: '/admin/usuarios', label: 'Usuários', icon: UserCog, adminOnly: true },
   { href: '/admin/configuracoes', label: 'Configurações', icon: Settings, adminOnly: true },
+  { href: '/admin/ajuda', label: 'Ajuda', icon: HelpCircle },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
