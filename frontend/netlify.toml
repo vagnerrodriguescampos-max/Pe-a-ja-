@@ -1,9 +1,7 @@
-# Deploy do frontend (Next.js) no Netlify.
-# O backend roda no Render: https://peca-ja-backend.onrender.com
+# Deploy do frontend a partir desta pasta (evita confusão de monorepo).
+# Backend no Render: https://peca-ja-backend.onrender.com
 [build]
-  base = "frontend"
   command = "npm run build"
-  # publish é definido automaticamente pelo @netlify/plugin-nextjs
 
 [build.environment]
   NEXT_PUBLIC_API_URL = "https://peca-ja-backend.onrender.com"
