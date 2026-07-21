@@ -42,6 +42,14 @@ export const adminCriarProduto = (data: any) => api.post('/admin/produtos', data
 export const adminAtualizarProduto = (id: string, data: any) => api.patch(`/admin/produtos/${id}`, data).then(r => r.data);
 export const adminDeletarProduto = (id: string) => api.delete(`/admin/produtos/${id}`).then(r => r.data);
 
+// Grupos de opção (tamanhos, sabores, adicionais) e suas opções
+export const adminCriarGrupo = (produtoId: string, data: any) => api.post(`/admin/produtos/${produtoId}/grupos`, data).then(r => r.data);
+export const adminAtualizarGrupo = (id: string, data: any) => api.patch(`/admin/grupos/${id}`, data).then(r => r.data);
+export const adminDeletarGrupo = (id: string) => api.delete(`/admin/grupos/${id}`).then(r => r.data);
+export const adminCriarOpcao = (grupoId: string, data: any) => api.post(`/admin/grupos/${grupoId}/opcoes`, data).then(r => r.data);
+export const adminAtualizarOpcao = (id: string, data: any) => api.patch(`/admin/opcoes/${id}`, data).then(r => r.data);
+export const adminDeletarOpcao = (id: string) => api.delete(`/admin/opcoes/${id}`).then(r => r.data);
+
 export const adminListarMotoboys = () => api.get('/admin/motoboys').then(r => r.data);
 export const adminAtribuirMotoboy = (pedidoId: string, motoboyId: string) =>
   api.post(`/admin/motoboys/pedido/${pedidoId}/atribuir`, { motoboy_id: motoboyId }).then(r => r.data);
