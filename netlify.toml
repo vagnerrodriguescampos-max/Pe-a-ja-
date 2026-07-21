@@ -7,7 +7,7 @@
 
 [build.environment]
   NEXT_PUBLIC_API_URL = "https://peca-ja-backend.onrender.com"
-  NEXT_PUBLIC_WS_URL = "https://peca-ja-backend.onrender.com"
+  NEXT_PUBLIC_WS_URL = "wss://peca-ja-backend.onrender.com"
   NEXT_PUBLIC_VAPID_PUBLIC_KEY = "BBWdTwitDdb-6ZqImYP61LzFv7lQL0eeYV2fDhnosyfIDumpN4pGh5Q1DcMo4goZFlEazg9pevnPv_-IhaPbXX8"
 
 [[plugins]]
