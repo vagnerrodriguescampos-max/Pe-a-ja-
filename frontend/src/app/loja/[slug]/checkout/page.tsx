@@ -139,210 +139,216 @@ export default function CheckoutPage() {
     }
   }
 
-  if (!loja) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin w-8 h-8 border-4 border-gray-200 border-t-red-500 rounded-full" /></div>;
+  if (!loja) return (
+    <div className="min-h-screen bg-[#1e1e1e] flex items-center justify-center">
+      <div className="animate-spin w-8 h-8 border-4 border-white/10 border-t-[var(--color-primary)] rounded-full" />
+    </div>
+  );
+
+  const inputCls = "w-full px-4 py-3 rounded-xl text-sm outline-none text-gray-100 bg-[#222] border border-white/8 placeholder-gray-600 focus:border-white/20 transition-colors";
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div style={{ backgroundColor: loja.cor_primaria }} className="text-white px-4 pt-6 pb-6">
-        <div className="max-w-lg mx-auto flex items-center gap-3">
-          <Link href={`/loja/${slug}`} className="text-white/80 hover:text-white">
-            <ArrowLeft size={22} />
-          </Link>
-          <h1 className="text-lg font-bold">Finalizar Pedido</h1>
-        </div>
-      </div>
-
-      <div className="max-w-lg mx-auto px-4 pb-32 -mt-2 space-y-4 pt-4">
-
-        {/* Tipo: entrega ou retirada */}
-        <div className="card p-4">
-          <h2 className="font-bold text-gray-800 mb-3">Como quer receber?</h2>
-          <div className="grid grid-cols-2 gap-3">
-            {(['entrega', 'retirada'] as TipoPedido[]).map(t => (
-              <button key={t} onClick={() => setTipo(t)}
-                className={`p-3 rounded-xl border-2 text-sm font-medium transition-all ${
-                  tipo === t ? 'border-[var(--color-primary)] text-[var(--color-primary)]' : 'border-gray-200 text-gray-600'
-                }`}
-                style={tipo === t ? { borderColor: loja.cor_primaria, color: loja.cor_primaria } : {}}>
-                {t === 'entrega' ? '🛵 Entrega' : '🏃 Retirada'}
-              </button>
-            ))}
+    <div className="min-h-screen bg-[#333333] flex justify-center">
+      <div className="w-full max-w-[500px] bg-[#1e1e1e] min-h-screen relative">
+        {/* Header */}
+        <div className="px-4 pt-6 pb-8" style={{ background: `linear-gradient(160deg, ${loja.cor_primaria} 0%, #1a1a1a 130%)` }}>
+          <div className="flex items-center gap-3">
+            <Link href={`/loja/${slug}`} className="text-white/80 hover:text-white transition-colors">
+              <ArrowLeft size={22} />
+            </Link>
+            <h1 className="text-lg font-bold text-white">Finalizar Pedido</h1>
           </div>
         </div>
 
-        {/* Dados do cliente */}
-        <div className="card p-4 space-y-3">
-          <h2 className="font-bold text-gray-800 flex items-center gap-2">
-            <User size={16} /> Seus dados
-          </h2>
-          <input value={nome} onChange={e => setNome(e.target.value)}
-            placeholder="Seu nome *" className="input" />
-          <input value={telefone}
-            onChange={e => setTelefone(e.target.value)}
-            onBlur={e => buscarFidelizacao(e.target.value, nome)}
-            placeholder="WhatsApp / Telefone *" className="input" type="tel" />
-        </div>
+        <div className="px-4 pb-32 -mt-3 space-y-4">
 
-        {/* Endereço (só se entrega) */}
-        {tipo === 'entrega' && (
-          <div className="card p-4 space-y-3">
-            <h2 className="font-bold text-gray-800 flex items-center gap-2">
-              <MapPin size={16} /> Endereço de entrega
-            </h2>
-            <div className="grid grid-cols-3 gap-3">
-              <input value={rua} onChange={e => setRua(e.target.value)}
-                placeholder="Rua / Av. *" className="input col-span-2" />
-              <input value={numero} onChange={e => setNumero(e.target.value)}
-                placeholder="Nº *" className="input" />
-            </div>
-            <input value={complemento} onChange={e => setComplemento(e.target.value)}
-              placeholder="Complemento (apto, bloco...)" className="input" />
-            <input value={bairro} onChange={e => setBairro(e.target.value)}
-              placeholder="Bairro *" className="input" />
-            <input value={cidade} onChange={e => setCidade(e.target.value)}
-              placeholder="Cidade *" className="input" />
-            <input value={referencia} onChange={e => setReferencia(e.target.value)}
-              placeholder="Ponto de referência" className="input" />
-          </div>
-        )}
-
-        {/* Forma de pagamento */}
-        <div className="card p-4">
-          <h2 className="font-bold text-gray-800 flex items-center gap-2 mb-3">
-            <CreditCard size={16} /> Forma de pagamento
-          </h2>
-          <div className="space-y-2">
-            {([
-              { key: 'pix', label: '🏦 PIX', desc: 'Chave PIX da loja' },
-              { key: 'dinheiro', label: '💵 Dinheiro', desc: 'Na entrega / retirada' },
-              { key: 'cartao_debito', label: '💳 Débito', desc: 'Maquininha na entrega' },
-              { key: 'cartao_credito', label: '💳 Crédito', desc: 'Maquininha na entrega' },
-            ] as { key: FormaPagamento; label: string; desc: string }[]).map(op => (
-              <button key={op.key} onClick={() => setFormaPagamento(op.key)}
-                className={`w-full flex items-center justify-between p-3 rounded-xl border-2 text-left transition-all ${
-                  formaPagamento === op.key ? 'border-[var(--color-primary)]' : 'border-gray-100'
-                }`}
-                style={formaPagamento === op.key ? { borderColor: loja.cor_primaria } : {}}>
-                <div>
-                  <p className="text-sm font-medium text-gray-800">{op.label}</p>
-                  <p className="text-xs text-gray-400">{op.desc}</p>
-                </div>
-                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                  formaPagamento === op.key ? '' : 'border-gray-300'
-                }`} style={formaPagamento === op.key ? { borderColor: loja.cor_primaria } : {}}>
-                  {formaPagamento === op.key && (
-                    <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: loja.cor_primaria }} />
-                  )}
-                </div>
-              </button>
-            ))}
-          </div>
-
-          {/* Troco */}
-          {formaPagamento === 'dinheiro' && (
-            <div className="mt-3">
-              <label className="block text-sm text-gray-600 mb-1">Troco para quanto? (opcional)</label>
-              <input value={trocoPara} onChange={e => setTrocoPara(e.target.value)}
-                placeholder="Ex: 50.00" className="input" type="number" min="0" step="0.01" />
-            </div>
-          )}
-
-          {/* PIX info */}
-          {formaPagamento === 'pix' && loja.chave_pix && (
-            <div className="mt-3 bg-blue-50 rounded-xl p-3 border border-blue-100">
-              <div className="flex items-center gap-2 mb-1">
-                <QrCode size={16} className="text-blue-600" />
-                <span className="text-sm font-semibold text-blue-700">Chave PIX</span>
-              </div>
-              <p className="text-sm text-blue-600 font-mono break-all">{loja.chave_pix}</p>
-              <p className="text-xs text-blue-500 mt-1">
-                Após confirmar o pedido, você verá a chave PIX. Envie o comprovante via WhatsApp.
-              </p>
-            </div>
-          )}
-        </div>
-
-        {/* Carteira e selos */}
-        {(saldoCarteira > 0 || selosInfo) && (
-          <div className="card p-4 space-y-3">
-            {saldoCarteira > 0 && (
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
-                    <Wallet size={15} className="text-green-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-800">Carteira cashback</p>
-                    <p className="text-xs text-green-600 font-semibold">{formatCurrency(saldoCarteira)} disponível</p>
-                  </div>
-                </div>
-                <button onClick={() => setUsarCarteira(!usarCarteira)}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${usarCarteira ? 'bg-green-500' : 'bg-gray-300'}`}>
-                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${usarCarteira ? 'translate-x-6' : 'translate-x-1'}`} />
+          {/* Tipo: entrega ou retirada */}
+          <div className="bg-[#2a2a2a] border border-white/5 rounded-2xl p-4">
+            <h2 className="font-bold text-white mb-3">Como quer receber?</h2>
+            <div className="grid grid-cols-2 gap-3">
+              {(['entrega', 'retirada'] as TipoPedido[]).map(t => (
+                <button key={t} onClick={() => setTipo(t)}
+                  className={`p-3 rounded-xl border-2 text-sm font-medium transition-all ${
+                    tipo === t ? '' : 'border-white/8 text-gray-400'
+                  }`}
+                  style={tipo === t ? { borderColor: loja.cor_primaria, color: loja.cor_primaria } : {}}>
+                  {t === 'entrega' ? '🛵 Entrega' : '🏃 Retirada'}
                 </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Dados do cliente */}
+          <div className="bg-[#2a2a2a] border border-white/5 rounded-2xl p-4 space-y-3">
+            <h2 className="font-bold text-white flex items-center gap-2">
+              <User size={16} /> Seus dados
+            </h2>
+            <input value={nome} onChange={e => setNome(e.target.value)}
+              placeholder="Seu nome *" className={inputCls} />
+            <input value={telefone}
+              onChange={e => setTelefone(e.target.value)}
+              onBlur={e => buscarFidelizacao(e.target.value, nome)}
+              placeholder="WhatsApp / Telefone *" className={inputCls} type="tel" />
+          </div>
+
+          {/* Endereço (só se entrega) */}
+          {tipo === 'entrega' && (
+            <div className="bg-[#2a2a2a] border border-white/5 rounded-2xl p-4 space-y-3">
+              <h2 className="font-bold text-white flex items-center gap-2">
+                <MapPin size={16} /> Endereço de entrega
+              </h2>
+              <div className="grid grid-cols-3 gap-3">
+                <input value={rua} onChange={e => setRua(e.target.value)}
+                  placeholder="Rua / Av. *" className={`${inputCls} col-span-2`} />
+                <input value={numero} onChange={e => setNumero(e.target.value)}
+                  placeholder="Nº *" className={inputCls} />
+              </div>
+              <input value={complemento} onChange={e => setComplemento(e.target.value)}
+                placeholder="Complemento (apto, bloco...)" className={inputCls} />
+              <input value={bairro} onChange={e => setBairro(e.target.value)}
+                placeholder="Bairro *" className={inputCls} />
+              <input value={cidade} onChange={e => setCidade(e.target.value)}
+                placeholder="Cidade *" className={inputCls} />
+              <input value={referencia} onChange={e => setReferencia(e.target.value)}
+                placeholder="Ponto de referência" className={inputCls} />
+            </div>
+          )}
+
+          {/* Forma de pagamento */}
+          <div className="bg-[#2a2a2a] border border-white/5 rounded-2xl p-4">
+            <h2 className="font-bold text-white flex items-center gap-2 mb-3">
+              <CreditCard size={16} /> Forma de pagamento
+            </h2>
+            <div className="space-y-2">
+              {([
+                { key: 'pix', label: '🏦 PIX', desc: 'Chave PIX da loja' },
+                { key: 'dinheiro', label: '💵 Dinheiro', desc: 'Na entrega / retirada' },
+                { key: 'cartao_debito', label: '💳 Débito', desc: 'Maquininha na entrega' },
+                { key: 'cartao_credito', label: '💳 Crédito', desc: 'Maquininha na entrega' },
+              ] as { key: FormaPagamento; label: string; desc: string }[]).map(op => (
+                <button key={op.key} onClick={() => setFormaPagamento(op.key)}
+                  className={`w-full flex items-center justify-between p-3 rounded-xl border-2 text-left transition-all ${
+                    formaPagamento === op.key ? '' : 'border-white/8'
+                  }`}
+                  style={formaPagamento === op.key ? { borderColor: loja.cor_primaria } : {}}>
+                  <div>
+                    <p className="text-sm font-medium text-gray-100">{op.label}</p>
+                    <p className="text-xs text-gray-500">{op.desc}</p>
+                  </div>
+                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                    formaPagamento === op.key ? '' : 'border-gray-600'
+                  }`} style={formaPagamento === op.key ? { borderColor: loja.cor_primaria } : {}}>
+                    {formaPagamento === op.key && (
+                      <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: loja.cor_primaria }} />
+                    )}
+                  </div>
+                </button>
+              ))}
+            </div>
+
+            {/* Troco */}
+            {formaPagamento === 'dinheiro' && (
+              <div className="mt-3">
+                <label className="block text-sm text-gray-400 mb-1">Troco para quanto? (opcional)</label>
+                <input value={trocoPara} onChange={e => setTrocoPara(e.target.value)}
+                  placeholder="Ex: 50.00" className={inputCls} type="number" min="0" step="0.01" />
               </div>
             )}
-            {selosInfo && (
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-yellow-100 flex items-center justify-center">
-                  <Star size={15} className="text-yellow-600" />
+
+            {/* PIX info */}
+            {formaPagamento === 'pix' && loja.chave_pix && (
+              <div className="mt-3 bg-blue-500/10 rounded-xl p-3 border border-blue-400/20">
+                <div className="flex items-center gap-2 mb-1">
+                  <QrCode size={16} className="text-blue-400" />
+                  <span className="text-sm font-semibold text-blue-300">Chave PIX</span>
                 </div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-gray-800">Cartão fidelidade</p>
-                  <div className="flex items-center gap-1 mt-0.5">
-                    {Array.from({ length: selosInfo.meta }, (_, i) => (
-                      <div key={i} className={`w-4 h-4 rounded-full border ${i < selosInfo.atuais ? 'bg-yellow-400 border-yellow-400' : 'bg-gray-100 border-gray-200'}`} />
-                    ))}
-                    <span className="text-xs text-gray-500 ml-1">{selosInfo.atuais}/{selosInfo.meta}</span>
+                <p className="text-sm text-blue-300 font-mono break-all">{loja.chave_pix}</p>
+                <p className="text-xs text-blue-400/80 mt-1">
+                  Após confirmar o pedido, você verá a chave PIX. Envie o comprovante via WhatsApp.
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Carteira e selos */}
+          {(saldoCarteira > 0 || selosInfo) && (
+            <div className="bg-[#2a2a2a] border border-white/5 rounded-2xl p-4 space-y-3">
+              {saldoCarteira > 0 && (
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-full bg-green-500/15 flex items-center justify-center">
+                      <Wallet size={15} className="text-green-400" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-100">Carteira cashback</p>
+                      <p className="text-xs text-green-400 font-semibold">{formatCurrency(saldoCarteira)} disponível</p>
+                    </div>
+                  </div>
+                  <button onClick={() => setUsarCarteira(!usarCarteira)}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${usarCarteira ? 'bg-green-500' : 'bg-white/15'}`}>
+                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${usarCarteira ? 'translate-x-6' : 'translate-x-1'}`} />
+                  </button>
+                </div>
+              )}
+              {selosInfo && (
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-full bg-yellow-500/15 flex items-center justify-center">
+                    <Star size={15} className="text-yellow-400" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-gray-100">Cartão fidelidade</p>
+                    <div className="flex items-center gap-1 mt-0.5">
+                      {Array.from({ length: selosInfo.meta }, (_, i) => (
+                        <div key={i} className={`w-4 h-4 rounded-full border ${i < selosInfo.atuais ? 'bg-yellow-400 border-yellow-400' : 'bg-white/5 border-white/15'}`} />
+                      ))}
+                      <span className="text-xs text-gray-500 ml-1">{selosInfo.atuais}/{selosInfo.meta}</span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Resumo do pedido */}
-        <div className="card p-4">
-          <h2 className="font-bold text-gray-800 mb-3">Resumo</h2>
-          <div className="space-y-1 text-sm">
-            {itens.map(item => (
-              <div key={item.id} className="flex justify-between text-gray-600">
-                <span>{item.quantidade}x {item.nome_snapshot}</span>
-                <span>{formatCurrency(item.total)}</span>
-              </div>
-            ))}
-          </div>
-          <div className="border-t border-gray-100 mt-3 pt-3 space-y-1 text-sm">
-            <div className="flex justify-between text-gray-600">
-              <span>Subtotal</span>
-              <span>{formatCurrency(sub)}</span>
+              )}
             </div>
-            {tipo === 'entrega' && (
-              <div className="flex justify-between text-gray-600">
-                <span>Entrega</span>
-                <span>{taxaEntrega > 0 ? formatCurrency(taxaEntrega) : 'Grátis'}</span>
+          )}
+
+          {/* Resumo do pedido */}
+          <div className="bg-[#2a2a2a] border border-white/5 rounded-2xl p-4">
+            <h2 className="font-bold text-white mb-3">Resumo</h2>
+            <div className="space-y-1 text-sm">
+              {itens.map(item => (
+                <div key={item.id} className="flex justify-between text-gray-400">
+                  <span>{item.quantidade}x {item.nome_snapshot}</span>
+                  <span>{formatCurrency(item.total)}</span>
+                </div>
+              ))}
+            </div>
+            <div className="border-t border-white/8 mt-3 pt-3 space-y-1 text-sm">
+              <div className="flex justify-between text-gray-400">
+                <span>Subtotal</span>
+                <span>{formatCurrency(sub)}</span>
               </div>
-            )}
-            {descontoCarteira > 0 && (
-              <div className="flex justify-between text-green-600 font-medium">
-                <span>Desconto carteira</span>
-                <span>-{formatCurrency(descontoCarteira)}</span>
+              {tipo === 'entrega' && (
+                <div className="flex justify-between text-gray-400">
+                  <span>Entrega</span>
+                  <span>{taxaEntrega > 0 ? formatCurrency(taxaEntrega) : 'Grátis'}</span>
+                </div>
+              )}
+              {descontoCarteira > 0 && (
+                <div className="flex justify-between text-green-400 font-medium">
+                  <span>Desconto carteira</span>
+                  <span>-{formatCurrency(descontoCarteira)}</span>
+                </div>
+              )}
+              <div className="flex justify-between font-bold text-white text-base pt-1 border-t border-white/8">
+                <span>Total</span>
+                <span>{formatCurrency(total)}</span>
               </div>
-            )}
-            <div className="flex justify-between font-bold text-gray-900 text-base pt-1 border-t border-gray-100">
-              <span>Total</span>
-              <span>{formatCurrency(total)}</span>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Botão fixo */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-4 py-4">
-        <div className="max-w-lg mx-auto">
+        {/* Botão fixo */}
+        <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[500px] bg-[#181818] border-t border-white/8 px-4 py-4">
           <button onClick={handlePedido} disabled={loading}
-            className="btn-primary w-full flex items-center justify-center gap-2 py-4"
+            className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl text-white font-semibold text-sm shadow-lg disabled:opacity-70"
             style={{ backgroundColor: loja.cor_primaria }}>
             {loading ? (
               <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
