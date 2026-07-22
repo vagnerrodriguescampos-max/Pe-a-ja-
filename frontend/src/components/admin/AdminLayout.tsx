@@ -78,7 +78,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   );
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="admin-dark min-h-screen bg-gray-50 flex">
       {/* Sidebar desktop */}
       <aside className="hidden md:flex flex-col w-56 bg-white border-r border-gray-100 fixed inset-y-0 left-0 z-30">
         <div className="px-5 py-6 border-b border-gray-100">

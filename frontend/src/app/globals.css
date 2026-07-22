@@ -36,3 +36,56 @@ body {
 ::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 99px; }
+
+/* ============================================================
+   TEMA ESCURO DO PAINEL ADMIN (escopado em .admin-dark)
+   Remapeia as classes claras do Tailwind para tons escuros,
+   deixando todas as telas do painel no tema dark de uma vez.
+   ============================================================ */
+.admin-dark { background-color: #17150f !important; color: #ede7da; }
+
+/* superfícies */
+.admin-dark .bg-white { background-color: #201d16 !important; }
+.admin-dark .bg-gray-50 { background-color: #1b1811 !important; }
+.admin-dark .bg-gray-100 { background-color: #2a251c !important; }
+.admin-dark .card { background-color: #201d16 !important; box-shadow: 0 1px 2px rgba(0,0,0,.45) !important; }
+
+/* textos */
+.admin-dark .text-gray-900,
+.admin-dark .text-gray-800,
+.admin-dark .text-gray-700 { color: #ede7da !important; }
+.admin-dark .text-gray-600,
+.admin-dark .text-gray-500 { color: #b3a996 !important; }
+.admin-dark .text-gray-400,
+.admin-dark .text-gray-300 { color: #877d6d !important; }
+
+/* bordas / divisores */
+.admin-dark .border-gray-100,
+.admin-dark .border-gray-200,
+.admin-dark .border-gray-300 { border-color: #37312a !important; }
+.admin-dark [class*="divide-gray"] > * + * { border-color: #37312a !important; }
+
+/* campos de formulário (menos checkbox/radio/color) */
+.admin-dark .input,
+.admin-dark input:not([type=checkbox]):not([type=radio]):not([type=color]),
+.admin-dark select,
+.admin-dark textarea {
+  background-color: #17140e !important;
+  border-color: #3a352c !important;
+  color: #ede7da !important;
+}
+.admin-dark input::placeholder,
+.admin-dark textarea::placeholder { color: #7a7060 !important; }
+
+/* hovers claros -> escuros */
+.admin-dark .hover\:bg-gray-50:hover { background-color: #26221a !important; }
+.admin-dark .hover\:bg-gray-100:hover { background-color: #2f2a20 !important; }
+
+/* pastéis (pílulas de status / seções) -> versões escuras translúcidas */
+.admin-dark .bg-red-50 { background-color: rgba(224,121,108,.15) !important; }
+.admin-dark .bg-green-50, .admin-dark .bg-green-100 { background-color: rgba(127,185,143,.16) !important; }
+.admin-dark .bg-blue-50, .admin-dark .bg-blue-100 { background-color: rgba(96,165,250,.15) !important; }
+.admin-dark .bg-yellow-50, .admin-dark .bg-yellow-100 { background-color: rgba(214,162,78,.16) !important; }
+.admin-dark .bg-orange-50, .admin-dark .bg-orange-100 { background-color: rgba(214,140,60,.16) !important; }
+.admin-dark .bg-indigo-50, .admin-dark .bg-indigo-100 { background-color: rgba(129,140,248,.15) !important; }
+.admin-dark .bg-purple-50 { background-color: rgba(168,120,240,.15) !important; }
