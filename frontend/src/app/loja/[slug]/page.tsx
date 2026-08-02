@@ -58,7 +58,7 @@ export default function CardapioPage() {
 
   if (loading) return <LoadingSkeleton />;
   if (!loja) return (
-    <div className="flex items-center justify-center min-h-screen bg-[#232323] text-gray-400">
+    <div className="flex items-center justify-center min-h-screen bg-[#14110e] text-gray-400">
       Loja não encontrada
     </div>
   );
@@ -66,8 +66,8 @@ export default function CardapioPage() {
   const totalItens = quantidadeTotal();
 
   return (
-    <div className="min-h-screen bg-[#333333] flex justify-center">
-      <div className="w-full max-w-[500px] bg-[#1e1e1e] min-h-screen relative flex flex-col">
+    <div className="admin-dark min-h-screen bg-[#0d0b09] flex justify-center">
+      <div className="w-full max-w-[500px] bg-[#14110e] min-h-screen relative flex flex-col">
 
         {/* Banner */}
         <div className="relative w-full overflow-hidden" style={{ height: 220 }}>
@@ -83,7 +83,7 @@ export default function CardapioPage() {
                 className="object-cover" unoptimized priority />
             )
           ) : (
-            <div className="w-full h-full bg-[#2a2a2a] flex items-center justify-center">
+            <div className="w-full h-full bg-[#201d16] flex items-center justify-center">
               <span className="text-7xl opacity-30">🍽️</span>
             </div>
           )}
@@ -112,7 +112,7 @@ export default function CardapioPage() {
         </div>
 
         {/* Info bar */}
-        <div className="bg-[#181818] px-4 py-2.5 flex items-center gap-4 border-b border-white/5">
+        <div className="bg-[#17140e] px-4 py-2.5 flex items-center gap-4 border-b border-white/5">
           <div className="flex items-center gap-1.5 text-gray-400 text-xs">
             <Clock size={12} />
             <span>{loja.prazo_medio_min} min</span>
@@ -142,7 +142,7 @@ export default function CardapioPage() {
 
         {/* Search */}
         <div className="px-4 pt-4 pb-2">
-          <div className="relative bg-[#2a2a2a] rounded-xl border border-white/8">
+          <div className="relative bg-[#201d16] rounded-xl border border-white/8">
             <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500" />
             <input
               value={busca}
@@ -191,8 +191,8 @@ export default function CardapioPage() {
                   <div className="flex gap-3 overflow-x-auto px-4 pb-1 scrollbar-hide">
                     {destaques.map(p => (
                       <button key={p.id} onClick={() => setProdutoSelecionado(p)}
-                        className="flex-shrink-0 w-36 bg-[#2a2a2a] rounded-2xl overflow-hidden text-left hover:bg-[#323232] transition-colors border border-white/5">
-                        <div className="relative w-full h-24 bg-[#222]">
+                        className="flex-shrink-0 w-36 bg-[#201d16] rounded-2xl overflow-hidden text-left hover:bg-[#262119] transition-colors border border-white/5">
+                        <div className="relative w-full h-24 bg-[#17140e]">
                           {p.imagem_url ? (
                             <Image src={p.imagem_url} alt={p.nome} fill
                               className="object-cover" unoptimized />
@@ -232,7 +232,7 @@ export default function CardapioPage() {
 
         {/* Floating cart button */}
         {totalItens > 0 && !catDrawer && (
-          <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[500px] px-4 pb-5 pt-2 z-30 bg-gradient-to-t from-[#1e1e1e] to-transparent">
+          <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[500px] px-4 pb-5 pt-2 z-30 bg-gradient-to-t from-[#14110e] to-transparent">
             <button onClick={() => setCarrinhoAberto(true)}
               className="flex items-center gap-3 text-white px-5 py-4 rounded-2xl shadow-2xl w-full"
               style={{ backgroundColor: loja.cor_primaria }}>
@@ -288,7 +288,7 @@ function CategoriaCard({ categoria, onClick }: { categoria: Categoria; onClick: 
         <Image src={categoria.foto_url} alt={categoria.nome} fill
           className="object-cover group-hover:scale-105 transition-transform duration-300" unoptimized />
       ) : (
-        <div className="w-full h-full bg-[#2a2a2a] flex items-center justify-center text-4xl opacity-40">🍽️</div>
+        <div className="w-full h-full bg-[#201d16] flex items-center justify-center text-4xl opacity-40">🍽️</div>
       )}
       <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent" />
       <div className="absolute bottom-0 left-0 right-0 p-3">
@@ -315,7 +315,7 @@ function CategoriaBottomSheet({ categoria, cor, onClose, onProdutoClick }: {
   return (
     <div className="fixed inset-0 z-50 flex flex-col justify-end items-center">
       <div className="absolute inset-0 bg-black/70" onClick={onClose} />
-      <div className="relative bg-[#1e1e1e] rounded-t-3xl max-h-[88vh] flex flex-col w-full max-w-[500px]">
+      <div className="relative bg-[#14110e] rounded-t-3xl max-h-[88vh] flex flex-col w-full max-w-[500px]">
         {/* Handle bar */}
         <div className="flex justify-center pt-3 pb-2 flex-shrink-0">
           <div className="w-10 h-1 bg-white/20 rounded-full" />
@@ -396,7 +396,7 @@ function ProdutoRow({ produto, cor, onClick }: { produto: Produto; cor: string; 
         </div>
       </div>
 
-      <div className="relative flex-shrink-0 w-24 h-24 rounded-xl overflow-hidden bg-[#2a2a2a]">
+      <div className="relative flex-shrink-0 w-24 h-24 rounded-xl overflow-hidden bg-[#201d16]">
         {produto.imagem_url ? (
           <Image src={produto.imagem_url} alt={produto.nome} fill
             className="object-cover group-hover:scale-105 transition-transform duration-300" unoptimized />
@@ -416,15 +416,15 @@ function ProdutoRow({ produto, cor, onClick }: { produto: Produto; cor: string; 
 
 function LoadingSkeleton() {
   return (
-    <div className="min-h-screen bg-[#333333] flex justify-center">
-      <div className="w-full max-w-[500px] bg-[#1e1e1e] animate-pulse">
-        <div className="h-[220px] bg-[#2a2a2a]" />
-        <div className="h-11 bg-[#181818]" />
+    <div className="admin-dark min-h-screen bg-[#0d0b09] flex justify-center">
+      <div className="w-full max-w-[500px] bg-[#14110e] animate-pulse">
+        <div className="h-[220px] bg-[#201d16]" />
+        <div className="h-11 bg-[#17140e]" />
         <div className="p-4 space-y-4">
-          <div className="h-11 bg-[#2a2a2a] rounded-xl" />
+          <div className="h-11 bg-[#201d16] rounded-xl" />
           <div className="grid grid-cols-2 gap-3 mt-2">
             {[1, 2, 3, 4].map(i => (
-              <div key={i} className="h-40 bg-[#2a2a2a] rounded-2xl" />
+              <div key={i} className="h-40 bg-[#201d16] rounded-2xl" />
             ))}
           </div>
         </div>

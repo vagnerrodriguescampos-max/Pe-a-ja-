@@ -140,18 +140,18 @@ export default function CheckoutPage() {
   }
 
   if (!loja) return (
-    <div className="min-h-screen bg-[#1e1e1e] flex items-center justify-center">
+    <div className="min-h-screen bg-[#14110e] flex items-center justify-center">
       <div className="animate-spin w-8 h-8 border-4 border-white/10 border-t-[var(--color-primary)] rounded-full" />
     </div>
   );
 
-  const inputCls = "w-full px-4 py-3 rounded-xl text-sm outline-none text-gray-100 bg-[#222] border border-white/8 placeholder-gray-600 focus:border-white/20 transition-colors";
+  const inputCls = "w-full px-4 py-3 rounded-xl text-sm outline-none text-gray-100 bg-[#17140e] border border-white/8 placeholder-gray-600 focus:border-white/20 transition-colors";
 
   return (
-    <div className="min-h-screen bg-[#333333] flex justify-center">
-      <div className="w-full max-w-[500px] bg-[#1e1e1e] min-h-screen relative">
+    <div className="admin-dark min-h-screen bg-[#0d0b09] flex justify-center">
+      <div className="w-full max-w-[500px] bg-[#14110e] min-h-screen relative">
         {/* Header */}
-        <div className="px-4 pt-6 pb-8" style={{ background: `linear-gradient(160deg, ${loja.cor_primaria} 0%, #1a1a1a 130%)` }}>
+        <div className="px-4 pt-6 pb-8" style={{ background: `linear-gradient(160deg, ${loja.cor_primaria} 0%, #14110e 130%)` }}>
           <div className="flex items-center gap-3">
             <Link href={`/loja/${slug}`} className="text-white/80 hover:text-white transition-colors">
               <ArrowLeft size={22} />
@@ -163,7 +163,7 @@ export default function CheckoutPage() {
         <div className="px-4 pb-32 -mt-3 space-y-4">
 
           {/* Tipo: entrega ou retirada */}
-          <div className="bg-[#2a2a2a] border border-white/5 rounded-2xl p-4">
+          <div className="bg-[#201d16] border border-white/5 rounded-2xl p-4">
             <h2 className="font-bold text-white mb-3">Como quer receber?</h2>
             <div className="grid grid-cols-2 gap-3">
               {(['entrega', 'retirada'] as TipoPedido[]).map(t => (
@@ -179,7 +179,7 @@ export default function CheckoutPage() {
           </div>
 
           {/* Dados do cliente */}
-          <div className="bg-[#2a2a2a] border border-white/5 rounded-2xl p-4 space-y-3">
+          <div className="bg-[#201d16] border border-white/5 rounded-2xl p-4 space-y-3">
             <h2 className="font-bold text-white flex items-center gap-2">
               <User size={16} /> Seus dados
             </h2>
@@ -193,7 +193,7 @@ export default function CheckoutPage() {
 
           {/* Endereço (só se entrega) */}
           {tipo === 'entrega' && (
-            <div className="bg-[#2a2a2a] border border-white/5 rounded-2xl p-4 space-y-3">
+            <div className="bg-[#201d16] border border-white/5 rounded-2xl p-4 space-y-3">
               <h2 className="font-bold text-white flex items-center gap-2">
                 <MapPin size={16} /> Endereço de entrega
               </h2>
@@ -215,7 +215,7 @@ export default function CheckoutPage() {
           )}
 
           {/* Forma de pagamento */}
-          <div className="bg-[#2a2a2a] border border-white/5 rounded-2xl p-4">
+          <div className="bg-[#201d16] border border-white/5 rounded-2xl p-4">
             <h2 className="font-bold text-white flex items-center gap-2 mb-3">
               <CreditCard size={16} /> Forma de pagamento
             </h2>
@@ -272,7 +272,7 @@ export default function CheckoutPage() {
 
           {/* Carteira e selos */}
           {(saldoCarteira > 0 || selosInfo) && (
-            <div className="bg-[#2a2a2a] border border-white/5 rounded-2xl p-4 space-y-3">
+            <div className="bg-[#201d16] border border-white/5 rounded-2xl p-4 space-y-3">
               {saldoCarteira > 0 && (
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -310,7 +310,7 @@ export default function CheckoutPage() {
           )}
 
           {/* Resumo do pedido */}
-          <div className="bg-[#2a2a2a] border border-white/5 rounded-2xl p-4">
+          <div className="bg-[#201d16] border border-white/5 rounded-2xl p-4">
             <h2 className="font-bold text-white mb-3">Resumo</h2>
             <div className="space-y-1 text-sm">
               {itens.map(item => (
@@ -346,7 +346,7 @@ export default function CheckoutPage() {
         </div>
 
         {/* Botão fixo */}
-        <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[500px] bg-[#181818] border-t border-white/8 px-4 py-4">
+        <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[500px] bg-[#17140e] border-t border-white/8 px-4 py-4">
           <button onClick={handlePedido} disabled={loading}
             className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl text-white font-semibold text-sm shadow-lg disabled:opacity-70"
             style={{ backgroundColor: loja.cor_primaria }}>

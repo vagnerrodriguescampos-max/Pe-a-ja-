@@ -14,8 +14,8 @@
 
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  background: #f5f5f5;
-  color: #333;
+  background: #0d0b09;
+  color: #ede7da;
 }
 
 .btn-primary {
@@ -72,12 +72,19 @@ body {
    Remapeia as classes claras do Tailwind para tons escuros,
    deixando todas as telas do painel no tema dark de uma vez.
    ============================================================ */
-.admin-dark { background-color: #17150f !important; color: #ede7da; }
+/* Classe universal: painel, motoboy e modais do cliente.
+   Não força o fundo do container (para não conflitar com telas que já
+   definem o próprio fundo) — só remapeia as classes claras do Tailwind
+   para a paleta quente da landing. */
+.admin-dark { color: #ede7da; }
 
-/* superfícies */
+/* superfícies -> paleta quente */
 .admin-dark .bg-white { background-color: #201d16 !important; }
-.admin-dark .bg-gray-50 { background-color: #1b1811 !important; }
-.admin-dark .bg-gray-100 { background-color: #2a251c !important; }
+.admin-dark .bg-gray-50 { background-color: #14110e !important; }
+.admin-dark .bg-gray-100 { background-color: #262119 !important; }
+.admin-dark .bg-gray-700 { background-color: #262119 !important; }
+.admin-dark .bg-gray-800 { background-color: #201d16 !important; }
+.admin-dark .bg-gray-900 { background-color: #14110e !important; }
 .admin-dark .card { background-color: #201d16 !important; box-shadow: 0 1px 2px rgba(0,0,0,.45) !important; }
 
 /* textos */
@@ -87,13 +94,15 @@ body {
 .admin-dark .text-gray-600,
 .admin-dark .text-gray-500 { color: #b3a996 !important; }
 .admin-dark .text-gray-400,
-.admin-dark .text-gray-300 { color: #877d6d !important; }
+.admin-dark .text-gray-300 { color: #8a8072 !important; }
 
 /* bordas / divisores */
 .admin-dark .border-gray-100,
 .admin-dark .border-gray-200,
-.admin-dark .border-gray-300 { border-color: #37312a !important; }
-.admin-dark [class*="divide-gray"] > * + * { border-color: #37312a !important; }
+.admin-dark .border-gray-300,
+.admin-dark .border-gray-700,
+.admin-dark .border-gray-800 { border-color: rgba(255,255,255,.09) !important; }
+.admin-dark [class*="divide-gray"] > * + * { border-color: rgba(255,255,255,.09) !important; }
 
 /* campos de formulário (menos checkbox/radio/color) */
 .admin-dark .input,
@@ -101,17 +110,18 @@ body {
 .admin-dark select,
 .admin-dark textarea {
   background-color: #17140e !important;
-  border-color: #3a352c !important;
+  border-color: rgba(255,255,255,.12) !important;
   color: #ede7da !important;
 }
 .admin-dark input::placeholder,
 .admin-dark textarea::placeholder { color: #7a7060 !important; }
 
 /* hovers claros -> escuros */
-.admin-dark .hover\:bg-gray-50:hover { background-color: #26221a !important; }
-.admin-dark .hover\:bg-gray-100:hover { background-color: #2f2a20 !important; }
+.admin-dark .hover\:bg-gray-50:hover { background-color: #262119 !important; }
+.admin-dark .hover\:bg-gray-100:hover { background-color: #2f2920 !important; }
+.admin-dark .hover\:bg-gray-800:hover { background-color: #262119 !important; }
 
-/* pastéis (pílulas de status / seções) -> versões escuras translúcidas */
+/* pastéis (pílulas de status) -> versões escuras translúcidas */
 .admin-dark .bg-red-50 { background-color: rgba(224,121,108,.15) !important; }
 .admin-dark .bg-green-50, .admin-dark .bg-green-100 { background-color: rgba(127,185,143,.16) !important; }
 .admin-dark .bg-blue-50, .admin-dark .bg-blue-100 { background-color: rgba(96,165,250,.15) !important; }

@@ -102,7 +102,7 @@ export default function MotoboyPage() {
   if (!isAuthenticated() || usuario?.papel !== 'motoboy') return null;
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white">
+    <div className="admin-dark min-h-screen bg-gray-900 text-white">
       {/* Header */}
       <div className="bg-gray-800 px-4 py-4 flex items-center justify-between border-b border-gray-700">
         <div className="flex items-center gap-3">

@@ -94,13 +94,13 @@ export default function AcompanharPedidoPage() {
   }, [id, tokenAcesso]);
 
   if (loading) return (
-    <div className="min-h-screen bg-[#1e1e1e] flex items-center justify-center">
+    <div className="min-h-screen bg-[#14110e] flex items-center justify-center">
       <div className="animate-spin w-8 h-8 border-4 border-white/10 border-t-[var(--color-primary)] rounded-full" />
     </div>
   );
 
   if (!tokenAcesso) return (
-    <div className="min-h-screen bg-[#1e1e1e] flex items-center justify-center px-6 text-center text-gray-400">
+    <div className="min-h-screen bg-[#14110e] flex items-center justify-center px-6 text-center text-gray-400">
       Este pedido precisa ser aberto pelo link seguro enviado após a confirmação.
     </div>
   );
@@ -112,10 +112,10 @@ export default function AcompanharPedidoPage() {
   const idxAtual = fluxo.indexOf(pedido.status as StatusPedido);
 
   return (
-    <div className="min-h-screen bg-[#333333] flex justify-center">
-      <div className="w-full max-w-[500px] bg-[#1e1e1e] min-h-screen">
+    <div className="admin-dark min-h-screen bg-[#0d0b09] flex justify-center">
+      <div className="w-full max-w-[500px] bg-[#14110e] min-h-screen">
         {/* Header */}
-        <div className="px-4 pt-6 pb-8" style={{ background: `linear-gradient(160deg, ${loja.cor_primaria} 0%, #1a1a1a 130%)` }}>
+        <div className="px-4 pt-6 pb-8" style={{ background: `linear-gradient(160deg, ${loja.cor_primaria} 0%, #14110e 130%)` }}>
           <Link href={`/loja/${slug}`} className="inline-flex items-center gap-1.5 text-white/70 text-sm hover:text-white transition-colors">
             <ArrowLeft size={16} /> Voltar ao cardápio
           </Link>
@@ -126,7 +126,7 @@ export default function AcompanharPedidoPage() {
         <div className="px-4 -mt-4 pb-16 space-y-4">
 
           {/* Status atual */}
-          <div className="bg-[#2a2a2a] border border-white/5 rounded-2xl p-5">
+          <div className="bg-[#201d16] border border-white/5 rounded-2xl p-5">
             {cancelado ? (
               <div className="flex items-center gap-3 text-red-400">
                 <XCircle size={32} />
@@ -181,7 +181,7 @@ export default function AcompanharPedidoPage() {
 
           {/* Mapa do motoboy */}
           {pedido.status === 'saiu_para_entrega' && (
-            <div className="bg-[#2a2a2a] border border-white/5 rounded-2xl overflow-hidden">
+            <div className="bg-[#201d16] border border-white/5 rounded-2xl overflow-hidden">
               <div className="flex items-center gap-2 px-4 py-3 border-b border-white/8">
                 <Bike size={16} style={{ color: loja.cor_primaria }} />
                 <span className="font-semibold text-white text-sm">Motoboy a caminho</span>
@@ -197,7 +197,7 @@ export default function AcompanharPedidoPage() {
 
           {/* PIX — exibir chave se pagamento for PIX */}
           {pedido.forma_pagamento === 'pix' && loja.chave_pix && pedido.status !== 'entregue' && (
-            <div className="bg-[#2a2a2a] border border-blue-400/20 rounded-2xl p-4">
+            <div className="bg-[#201d16] border border-blue-400/20 rounded-2xl p-4">
               <div className="flex items-center gap-2 mb-2">
                 <QrCode size={18} className="text-blue-400" />
                 <span className="font-bold text-blue-300">Pagamento via PIX</span>
@@ -213,7 +213,7 @@ export default function AcompanharPedidoPage() {
           )}
 
           {/* Detalhes do pedido */}
-          <div className="bg-[#2a2a2a] border border-white/5 rounded-2xl p-4">
+          <div className="bg-[#201d16] border border-white/5 rounded-2xl p-4">
             <h2 className="font-bold text-white mb-3">Detalhes do pedido</h2>
             <div className="space-y-2">
               {pedido.itens.map(item => (
@@ -257,7 +257,7 @@ export default function AcompanharPedidoPage() {
 
           {/* Endereço */}
           {pedido.endereco_entrega && (
-            <div className="bg-[#2a2a2a] border border-white/5 rounded-2xl p-4">
+            <div className="bg-[#201d16] border border-white/5 rounded-2xl p-4">
               <h2 className="font-bold text-white mb-2 flex items-center gap-2">
                 <Bike size={16} /> Entrega em
               </h2>
