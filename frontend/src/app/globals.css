@@ -32,6 +32,36 @@ body {
          focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent;
 }
 
+/* ============================================================
+   LANDING (tela de abertura) — animações modernas
+   ============================================================ */
+@keyframes lp-fade-up { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes lp-float { 0%,100% { transform: translateY(0) rotate(-1.5deg); } 50% { transform: translateY(-14px) rotate(-1.5deg); } }
+@keyframes lp-float2 { 0%,100% { transform: translateY(0) rotate(3deg); } 50% { transform: translateY(-10px) rotate(3deg); } }
+@keyframes lp-glow { 0%,100% { opacity: .5; transform: translate(0,0) scale(1); } 50% { opacity: .85; transform: translate(2%, -3%) scale(1.08); } }
+@keyframes lp-shimmer { to { background-position: 200% center; } }
+@keyframes lp-pulse-dot { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
+@keyframes lp-spin-slow { to { transform: rotate(360deg); } }
+
+.lp-reveal { opacity: 0; animation: lp-fade-up .8s cubic-bezier(.2,.7,.2,1) forwards; }
+.lp-d1 { animation-delay: .05s; } .lp-d2 { animation-delay: .18s; } .lp-d3 { animation-delay: .32s; }
+.lp-d4 { animation-delay: .46s; } .lp-d5 { animation-delay: .6s; } .lp-d6 { animation-delay: .74s; }
+.lp-float { animation: lp-float 6s ease-in-out infinite; }
+.lp-float2 { animation: lp-float2 7s ease-in-out infinite; }
+.lp-glow { animation: lp-glow 9s ease-in-out infinite; }
+.lp-dot { animation: lp-pulse-dot 1.4s ease-in-out infinite; }
+.lp-gradient-text {
+  background: linear-gradient(100deg, #ff9a3c, #ff5a4d 40%, #ff9a3c 80%);
+  background-size: 200% auto;
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: transparent;
+  animation: lp-shimmer 5s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .lp-reveal, .lp-float, .lp-float2, .lp-glow, .lp-dot, .lp-gradient-text { animation: none; opacity: 1; }
+  .lp-reveal { transform: none; }
+}
+
 /* Scrollbar fino */
 ::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
