@@ -65,7 +65,7 @@ self.addEventListener('push', event => {
     renotify: true,
   };
 
-  event.waitUntil(self.registration.showNotification(data.title || 'Eu Pedi', options));
+  event.waitUntil(self.registration.showNotification(data.title || 'Peça Já', options));
 });
 
 // ── Notification click ────────────────────────────────────────────────────────

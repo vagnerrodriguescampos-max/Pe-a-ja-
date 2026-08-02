@@ -1,13 +1,13 @@
 {
-  "name": "Eu Pedi",
-  "short_name": "Eu Pedi",
-  "description": "Peça direto da sua loja favorita, sem comissão",
+  "name": "Peça Já",
+  "short_name": "Peça Já",
+  "description": "O delivery da sua loja, sem comissão. Cardápio digital, pedidos em tempo real e fidelização.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "display_override": ["window-controls-overlay", "standalone"],
-  "background_color": "#ffffff",
-  "theme_color": "#E63946",
+  "background_color": "#0d0b09",
+  "theme_color": "#0d0b09",
   "orientation": "portrait-primary",
   "categories": ["food", "shopping"],
   "icons": [
