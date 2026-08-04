@@ -11,7 +11,7 @@ import { TrendingUp, ShoppingBag, Users, AlertCircle } from 'lucide-react';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 const DIAS_SEMANA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab'];
-const CORES_PIZZA = ['#E63946', '#F4A261', '#2A9D8F', '#457B9D', '#A8DADC'];
+const CORES_PIZZA = ['#ff6a45', '#f4a259', '#7fb98f', '#60a5fa', '#a878f0'];
 
 type Resumo = { total_pedidos: number; receita_total: number; ticket_medio: number; cancelados: number };
 type PorDia = { dia: string; pedidos: number; receita: number };
@@ -117,15 +117,15 @@ export default function DashboardPage() {
                 <AreaChart data={porDiaFormatado}>
                   <defs>
                     <linearGradient id="receitaGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#E63946" stopOpacity={0.2} />
-                      <stop offset="95%" stopColor="#E63946" stopOpacity={0} />
+                      <stop offset="5%" stopColor="#ff6a45" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#ff6a45" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                  <XAxis dataKey="dia" tick={{ fontSize: 11 }} />
-                  <YAxis tick={{ fontSize: 11 }} tickFormatter={v => `R$${v}`} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
+                  <XAxis dataKey="dia" tick={{ fontSize: 11, fill: '#b3a996' }} />
+                  <YAxis tick={{ fontSize: 11, fill: '#b3a996' }} tickFormatter={v => `R$${v}`} />
                   <Tooltip formatter={(v: number) => fmtMoeda(v)} labelStyle={{ fontWeight: 600 }} />
-                  <Area type="monotone" dataKey="receita" stroke="#E63946" fill="url(#receitaGrad)" strokeWidth={2} name="Receita" />
+                  <Area type="monotone" dataKey="receita" stroke="#ff6a45" fill="url(#receitaGrad)" strokeWidth={2} name="Receita" />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
@@ -169,11 +169,11 @@ export default function DashboardPage() {
                 ) : (
                   <ResponsiveContainer width="100%" height={180}>
                     <BarChart data={produtos.slice(0, 5)} layout="vertical" margin={{ left: 10 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={false} />
-                      <XAxis type="number" tick={{ fontSize: 11 }} />
-                      <YAxis type="category" dataKey="nome" tick={{ fontSize: 11 }} width={100} />
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" horizontal={false} />
+                      <XAxis type="number" tick={{ fontSize: 11, fill: '#b3a996' }} />
+                      <YAxis type="category" dataKey="nome" tick={{ fontSize: 11, fill: '#b3a996' }} width={100} />
                       <Tooltip formatter={(v: number) => [`${v} und`, 'Quantidade']} />
-                      <Bar dataKey="quantidade" fill="#E63946" radius={[0, 4, 4, 0]} />
+                      <Bar dataKey="quantidade" fill="#ff6a45" radius={[0, 4, 4, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 )}
@@ -197,12 +197,12 @@ export default function DashboardPage() {
                       {row.map((val, hora) => {
                         const intensity = val / maxHeat;
                         const bg = val === 0
-                          ? '#f9fafb'
-                          : `rgba(230, 57, 70, ${Math.max(0.1, intensity)})`;
+                          ? '#201d16'
+                          : `rgba(255, 106, 69, ${Math.max(0.15, intensity)})`;
                         return (
                           <div key={hora} title={`${val} pedidos às ${hora}h`}
                             className="w-7 h-7 rounded flex items-center justify-center text-xs transition-colors"
-                            style={{ backgroundColor: bg, color: intensity > 0.5 ? 'white' : '#6b7280' }}>
+                            style={{ backgroundColor: bg, color: intensity > 0.5 ? 'white' : '#b3a996' }}>
                             {val > 0 ? val : ''}
                           </div>
                         );
@@ -212,7 +212,7 @@ export default function DashboardPage() {
                   <div className="flex items-center gap-2 mt-3 pl-10">
                     <span className="text-xs text-gray-400">Menos</span>
                     {[0, 0.2, 0.4, 0.6, 0.8, 1].map(v => (
-                      <div key={v} className="w-5 h-5 rounded" style={{ backgroundColor: v === 0 ? '#f9fafb' : `rgba(230, 57, 70, ${v})` }} />
+                      <div key={v} className="w-5 h-5 rounded" style={{ backgroundColor: v === 0 ? '#201d16' : `rgba(255, 106, 69, ${v})` }} />
                     ))}
                     <span className="text-xs text-gray-400">Mais</span>
                   </div>

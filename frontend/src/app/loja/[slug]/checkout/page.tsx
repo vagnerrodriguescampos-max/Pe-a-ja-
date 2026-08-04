@@ -6,7 +6,7 @@ import { getLoja, criarPedido } from '@/lib/api';
 import { Loja, FormaPagamento, TipoPedido } from '@/types';
 import { useCarrinhoStore } from '@/stores/carrinho.store';
 import { formatCurrency, PAGAMENTO_LABELS } from '@/lib/utils';
-import { ArrowLeft, MapPin, User, CreditCard, QrCode, ChevronRight, Wallet, Star } from 'lucide-react';
+import { ArrowLeft, MapPin, User, CreditCard, QrCode, ChevronRight, Wallet, Star, Bike, Footprints, Landmark, Banknote, type LucideIcon } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Link from 'next/link';
 
@@ -172,7 +172,10 @@ export default function CheckoutPage() {
                     tipo === t ? '' : 'border-white/8 text-gray-400'
                   }`}
                   style={tipo === t ? { borderColor: loja.cor_primaria, color: loja.cor_primaria } : {}}>
-                  {t === 'entrega' ? '🛵 Entrega' : '🏃 Retirada'}
+                  <span className="inline-flex items-center gap-1.5">
+                    {t === 'entrega' ? <Bike size={16} /> : <Footprints size={16} />}
+                    {t === 'entrega' ? 'Entrega' : 'Retirada'}
+                  </span>
                 </button>
               ))}
             </div>
@@ -221,18 +224,20 @@ export default function CheckoutPage() {
             </h2>
             <div className="space-y-2">
               {([
-                { key: 'pix', label: '🏦 PIX', desc: 'Chave PIX da loja' },
-                { key: 'dinheiro', label: '💵 Dinheiro', desc: 'Na entrega / retirada' },
-                { key: 'cartao_debito', label: '💳 Débito', desc: 'Maquininha na entrega' },
-                { key: 'cartao_credito', label: '💳 Crédito', desc: 'Maquininha na entrega' },
-              ] as { key: FormaPagamento; label: string; desc: string }[]).map(op => (
+                { key: 'pix', label: 'PIX', icon: Landmark, desc: 'Chave PIX da loja' },
+                { key: 'dinheiro', label: 'Dinheiro', icon: Banknote, desc: 'Na entrega / retirada' },
+                { key: 'cartao_debito', label: 'Débito', icon: CreditCard, desc: 'Maquininha na entrega' },
+                { key: 'cartao_credito', label: 'Crédito', icon: CreditCard, desc: 'Maquininha na entrega' },
+              ] as { key: FormaPagamento; label: string; icon: LucideIcon; desc: string }[]).map(op => (
                 <button key={op.key} onClick={() => setFormaPagamento(op.key)}
                   className={`w-full flex items-center justify-between p-3 rounded-xl border-2 text-left transition-all ${
                     formaPagamento === op.key ? '' : 'border-white/8'
                   }`}
                   style={formaPagamento === op.key ? { borderColor: loja.cor_primaria } : {}}>
                   <div>
-                    <p className="text-sm font-medium text-gray-100">{op.label}</p>
+                    <p className="text-sm font-medium text-gray-100 flex items-center gap-1.5">
+                      <op.icon size={14} /> {op.label}
+                    </p>
                     <p className="text-xs text-gray-500">{op.desc}</p>
                   </div>
                   <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${

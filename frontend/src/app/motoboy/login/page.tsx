@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/auth.store';
+import { Bike } from 'lucide-react';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -34,29 +35,31 @@ export default function MotoboyLoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 flex items-center justify-center px-4">
+    <div className="admin-dark min-h-screen bg-gray-900 flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <div className="text-5xl mb-3">🛵</div>
-          <h1 className="text-2xl font-bold text-white">Área do Motoboy</h1>
+          <div className="w-16 h-16 bg-gray-800 rounded-2xl flex items-center justify-center mx-auto mb-3">
+            <Bike size={30} className="text-[var(--admin-accent)]" />
+          </div>
+          <h1 className="text-page-title text-white">Área do Motoboy</h1>
           <p className="text-gray-400 mt-1 text-sm">Entre com suas credenciais</p>
         </div>
         <form onSubmit={handleLogin} className="bg-gray-800 rounded-2xl p-6 space-y-4">
           <div>
             <label className="block text-sm text-gray-300 mb-1">Email</label>
             <input type="email" value={email} onChange={e => setEmail(e.target.value)} required
-              className="w-full bg-gray-700 text-white border border-gray-600 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-orange-500"
+              className="w-full rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-[var(--admin-accent)]"
               placeholder="seu@email.com" />
           </div>
           <div>
             <label className="block text-sm text-gray-300 mb-1">Senha</label>
             <input type="password" value={senha} onChange={e => setSenha(e.target.value)} required
-              className="w-full bg-gray-700 text-white border border-gray-600 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-orange-500"
+              className="w-full rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-[var(--admin-accent)]"
               placeholder="••••••••" />
           </div>
           {erro && <p className="text-red-400 text-sm">{erro}</p>}
           <button type="submit" disabled={loading}
-            className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-xl transition-colors disabled:opacity-50">
+            className="btn-admin-primary w-full">
             {loading ? 'Entrando...' : 'Entrar'}
           </button>
         </form>

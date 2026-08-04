@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuthStore } from '@/stores/auth.store';
-import { CheckCircle, XCircle, Loader2, Store, Link2, User, Mail, Lock, Eye, EyeOff, ArrowRight, ChevronLeft } from 'lucide-react';
+import { CheckCircle, XCircle, Loader2, Store, Link2, User, Mail, Lock, Eye, EyeOff, ArrowRight, ChevronLeft, ShoppingBag } from 'lucide-react';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -120,7 +120,7 @@ export default function CadastrarPage() {
           <Link href="/" className="inline-flex items-center gap-1 text-sm text-gray-400 hover:text-gray-600 mb-6">
             <ChevronLeft size={14} /> Voltar
           </Link>
-          <div className="text-4xl mb-3">🛍️</div>
+          <div className="mb-3 flex justify-center"><ShoppingBag className="h-10 w-10 text-red-500" /></div>
           <h1 className="text-2xl font-bold text-gray-900">Cadastre seu restaurante</h1>
           <p className="text-gray-500 mt-1 text-sm">Crie sua loja e comece a receber pedidos em minutos</p>
         </div>

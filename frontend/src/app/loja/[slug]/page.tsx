@@ -7,7 +7,7 @@ import { getLoja, getCardapio } from '@/lib/api';
 import { Loja, Categoria, Produto } from '@/types';
 import { useCarrinhoStore } from '@/stores/carrinho.store';
 import { formatCurrency } from '@/lib/utils';
-import { ShoppingCart, Search, Clock, ChevronRight, X, Star, Bike, MapPin } from 'lucide-react';
+import { ShoppingCart, Search, Clock, ChevronRight, X, Star, Bike, MapPin, UtensilsCrossed } from 'lucide-react';
 import ProdutoModal from '@/components/cardapio/ProdutoModal';
 import CarrinhoDrawer from '@/components/carrinho/CarrinhoDrawer';
 import ChatWidget from '@/components/chat/ChatWidget';
@@ -84,7 +84,7 @@ export default function CardapioPage() {
             )
           ) : (
             <div className="w-full h-full bg-[#201d16] flex items-center justify-center">
-              <span className="text-7xl opacity-30">🍽️</span>
+              <UtensilsCrossed size={64} className="text-gray-500 opacity-30" />
             </div>
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
@@ -171,7 +171,7 @@ export default function CardapioPage() {
               )))}
               {produtosFiltrados.length === 0 && (
                 <div className="text-center py-16">
-                  <p className="text-4xl mb-3">🔍</p>
+                  <Search size={36} className="mx-auto mb-3 text-gray-600" />
                   <p className="text-gray-500 text-sm">Nenhum resultado para "{busca}"</p>
                 </div>
               )}
@@ -185,7 +185,7 @@ export default function CardapioPage() {
               {destaques.length > 0 && (
                 <div className="mt-4 mb-2">
                   <div className="px-4 mb-3 flex items-center gap-2">
-                    <Star size={14} fill="#f59e0b" className="text-amber-400" />
+                    <Star size={14} className="text-amber-400 fill-amber-400" />
                     <h2 className="font-bold text-white text-sm">Oferta do Dia</h2>
                   </div>
                   <div className="flex gap-3 overflow-x-auto px-4 pb-1 scrollbar-hide">
@@ -197,7 +197,9 @@ export default function CardapioPage() {
                             <Image src={p.imagem_url} alt={p.nome} fill
                               className="object-cover" unoptimized />
                           ) : (
-                            <div className="w-full h-full flex items-center justify-center text-3xl opacity-40">🍽️</div>
+                            <div className="w-full h-full flex items-center justify-center">
+                              <UtensilsCrossed size={28} className="text-gray-500 opacity-40" />
+                            </div>
                           )}
                           {p.preco_promocional && (
                             <span className="absolute top-1.5 left-1.5 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-md">
@@ -288,7 +290,9 @@ function CategoriaCard({ categoria, onClick }: { categoria: Categoria; onClick: 
         <Image src={categoria.foto_url} alt={categoria.nome} fill
           className="object-cover group-hover:scale-105 transition-transform duration-300" unoptimized />
       ) : (
-        <div className="w-full h-full bg-[#201d16] flex items-center justify-center text-4xl opacity-40">🍽️</div>
+        <div className="w-full h-full bg-[#201d16] flex items-center justify-center">
+          <UtensilsCrossed size={36} className="text-gray-500 opacity-40" />
+        </div>
       )}
       <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent" />
       <div className="absolute bottom-0 left-0 right-0 p-3">
@@ -401,7 +405,9 @@ function ProdutoRow({ produto, cor, onClick }: { produto: Produto; cor: string; 
           <Image src={produto.imagem_url} alt={produto.nome} fill
             className="object-cover group-hover:scale-105 transition-transform duration-300" unoptimized />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-3xl opacity-30">🍽️</div>
+          <div className="w-full h-full flex items-center justify-center">
+            <UtensilsCrossed size={28} className="text-gray-500 opacity-30" />
+          </div>
         )}
         {!esgotado && (
           <div className="absolute bottom-1.5 right-1.5 w-6 h-6 rounded-full bg-white shadow flex items-center justify-center"

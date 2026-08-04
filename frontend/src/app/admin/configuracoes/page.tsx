@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { adminGetLoja, adminUpdateLoja } from '@/lib/api';
 import { Loja } from '@/types';
-import { Save, ToggleLeft, ToggleRight, ExternalLink, Bot, Link2, CheckCircle, XCircle, Loader2 } from 'lucide-react';
+import { Save, ToggleLeft, ToggleRight, ExternalLink, Bot, Link2, CheckCircle, XCircle, Loader2, AlertTriangle, Image as ImageIcon, Video } from 'lucide-react';
 import ImageUpload from '@/components/ImageUpload';
 import WhatsAppConnect from '@/components/admin/WhatsAppConnect';
 import HorarioFuncionamento from '@/components/admin/HorarioFuncionamento';
@@ -82,7 +82,7 @@ export default function ConfiguracoesPage() {
       const updated = await adminUpdateLoja({ aberta: !form.aberta });
       setLoja(updated);
       setForm(prev => ({ ...prev, aberta: updated.aberta }));
-      toast.success(updated.aberta ? '✅ Loja aberta!' : '🔴 Loja fechada');
+      toast.success(updated.aberta ? 'Loja aberta!' : 'Loja fechada');
     } catch { toast.error('Erro'); }
     finally { setSaving(false); }
   }
@@ -90,7 +90,7 @@ export default function ConfiguracoesPage() {
   if (loading) return (
     <AdminLayout>
       <div className="flex items-center justify-center h-screen">
-        <div className="animate-spin w-8 h-8 border-4 border-gray-200 border-t-red-500 rounded-full" />
+        <div className="animate-spin w-8 h-8 border-4 border-gray-200 border-t-[var(--admin-accent)] rounded-full" />
       </div>
     </AdminLayout>
   );
@@ -101,9 +101,9 @@ export default function ConfiguracoesPage() {
     <AdminLayout>
       <div className="p-4 md:p-6 max-w-2xl">
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-xl font-bold text-gray-900">Configurações da Loja</h1>
+          <h1 className="text-page-title text-gray-900">Configurações da Loja</h1>
           <a href={`/loja/${loja.slug}`} target="_blank" rel="noopener noreferrer"
-            className="flex items-center gap-1.5 text-sm text-red-600 font-medium hover:underline">
+            className="flex items-center gap-1.5 text-sm text-[var(--admin-accent)] font-medium hover:underline">
             <ExternalLink size={14} /> Ver cardápio
           </a>
         </div>
@@ -113,8 +113,10 @@ export default function ConfiguracoesPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="font-semibold text-gray-800">Status da loja</p>
-              <p className="text-sm text-gray-400 mt-0.5">
-                {form.aberta ? '🟢 Aceitando pedidos' : '🔴 Loja fechada — pedidos bloqueados'}
+              <p className="text-sm text-gray-400 mt-0.5 inline-flex items-center gap-1.5">
+                {form.aberta
+                  ? <><CheckCircle size={14} className="text-green-500" /> Aceitando pedidos</>
+                  : <><XCircle size={14} className="text-red-500" /> Loja fechada — pedidos bloqueados</>}
               </p>
             </div>
             <button onClick={toggleAberta} disabled={saving}
@@ -129,7 +131,7 @@ export default function ConfiguracoesPage() {
 
         {/* Dados da loja */}
         <div className="card p-5 mb-4 space-y-4">
-          <h2 className="font-bold text-gray-700">Informações</h2>
+          <h2 className="text-section-title text-gray-700">Informações</h2>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Nome da loja</label>
             <input value={form.nome || ''} onChange={e => set('nome', e.target.value)} className="input" />
@@ -138,7 +140,7 @@ export default function ConfiguracoesPage() {
             <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1.5">
               <Link2 size={14} /> Link do cardápio
             </label>
-            <div className="flex items-center border border-gray-200 rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-red-400">
+            <div className="flex items-center border border-gray-200 rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-[var(--admin-accent)]">
               <span className="text-xs text-gray-400 px-3 py-2.5 bg-gray-50 border-r border-gray-200 font-mono whitespace-nowrap">
                 /loja/
               </span>
@@ -159,7 +161,11 @@ export default function ConfiguracoesPage() {
             {slugStatus === 'taken' && <p className="text-xs text-red-500 mt-1">Este link já está em uso.</p>}
             {slugStatus === 'invalid' && <p className="text-xs text-red-500 mt-1">Use letras minúsculas, números e hífens (mín. 3 caracteres)</p>}
             {slugStatus === 'same' && <p className="text-xs text-gray-400 mt-1">Link atual da loja</p>}
-            {(slugStatus === 'available') && <p className="text-xs text-amber-500 mt-0.5">⚠️ Alterar o link irá quebrar links antigos compartilhados</p>}
+            {(slugStatus === 'available') && (
+              <p className="text-xs text-amber-500 mt-0.5 inline-flex items-center gap-1.5">
+                <AlertTriangle size={12} /> Alterar o link irá quebrar links antigos compartilhados
+              </p>
+            )}
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Telefone / WhatsApp</label>
@@ -188,12 +194,12 @@ export default function ConfiguracoesPage() {
               {(['imagem', 'video'] as const).map(tipo => (
                 <button key={tipo} type="button"
                   onClick={() => set('banner_tipo', tipo)}
-                  className={`px-4 py-1.5 rounded-xl text-xs font-semibold border transition-colors ${
+                  className={`px-4 py-1.5 rounded-xl text-xs font-semibold border transition-colors inline-flex items-center gap-1.5 ${
                     (form.banner_tipo || 'imagem') === tipo
-                      ? 'bg-red-500 text-white border-red-500'
+                      ? 'bg-[var(--admin-accent)] text-white border-[var(--admin-accent)]'
                       : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'
                   }`}>
-                  {tipo === 'imagem' ? '🖼️ Foto' : '🎬 Vídeo'}
+                  {tipo === 'imagem' ? <><ImageIcon size={13} /> Foto</> : <><Video size={13} /> Vídeo</>}
                 </button>
               ))}
             </div>
@@ -218,7 +224,7 @@ export default function ConfiguracoesPage() {
 
         {/* Entrega */}
         <div className="card p-5 mb-4 space-y-4">
-          <h2 className="font-bold text-gray-700">Entrega</h2>
+          <h2 className="text-section-title text-gray-700">Entrega</h2>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Prazo médio (min)</label>
@@ -240,7 +246,7 @@ export default function ConfiguracoesPage() {
 
         {/* PIX */}
         <div className="card p-5 mb-6 space-y-4">
-          <h2 className="font-bold text-gray-700">Chave PIX</h2>
+          <h2 className="text-section-title text-gray-700">Chave PIX</h2>
           <p className="text-xs text-gray-400">Aparece automaticamente para clientes que escolherem PIX no checkout</p>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Tipo da chave</label>
@@ -264,7 +270,7 @@ export default function ConfiguracoesPage() {
         <WhatsAppConnect />
 
         <button onClick={salvar} disabled={saving}
-          className="btn-primary bg-red-500 w-full flex items-center justify-center gap-2 py-4">
+          className="btn-admin-primary w-full flex items-center justify-center gap-2 py-4">
           {saving ? (
             <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
           ) : (
@@ -276,7 +282,7 @@ export default function ConfiguracoesPage() {
         <div className="card p-5 mt-6 space-y-4">
           <div className="flex items-center gap-2 mb-1">
             <Bot size={18} className="text-purple-600" />
-            <h2 className="font-bold text-gray-700">Agente de IA no Chat</h2>
+            <h2 className="text-section-title text-gray-700">Agente de IA no Chat</h2>
           </div>
           <p className="text-xs text-gray-400">Responde automaticamente aos clientes no chat com base no seu cardápio. Requer ANTHROPIC_API_KEY configurada no servidor.</p>
 
@@ -313,7 +319,7 @@ export default function ConfiguracoesPage() {
           </div>
 
           <button onClick={salvarIA} disabled={savingIA}
-            className="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors">
+            className="btn-admin-primary w-full flex items-center justify-center gap-2">
             {savingIA
               ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
               : <><Save size={16} /> Salvar configurações de IA</>}

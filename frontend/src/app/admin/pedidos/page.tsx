@@ -7,7 +7,7 @@ import { Pedido, Loja, StatusPedido } from '@/types';
 import { formatCurrency, STATUS_LABELS, PAGAMENTO_LABELS } from '@/lib/utils';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { useAuthStore } from '@/stores/auth.store';
-import { RefreshCw, Clock, ChevronRight } from 'lucide-react';
+import { RefreshCw, Clock, ChevronRight, Bell, CheckCircle2, XCircle, Bike, ShoppingBag } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const COLUNAS: { status: StatusPedido; label: string; cor: string }[] = [
@@ -60,7 +60,7 @@ export default function PedidosPage() {
 
     socket.on('pedido:novo', (pedido: Pedido) => {
       setPedidos(prev => [pedido, ...prev]);
-      toast.success(`🔔 Novo pedido #${pedido.numero_sequencial}!`);
+      toast.success(`Novo pedido #${pedido.numero_sequencial}!`, { icon: <Bell size={18} /> });
       new Audio('/notification.mp3').play().catch(() => {});
     });
 
@@ -97,7 +97,7 @@ export default function PedidosPage() {
   if (loading) return (
     <AdminLayout>
       <div className="flex items-center justify-center h-screen">
-        <div className="animate-spin w-8 h-8 border-4 border-gray-200 border-t-red-500 rounded-full" />
+        <div className="animate-spin w-8 h-8 border-4 border-gray-200 border-t-[var(--admin-accent)] rounded-full" />
       </div>
     </AdminLayout>
   );
@@ -107,13 +107,13 @@ export default function PedidosPage() {
       <div className="p-4 md:p-6">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-xl font-bold text-gray-900">Kanban de Pedidos</h1>
+            <h1 className="text-page-title text-gray-900">Kanban de Pedidos</h1>
             <p className="text-sm text-gray-400 mt-0.5">{pedidos.filter(p => !['entregue','cancelado'].includes(p.status)).length} pedidos ativos</p>
           </div>
           <div className="flex items-center gap-3">
             {loja && (
-              <span className={`px-3 py-1.5 rounded-full text-xs font-semibold ${loja.aberta ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                {loja.aberta ? '🟢 Aberta' : '🔴 Fechada'}
+              <span className={`px-3 py-1.5 rounded-full text-xs font-semibold inline-flex items-center gap-1.5 ${loja.aberta ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                {loja.aberta ? <><CheckCircle2 size={13} /> Aberta</> : <><XCircle size={13} /> Fechada</>}
               </span>
             )}
             <button onClick={carregarPedidos} className="p-2 bg-white rounded-xl border border-gray-200 text-gray-500 hover:text-gray-800 transition-colors">
@@ -209,7 +209,7 @@ export default function PedidosPage() {
                 <select
                   defaultValue={pedidoAberto.motoboy_id || ''}
                   onChange={e => atribuirMotoboy(pedidoAberto.id, e.target.value)}
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-red-400">
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[var(--admin-accent)]">
                   <option value="">Selecionar motoboy...</option>
                   {motoboys.map((m: any) => (
                     <option key={m.id} value={m.id}>{m.nome}</option>
@@ -227,7 +227,7 @@ export default function PedidosPage() {
                     className={`w-full py-3 rounded-xl text-sm font-semibold transition-all ${
                       s === 'cancelado'
                         ? 'border border-red-200 text-red-600 hover:bg-red-50'
-                        : 'bg-red-500 text-white hover:bg-red-600'
+                        : 'bg-[var(--admin-accent)] text-white hover:bg-[var(--admin-accent-hover)]'
                     }`}>
                     {s === 'cancelado' ? 'Cancelar pedido' : `→ ${STATUS_LABELS[s]}`}
                   </button>
@@ -257,8 +257,8 @@ function PedidoCard({ pedido, onClick, onAvancar }: {
             <Clock size={11} /> {minAtras < 1 ? 'agora' : `${minAtras}min atrás`}
           </p>
         </div>
-        <span className="text-xs font-medium text-gray-600 bg-gray-100 px-2 py-0.5 rounded-full">
-          {pedido.tipo === 'entrega' ? '🛵' : '🏃'}
+        <span className="text-gray-600 bg-gray-100 p-1 rounded-full inline-flex items-center justify-center">
+          {pedido.tipo === 'entrega' ? <Bike size={12} /> : <ShoppingBag size={12} />}
         </span>
       </div>
       <p className="text-xs text-gray-600 line-clamp-2 mb-2">
@@ -269,7 +269,7 @@ function PedidoCard({ pedido, onClick, onAvancar }: {
         <span className="font-bold text-sm text-gray-900">{formatCurrency(Number(pedido.total))}</span>
         {temProximo && (
           <button onClick={e => { e.stopPropagation(); onAvancar(); }}
-            className="bg-red-500 text-white text-xs px-3 py-1.5 rounded-lg font-medium hover:bg-red-600 transition-colors flex items-center gap-1">
+            className="bg-[var(--admin-accent)] text-white text-xs px-3 py-1.5 rounded-lg font-medium hover:bg-[var(--admin-accent-hover)] transition-colors flex items-center gap-1">
             Avançar <ChevronRight size={12} />
           </button>
         )}

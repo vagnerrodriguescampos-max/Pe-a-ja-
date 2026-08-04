@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { useAuthStore } from '@/stores/auth.store';
 import { io, Socket } from 'socket.io-client';
-import { Send, CheckCheck, Search, Package, X, Circle } from 'lucide-react';
+import { Send, CheckCheck, Search, Package, X, Circle, MessageCircle } from 'lucide-react';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 const WS = process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:3001';
@@ -171,13 +171,13 @@ export default function ChatAdminPage() {
                 value={busca}
                 onChange={e => setBusca(e.target.value)}
                 placeholder="Buscar cliente..."
-                className="w-full pl-8 pr-3 py-2 text-sm bg-gray-100 rounded-lg border-0 focus:outline-none focus:ring-2 focus:ring-red-300"
+                className="w-full pl-8 pr-3 py-2 text-sm bg-gray-100 rounded-lg border-0 focus:outline-none focus:ring-2 focus:ring-[var(--admin-accent)]/40"
               />
             </div>
             <div className="flex gap-1">
               {['todas', 'aberta', 'em_atendimento', 'resolvida'].map(f => (
                 <button key={f} onClick={() => setFiltro(f)}
-                  className={`text-xs px-2 py-1 rounded-full font-medium transition-colors ${filtro === f ? 'bg-red-100 text-red-600' : 'text-gray-500 hover:bg-gray-100'}`}>
+                  className={`text-xs px-2 py-1 rounded-full font-medium transition-colors ${filtro === f ? 'bg-[var(--admin-accent)]/10 text-[var(--admin-accent)]' : 'text-gray-500 hover:bg-gray-100'}`}>
                   {f === 'todas' ? 'Todas' : f === 'aberta' ? 'Abertas' : f === 'em_atendimento' ? 'Em atend.' : 'Resolvidas'}
                 </button>
               ))}
@@ -190,9 +190,9 @@ export default function ChatAdminPage() {
             )}
             {conversasFiltradas.map(conv => (
               <button key={conv.id} onClick={() => abrirConversa(conv)}
-                className={`w-full text-left px-4 py-3 border-b hover:bg-gray-50 transition-colors ${convAtual?.id === conv.id ? 'bg-red-50' : ''}`}>
+                className={`w-full text-left px-4 py-3 border-b hover:bg-gray-50 transition-colors ${convAtual?.id === conv.id ? 'bg-[var(--admin-accent)]/5' : ''}`}>
                 <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-red-400 to-orange-400 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[var(--admin-accent)] to-orange-400 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
                     {conv.cliente?.nome?.[0]?.toUpperCase() || '?'}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -223,7 +223,7 @@ export default function ChatAdminPage() {
             {/* Header da conversa */}
             <div className="bg-white border-b px-5 py-3 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-red-400 to-orange-400 flex items-center justify-center text-white font-bold text-sm">
+                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[var(--admin-accent)] to-orange-400 flex items-center justify-center text-white font-bold text-sm">
                   {convAtual.cliente?.nome?.[0]?.toUpperCase() || '?'}
                 </div>
                 <div>
@@ -240,7 +240,7 @@ export default function ChatAdminPage() {
                 <select
                   value={convAtual.status}
                   onChange={e => atualizarStatus(e.target.value)}
-                  className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-red-300">
+                  className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-[var(--admin-accent)]/40">
                   <option value="aberta">Aberta</option>
                   <option value="em_atendimento">Em atendimento</option>
                   <option value="resolvida">Resolvida</option>
@@ -280,10 +280,10 @@ export default function ChatAdminPage() {
                     onChange={e => setTexto(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), enviar())}
                     placeholder="Digite uma mensagem..."
-                    className="flex-1 bg-gray-100 rounded-full px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-300"
+                    className="flex-1 bg-gray-100 rounded-full px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--admin-accent)]/40"
                   />
                   <button onClick={enviar}
-                    className="w-10 h-10 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center transition-colors">
+                    className="w-10 h-10 bg-[var(--admin-accent)] hover:bg-[var(--admin-accent-hover)] text-white rounded-full flex items-center justify-center transition-colors">
                     <Send size={16} />
                   </button>
                 </div>
@@ -322,7 +322,7 @@ export default function ChatAdminPage() {
         ) : (
           <div className="flex-1 flex items-center justify-center bg-gray-50">
             <div className="text-center">
-              <div className="text-6xl mb-4">💬</div>
+              <MessageCircle className="w-16 h-16 text-gray-300 mx-auto mb-4" strokeWidth={1.5} />
               <p className="text-gray-500 font-medium">Selecione uma conversa</p>
               <p className="text-gray-400 text-sm mt-1">para começar a atender</p>
             </div>

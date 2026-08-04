@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { useAuthStore } from '@/stores/auth.store';
-import { Save, Gift, Star, Megaphone, TrendingUp } from 'lucide-react';
+import { Save, Gift, Star, Megaphone, TrendingUp, Award } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
@@ -116,8 +116,8 @@ export default function FidelizacaoPage() {
     <AdminLayout>
       <div className="p-6 max-w-4xl mx-auto">
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">Fidelização</h1>
-          <p className="text-gray-500 text-sm mt-0.5">Cashback, selos, clube VIP e marketing automático</p>
+          <h1 className="text-page-title text-gray-900">Fidelização</h1>
+          <p className="text-body text-gray-500 mt-0.5">Cashback, selos, clube VIP e marketing automático</p>
         </div>
 
         {/* Stats */}
@@ -161,7 +161,7 @@ export default function FidelizacaoPage() {
         </div>
 
         {loading ? (
-          <div className="flex justify-center py-12"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-red-500" /></div>
+          <div className="flex justify-center py-12"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[var(--admin-accent)]" /></div>
         ) : (
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
 
@@ -178,7 +178,7 @@ export default function FidelizacaoPage() {
                       <input type="number" min="0" max="50" step="0.5"
                         value={config.cashback_percentual}
                         onChange={e => setConfig(c => ({ ...c, cashback_percentual: parseFloat(e.target.value) }))}
-                        className="w-full border border-gray-200 rounded-xl px-3 py-2.5 pr-8 focus:outline-none focus:ring-2 focus:ring-red-300" />
+                        className="w-full border border-gray-200 rounded-xl px-3 py-2.5 pr-8 focus:outline-none focus:ring-2 focus:ring-[var(--admin-accent)]/40" />
                       <span className="absolute right-3 top-2.5 text-gray-400 text-sm">%</span>
                     </div>
                     <p className="text-xs text-gray-400 mt-1">Ex: 5% → pedido de R$50 gera R$2,50 de cashback</p>
@@ -194,7 +194,7 @@ export default function FidelizacaoPage() {
                   </ul>
                 </div>
 
-                <button onClick={salvarConfig} className="flex items-center gap-2 bg-red-500 hover:bg-red-600 text-white px-5 py-2.5 rounded-xl font-medium transition-colors">
+                <button onClick={salvarConfig} className="flex items-center gap-2 btn-admin-primary py-2.5">
                   <Save size={16} />
                   Salvar configurações
                 </button>
@@ -213,7 +213,7 @@ export default function FidelizacaoPage() {
                     <input type="number" min="2" max="50"
                       value={config.meta_selos}
                       onChange={e => setConfig(c => ({ ...c, meta_selos: parseInt(e.target.value) }))}
-                      className="w-full border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-red-300" />
+                      className="w-full border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-[var(--admin-accent)]/40" />
                     <p className="text-xs text-gray-400 mt-1">Quantos pedidos para ganhar a recompensa</p>
                   </div>
 
@@ -221,7 +221,7 @@ export default function FidelizacaoPage() {
                     <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de recompensa</label>
                     <select value={config.recompensa_tipo}
                       onChange={e => setConfig(c => ({ ...c, recompensa_tipo: e.target.value }))}
-                      className="w-full border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-red-300">
+                      className="w-full border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-[var(--admin-accent)]/40">
                       <option value="desconto">Desconto em reais (na carteira)</option>
                       <option value="item_gratis">Item grátis (manual)</option>
                     </select>
@@ -236,18 +236,18 @@ export default function FidelizacaoPage() {
                       <input type="number" min="0" step="0.5"
                         value={config.recompensa_valor}
                         onChange={e => setConfig(c => ({ ...c, recompensa_valor: parseFloat(e.target.value) }))}
-                        className="w-full border border-gray-200 rounded-xl pl-8 pr-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-red-300" />
+                        className="w-full border border-gray-200 rounded-xl pl-8 pr-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-[var(--admin-accent)]/40" />
                     </div>
                   </div>
                 </div>
 
                 {/* Preview visual do cartão */}
-                <div className="bg-gradient-to-r from-red-500 to-orange-500 rounded-2xl p-5 text-white">
+                <div className="bg-gradient-to-r from-[var(--admin-accent)] to-orange-500 rounded-2xl p-5 text-white">
                   <p className="text-sm font-medium opacity-80 mb-3">Preview — Cartão de Fidelidade</p>
                   <div className="flex flex-wrap gap-2">
                     {Array.from({ length: config.meta_selos }, (_, i) => (
                       <div key={i} className={`w-9 h-9 rounded-full border-2 flex items-center justify-center text-lg ${i < Math.ceil(config.meta_selos * 0.6) ? 'bg-white/30 border-white' : 'bg-white/10 border-white/40'}`}>
-                        {i < Math.ceil(config.meta_selos * 0.6) ? '⭐' : ''}
+                        {i < Math.ceil(config.meta_selos * 0.6) && <Star className="w-4 h-4 fill-current" />}
                       </div>
                     ))}
                   </div>
@@ -256,7 +256,7 @@ export default function FidelizacaoPage() {
                   </p>
                 </div>
 
-                <button onClick={salvarConfig} className="flex items-center gap-2 bg-red-500 hover:bg-red-600 text-white px-5 py-2.5 rounded-xl font-medium transition-colors">
+                <button onClick={salvarConfig} className="flex items-center gap-2 btn-admin-primary py-2.5">
                   <Save size={16} />
                   Salvar configurações
                 </button>
@@ -271,12 +271,12 @@ export default function FidelizacaoPage() {
 
                 <div className="grid gap-4">
                   {[
-                    { nivel: 'Bronze', emoji: '🥉', desc: 'Nível inicial — todos os clientes', fixed: true },
-                    { nivel: 'Prata', emoji: '🥈', field: 'vip_prata_gasto' as keyof Config },
-                    { nivel: 'Ouro', emoji: '🥇', field: 'vip_ouro_gasto' as keyof Config },
-                  ].map(({ nivel, emoji, desc, fixed, field }) => (
+                    { nivel: 'Bronze', cor: 'text-amber-700', desc: 'Nível inicial — todos os clientes', fixed: true },
+                    { nivel: 'Prata', cor: 'text-slate-400', field: 'vip_prata_gasto' as keyof Config },
+                    { nivel: 'Ouro', cor: 'text-yellow-500', field: 'vip_ouro_gasto' as keyof Config },
+                  ].map(({ nivel, cor, desc, fixed, field }) => (
                     <div key={nivel} className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl border border-gray-100">
-                      <span className="text-3xl">{emoji}</span>
+                      <Award className={`w-8 h-8 flex-shrink-0 ${cor}`} />
                       <div className="flex-1">
                         <p className="font-semibold text-gray-800">{nivel}</p>
                         {fixed ? (
@@ -287,7 +287,7 @@ export default function FidelizacaoPage() {
                             <input type="number" min="0" step="10"
                               value={Number(config[field!])}
                               onChange={e => setConfig(c => ({ ...c, [field!]: parseFloat(e.target.value) }))}
-                              className="w-28 border border-gray-200 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-red-300" />
+                              className="w-28 border border-gray-200 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--admin-accent)]/40" />
                             <span className="text-sm text-gray-500">em pedidos entregues</span>
                           </div>
                         )}
@@ -302,13 +302,13 @@ export default function FidelizacaoPage() {
                     <input type="number" min="0" max="20" step="0.5"
                       value={config.vip_cashback_extra}
                       onChange={e => setConfig(c => ({ ...c, vip_cashback_extra: parseFloat(e.target.value) }))}
-                      className="w-full border border-gray-200 rounded-xl px-3 py-2.5 pr-8 focus:outline-none focus:ring-2 focus:ring-red-300" />
+                      className="w-full border border-gray-200 rounded-xl px-3 py-2.5 pr-8 focus:outline-none focus:ring-2 focus:ring-[var(--admin-accent)]/40" />
                     <span className="absolute right-3 top-2.5 text-gray-400 text-sm">%</span>
                   </div>
                   <p className="text-xs text-gray-400 mt-1">Prata e Ouro ganham cashback normal + este extra</p>
                 </div>
 
-                <button onClick={salvarConfig} className="flex items-center gap-2 bg-red-500 hover:bg-red-600 text-white px-5 py-2.5 rounded-xl font-medium transition-colors">
+                <button onClick={salvarConfig} className="flex items-center gap-2 btn-admin-primary py-2.5">
                   <Save size={16} />
                   Salvar configurações
                 </button>
@@ -347,7 +347,7 @@ export default function FidelizacaoPage() {
                           <input type="number" min="1" max="90"
                             value={camp.dias_sem_compra || 7}
                             onChange={e => setCampanhas(prev => ({ ...prev, [tipo]: { ...camp, dias_sem_compra: parseInt(e.target.value) } }))}
-                            className="w-24 border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-300" />
+                            className="w-24 border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--admin-accent)]/40" />
                         </div>
                       )}
 
@@ -355,7 +355,7 @@ export default function FidelizacaoPage() {
                       <textarea rows={3}
                         value={camp.mensagem}
                         onChange={e => setCampanhas(prev => ({ ...prev, [tipo]: { ...camp, mensagem: e.target.value } }))}
-                        className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-red-300" />
+                        className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[var(--admin-accent)]/40" />
 
                       <button onClick={() => salvarCampanha(tipo)}
                         className="mt-3 flex items-center gap-2 bg-gray-800 hover:bg-gray-900 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors">

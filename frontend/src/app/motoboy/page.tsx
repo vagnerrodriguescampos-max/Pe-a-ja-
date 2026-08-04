@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/auth.store';
 import { io, Socket } from 'socket.io-client';
 import dynamic from 'next/dynamic';
-import { MapPin, Navigation, CheckCircle, Package, LogOut } from 'lucide-react';
+import { MapPin, Navigation, CheckCircle, Package, LogOut, Bike } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
@@ -106,7 +106,7 @@ export default function MotoboyPage() {
       {/* Header */}
       <div className="bg-gray-800 px-4 py-4 flex items-center justify-between border-b border-gray-700">
         <div className="flex items-center gap-3">
-          <span className="text-2xl">🛵</span>
+          <Bike size={24} className="text-orange-400" />
           <div>
             <p className="font-bold">{usuario.nome}</p>
             <p className="text-xs text-gray-400">Motoboy</p>

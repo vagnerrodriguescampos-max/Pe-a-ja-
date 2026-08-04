@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "deus",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "C:\\Users\\User\\OneDrive\\Desktop\\Deus", "start"],
+      "port": 3010
+    },
+    {
+      "name": "frontend",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "C:\\Users\\User\\shawarma-da-nanda\\frontend", "run", "dev"],
+      "port": 3000
+    }
+  ]
+}

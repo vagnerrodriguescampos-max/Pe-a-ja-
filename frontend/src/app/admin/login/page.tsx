@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { adminLogin } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth.store';
 import toast from 'react-hot-toast';
+import { UtensilsCrossed } from 'lucide-react';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -31,11 +32,11 @@ export default function LoginPage() {
     <div className="admin-dark min-h-screen bg-gray-50 flex items-center justify-center px-4">
       <div className="bg-white rounded-3xl shadow-xl p-8 w-full max-w-sm">
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-red-100 rounded-2xl flex items-center justify-center text-3xl mx-auto mb-4">
-            🥙
+          <div className="w-16 h-16 bg-[var(--admin-accent)]/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <UtensilsCrossed className="w-8 h-8 text-[var(--admin-accent)]" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">Painel Admin</h1>
-          <p className="text-gray-400 text-sm mt-1">Entre para gerenciar seu delivery</p>
+          <h1 className="text-page-title text-gray-900">Painel Admin</h1>
+          <p className="text-caption text-gray-400 mt-1">Entre para gerenciar seu delivery</p>
         </div>
 
         <form onSubmit={handleLogin} className="space-y-4">
@@ -50,7 +51,7 @@ export default function LoginPage() {
               placeholder="••••••••" className="input" required />
           </div>
           <button type="submit" disabled={loading}
-            className="btn-primary w-full mt-2 bg-red-500 py-3.5">
+            className="btn-admin-primary w-full mt-2 py-3.5">
             {loading ? (
               <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto" />
             ) : 'Entrar'}

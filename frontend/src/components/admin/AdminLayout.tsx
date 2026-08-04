@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useAuthStore } from '@/stores/auth.store';
-import { LayoutGrid, UtensilsCrossed, Settings, LogOut, Menu, X, MessageSquare, BarChart2, Users, Gift, Download, Bell, BellOff, UserCog, HelpCircle } from 'lucide-react';
+import { LayoutGrid, UtensilsCrossed, Settings, LogOut, Menu, X, MessageSquare, BarChart2, Users, Gift, Download, Bell, BellOff, UserCog, HelpCircle, Utensils } from 'lucide-react';
 import { useInstallPrompt } from '@/hooks/useInstallPrompt';
 import { usePushNotification } from '@/hooks/usePushNotification';
 import { adminGetLoja } from '@/lib/api';
@@ -97,7 +97,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <aside className="hidden md:flex flex-col w-56 bg-white border-r border-gray-100 fixed inset-y-0 left-0 z-30">
         <div className="px-5 py-6 border-b border-gray-100">
           <div className="flex items-center gap-2">
-            <span className="text-2xl">🥙</span>
+            <div className="w-8 h-8 rounded-lg bg-[var(--admin-accent-soft)] flex items-center justify-center flex-shrink-0">
+              <Utensils size={16} className="text-[var(--admin-accent)]" />
+            </div>
             <div>
               <p className="font-bold text-gray-900 text-sm leading-tight">Painel Admin</p>
               <p className="text-xs text-gray-400 truncate">{usuario?.nome}</p>
@@ -108,7 +110,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           {navItems.map(({ href, label, icon: Icon }) => (
             <Link key={href} href={href}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${
-                pathname === href ? 'bg-red-50 text-red-600' : 'text-gray-600 hover:bg-gray-50'
+                pathname === href ? 'bg-[var(--admin-accent-soft)] text-[var(--admin-accent)]' : 'text-gray-600 hover:bg-gray-50'
               }`}>
               <Icon size={18} />
               {label}
@@ -128,7 +130,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       {/* Header mobile */}
       <div className="md:hidden fixed top-0 left-0 right-0 z-40 bg-white border-b border-gray-100 px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="text-xl">🥙</span>
+          <div className="w-7 h-7 rounded-lg bg-[var(--admin-accent-soft)] flex items-center justify-center flex-shrink-0">
+            <Utensils size={14} className="text-[var(--admin-accent)]" />
+          </div>
           <p className="font-bold text-gray-900 text-sm">Painel Admin</p>
         </div>
         <div className="flex items-center gap-2">
@@ -159,7 +163,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               {navItems.map(({ href, label, icon: Icon }) => (
                 <Link key={href} href={href} onClick={() => setMenuAberto(false)}
                   className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium ${
-                    pathname === href ? 'bg-red-50 text-red-600' : 'text-gray-600'
+                    pathname === href ? 'bg-[var(--admin-accent-soft)] text-[var(--admin-accent)]' : 'text-gray-600'
                   }`}>
                   <Icon size={18} />
                   {label}

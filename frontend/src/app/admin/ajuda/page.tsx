@@ -1,7 +1,7 @@
 'use client';
 
 import AdminLayout from '@/components/admin/AdminLayout';
-import { HelpCircle, Store, UtensilsCrossed, LayoutGrid, MessageSquare, BarChart2, Users, Gift, UserCog, Bike, Smartphone, ShoppingBag } from 'lucide-react';
+import { HelpCircle, Store, UtensilsCrossed, LayoutGrid, MessageSquare, BarChart2, Users, Gift, UserCog, Bike, Smartphone, ShoppingBag, CheckCircle2, XCircle, AlertTriangle, Bell, ChevronRight } from 'lucide-react';
 
 const SECOES: { icon: any; titulo: string; conteudo: React.ReactNode }[] = [
   {
@@ -9,8 +9,8 @@ const SECOES: { icon: any; titulo: string; conteudo: React.ReactNode }[] = [
     titulo: 'Configurações — deixe a loja com a sua cara',
     conteudo: (
       <>
-        <p><strong>Status da loja (o botão mais importante):</strong> o interruptor 🟢 Aberta / 🔴 Fechada controla se os clientes conseguem finalizar pedidos. Lembre de abrir ao começar o expediente e fechar ao encerrar — o sistema não faz isso sozinho.</p>
-        <p><strong>Informações:</strong> nome, link do cardápio (⚠️ mudar o link quebra os já compartilhados), telefone/WhatsApp, endereço, mensagem do topo, logo, banner (foto ou vídeo de até 10s) e a cor principal que pinta o cardápio inteiro.</p>
+        <p><strong>Status da loja (o botão mais importante):</strong> o interruptor <CheckCircle2 className="inline w-4 h-4 text-green-500 align-text-bottom" /> Aberta / <XCircle className="inline w-4 h-4 text-red-500 align-text-bottom" /> Fechada controla se os clientes conseguem finalizar pedidos. Lembre de abrir ao começar o expediente e fechar ao encerrar — o sistema não faz isso sozinho.</p>
+        <p><strong>Informações:</strong> nome, link do cardápio (<AlertTriangle className="inline w-3.5 h-3.5 text-amber-500 align-text-bottom" /> mudar o link quebra os já compartilhados), telefone/WhatsApp, endereço, mensagem do topo, logo, banner (foto ou vídeo de até 10s) e a cor principal que pinta o cardápio inteiro.</p>
         <p><strong>Entrega:</strong> prazo médio (min), taxa de entrega única (retirada não paga) e pedido mínimo — pedidos abaixo são recusados automaticamente.</p>
         <p><strong>Chave PIX:</strong> escolha o tipo e cole a chave. Ela aparece automaticamente para clientes que escolherem PIX. O pagamento é conferido por você fora do sistema (peça o comprovante pelo WhatsApp).</p>
         <p><strong>Agente de IA no chat:</strong> habilite, dê um nome, escreva instruções extras e defina o delay do &quot;digitando...&quot;. A IA conhece seu cardápio e responde clientes sozinha.</p>
@@ -34,7 +34,7 @@ const SECOES: { icon: any; titulo: string; conteudo: React.ReactNode }[] = [
     titulo: 'Pedidos (Kanban) — o coração da operação',
     conteudo: (
       <>
-        <p>Deixe esta tela aberta o dia inteiro: pedidos novos chegam <strong>em tempo real</strong>, com som 🔔 e aviso, sem atualizar a página.</p>
+        <p>Deixe esta tela aberta o dia inteiro: pedidos novos chegam <strong>em tempo real</strong>, com som <Bell className="inline w-4 h-4 text-gray-500 align-text-bottom" /> e aviso, sem atualizar a página.</p>
         <p><strong>Fluxo:</strong> Recebidos → Confirmados → Em Produção → Prontos → Em Rota → Entregues. O botão <strong>Avançar</strong> move para a próxima etapa com 1 clique.</p>
         <p>Clique no card para ver <strong>detalhes completos</strong> (itens, observações, endereço, pagamento e troco), <strong>atribuir motoboy</strong> (pedidos de entrega) e <strong>cancelar</strong>.</p>
         <p>O sistema só permite transições válidas — não dá para pular etapas. O cliente acompanha tudo ao vivo: cada avanço atualiza a tela dele sozinho.</p>
@@ -130,10 +130,10 @@ export default function AjudaPage() {
     <AdminLayout>
       <div className="p-4 md:p-6 max-w-3xl mx-auto">
         <div className="mb-6">
-          <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+          <h1 className="text-page-title text-gray-900 flex items-center gap-2">
             <HelpCircle size={22} /> Ajuda — Manual do sistema
           </h1>
-          <p className="text-sm text-gray-400 mt-0.5">
+          <p className="text-caption text-gray-400 mt-0.5">
             Guia completo de cada módulo. Toque numa seção para abrir.
           </p>
         </div>
@@ -142,11 +142,11 @@ export default function AjudaPage() {
           {SECOES.map(({ icon: Icon, titulo, conteudo }) => (
             <details key={titulo} className="card overflow-hidden group">
               <summary className="flex items-center gap-3 p-4 cursor-pointer select-none hover:bg-gray-50 transition-colors">
-                <span className="w-9 h-9 rounded-full bg-red-50 text-red-500 flex items-center justify-center flex-shrink-0">
+                <span className="w-9 h-9 rounded-full bg-[var(--admin-accent)]/10 text-[var(--admin-accent)] flex items-center justify-center flex-shrink-0">
                   <Icon size={17} />
                 </span>
                 <span className="font-semibold text-gray-800 text-sm flex-1">{titulo}</span>
-                <span className="text-gray-300 text-xs group-open:rotate-90 transition-transform">▶</span>
+                <ChevronRight className="w-4 h-4 text-gray-300 group-open:rotate-90 transition-transform" />
               </summary>
               <div className="px-4 pb-4 pl-16 text-sm text-gray-600 space-y-2 leading-relaxed [&_strong]:text-gray-800 [&_code]:bg-gray-100 [&_code]:px-1 [&_code]:rounded">
                 {conteudo}

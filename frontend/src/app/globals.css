@@ -3,7 +3,18 @@
 @tailwind utilities;
 
 :root {
-  --color-primary: #E63946;
+  /* Cor da loja do cliente (definida em runtime por document.documentElement.style.setProperty
+     a partir de loja.cor_primaria). Este é só o valor padrão antes de carregar — alinhado ao
+     acento da marca Peça Já, não mais um vermelho independente. */
+  --color-primary: #ff5a4d;
+
+  /* Acento único do painel administrativo — nunca a cor da loja do cliente.
+     Um só tom quente (entre os dois stops do gradiente da landing) usado em
+     todo botão/estado ativo/foco do admin, motoboy e telas de auth. */
+  --admin-accent: #ff6a45;
+  --admin-accent-hover: #ff5730;
+  --admin-accent-soft: rgba(255, 106, 69, 0.14);
+  --admin-accent-border: rgba(255, 106, 69, 0.35);
 }
 
 * {
@@ -16,11 +27,19 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   background: #0d0b09;
   color: #ede7da;
+  -webkit-font-smoothing: antialiased;
 }
 
 .btn-primary {
   @apply bg-[var(--color-primary)] text-white font-semibold rounded-xl px-6 py-3
          hover:opacity-90 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+/* CTA padrão do painel admin — substitui os bg-red-500 soltos espalhados pelas telas. */
+.btn-admin-primary {
+  @apply bg-[var(--admin-accent)] text-white font-semibold rounded-xl px-6 py-3
+         hover:bg-[var(--admin-accent-hover)] active:scale-[.98] transition-all
+         disabled:opacity-50 disabled:cursor-not-allowed;
 }
 
 .card {
@@ -31,6 +50,16 @@ body {
   @apply w-full border border-gray-200 rounded-xl px-4 py-3 text-sm
          focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent;
 }
+
+/* ============================================================
+   ESCALA TIPOGRÁFICA — um único conjunto de tamanhos/pesos para
+   título de página, título de seção, corpo e legenda. Usar nas
+   telas em vez de escolher text-lg/xl/2xl por instinto a cada tela.
+   ============================================================ */
+.text-page-title { @apply text-xl font-bold tracking-tight; }
+.text-section-title { @apply text-base font-bold; }
+.text-body { @apply text-sm leading-relaxed; }
+.text-caption { @apply text-xs; }
 
 /* ============================================================
    LANDING (tela de abertura) — animações modernas
@@ -78,30 +107,35 @@ body {
    para a paleta quente da landing. */
 .admin-dark { color: #ede7da; }
 
-/* superfícies -> paleta quente */
-.admin-dark .bg-white { background-color: #201d16 !important; }
-.admin-dark .bg-gray-50 { background-color: #14110e !important; }
-.admin-dark .bg-gray-100 { background-color: #262119 !important; }
-.admin-dark .bg-gray-700 { background-color: #262119 !important; }
-.admin-dark .bg-gray-800 { background-color: #201d16 !important; }
-.admin-dark .bg-gray-900 { background-color: #14110e !important; }
+/* superfícies -> paleta quente
+   Cada regra cobre tanto o caso descendente (.admin-dark .bg-white, uso normal)
+   quanto o composto (.admin-dark.bg-white, quando o wrapper raiz de uma tela
+   carrega admin-dark e a cor de fundo na MESMA tag — ex.: AdminLayout, telas
+   de login) — sem o composto, o combinador descendente nunca casa consigo
+   mesmo e o fundo da tela inteira ficava claro por baixo do conteúdo escuro. */
+.admin-dark .bg-white, .admin-dark.bg-white { background-color: #201d16 !important; }
+.admin-dark .bg-gray-50, .admin-dark.bg-gray-50 { background-color: #14110e !important; }
+.admin-dark .bg-gray-100, .admin-dark.bg-gray-100 { background-color: #262119 !important; }
+.admin-dark .bg-gray-700, .admin-dark.bg-gray-700 { background-color: #262119 !important; }
+.admin-dark .bg-gray-800, .admin-dark.bg-gray-800 { background-color: #201d16 !important; }
+.admin-dark .bg-gray-900, .admin-dark.bg-gray-900 { background-color: #14110e !important; }
 .admin-dark .card { background-color: #201d16 !important; box-shadow: 0 1px 2px rgba(0,0,0,.45) !important; }
 
 /* textos */
-.admin-dark .text-gray-900,
-.admin-dark .text-gray-800,
-.admin-dark .text-gray-700 { color: #ede7da !important; }
-.admin-dark .text-gray-600,
-.admin-dark .text-gray-500 { color: #b3a996 !important; }
-.admin-dark .text-gray-400,
-.admin-dark .text-gray-300 { color: #8a8072 !important; }
+.admin-dark .text-gray-900, .admin-dark.text-gray-900,
+.admin-dark .text-gray-800, .admin-dark.text-gray-800,
+.admin-dark .text-gray-700, .admin-dark.text-gray-700 { color: #ede7da !important; }
+.admin-dark .text-gray-600, .admin-dark.text-gray-600,
+.admin-dark .text-gray-500, .admin-dark.text-gray-500 { color: #b3a996 !important; }
+.admin-dark .text-gray-400, .admin-dark.text-gray-400,
+.admin-dark .text-gray-300, .admin-dark.text-gray-300 { color: #8a8072 !important; }
 
 /* bordas / divisores */
-.admin-dark .border-gray-100,
-.admin-dark .border-gray-200,
-.admin-dark .border-gray-300,
-.admin-dark .border-gray-700,
-.admin-dark .border-gray-800 { border-color: rgba(255,255,255,.09) !important; }
+.admin-dark .border-gray-100, .admin-dark.border-gray-100,
+.admin-dark .border-gray-200, .admin-dark.border-gray-200,
+.admin-dark .border-gray-300, .admin-dark.border-gray-300,
+.admin-dark .border-gray-700, .admin-dark.border-gray-700,
+.admin-dark .border-gray-800, .admin-dark.border-gray-800 { border-color: rgba(255,255,255,.09) !important; }
 .admin-dark [class*="divide-gray"] > * + * { border-color: rgba(255,255,255,.09) !important; }
 
 /* campos de formulário (menos checkbox/radio/color) */
@@ -122,10 +156,10 @@ body {
 .admin-dark .hover\:bg-gray-800:hover { background-color: #262119 !important; }
 
 /* pastéis (pílulas de status) -> versões escuras translúcidas */
-.admin-dark .bg-red-50 { background-color: rgba(224,121,108,.15) !important; }
+.admin-dark .bg-red-50, .admin-dark .bg-red-100 { background-color: rgba(224,121,108,.15) !important; }
 .admin-dark .bg-green-50, .admin-dark .bg-green-100 { background-color: rgba(127,185,143,.16) !important; }
 .admin-dark .bg-blue-50, .admin-dark .bg-blue-100 { background-color: rgba(96,165,250,.15) !important; }
 .admin-dark .bg-yellow-50, .admin-dark .bg-yellow-100 { background-color: rgba(214,162,78,.16) !important; }
 .admin-dark .bg-orange-50, .admin-dark .bg-orange-100 { background-color: rgba(214,140,60,.16) !important; }
 .admin-dark .bg-indigo-50, .admin-dark .bg-indigo-100 { background-color: rgba(129,140,248,.15) !important; }
-.admin-dark .bg-purple-50 { background-color: rgba(168,120,240,.15) !important; }
+.admin-dark .bg-purple-50, .admin-dark .bg-purple-100 { background-color: rgba(168,120,240,.15) !important; }

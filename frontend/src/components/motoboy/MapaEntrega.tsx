@@ -14,14 +14,26 @@ L.Icon.Default.mergeOptions({
 });
 
 const motoboyIcon = new L.DivIcon({
-  html: '<div style="font-size:28px;line-height:1">🛵</div>',
+  html: `<div style="color:var(--admin-accent);filter:drop-shadow(0 1px 2px rgba(0,0,0,.5));line-height:0">
+    <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="18.5" cy="17.5" r="3.5"/>
+      <circle cx="5.5" cy="17.5" r="3.5"/>
+      <circle cx="15" cy="5" r="1"/>
+      <path d="M12 17.5V14l-3-3 4-3 2 3h2"/>
+    </svg>
+  </div>`,
   className: '',
   iconSize: [32, 32],
   iconAnchor: [16, 16],
 });
 
 const destinoIcon = new L.DivIcon({
-  html: '<div style="font-size:24px;line-height:1">📍</div>',
+  html: `<div style="color:var(--admin-accent);filter:drop-shadow(0 1px 2px rgba(0,0,0,.5));line-height:0">
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
+      <circle cx="12" cy="10" r="3" fill="white" stroke="none"/>
+    </svg>
+  </div>`,
   className: '',
   iconSize: [24, 32],
   iconAnchor: [12, 32],

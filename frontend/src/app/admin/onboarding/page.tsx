@@ -6,7 +6,7 @@ import { useAuthStore } from '@/stores/auth.store';
 import { adminGetLoja, adminUpdateLoja, adminCriarCategoria, adminCriarProduto } from '@/lib/api';
 import { Loja } from '@/types';
 import ImageUpload from '@/components/ImageUpload';
-import { ArrowRight, Check, Copy, MessageCircle, Rocket, SkipForward, Store } from 'lucide-react';
+import { ArrowRight, Check, Copy, MessageCircle, Rocket, SkipForward, Store, UtensilsCrossed, PartyPopper } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const PASSOS = ['Sua loja', 'Primeiro produto', 'Pronto!'];
@@ -86,7 +86,7 @@ export default function OnboardingPage() {
 
   if (loading || !loja) return (
     <div className="admin-dark min-h-screen bg-[#0d0b09] flex items-center justify-center">
-      <div className="animate-spin w-8 h-8 border-4 border-white/10 border-t-orange-500 rounded-full" />
+      <div className="animate-spin w-8 h-8 border-4 border-white/10 border-t-[var(--admin-accent)] rounded-full" />
     </div>
   );
 
@@ -99,7 +99,7 @@ export default function OnboardingPage() {
           {PASSOS.map((label, i) => (
             <div key={label} className="flex items-center gap-2 flex-1">
               <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 transition-colors ${
-                i < passo ? 'bg-green-500 text-white' : i === passo ? 'bg-orange-500 text-white' : 'bg-white/10 text-gray-500'
+                i < passo ? 'bg-green-500 text-white' : i === passo ? 'bg-[var(--admin-accent)] text-white' : 'bg-white/10 text-gray-500'
               }`}>
                 {i < passo ? <Check size={14} /> : i + 1}
               </div>
@@ -113,18 +113,20 @@ export default function OnboardingPage() {
 
           {passo === 0 && (
             <>
-              <div className="text-3xl mb-3">👋</div>
+              <div className="w-12 h-12 rounded-2xl bg-[var(--admin-accent-soft)] flex items-center justify-center mb-3">
+                <Store size={22} className="text-[var(--admin-accent)]" />
+              </div>
               <h1 className="text-xl font-bold text-white mb-1">Vamos deixar sua loja com a sua cara</h1>
               <p className="text-sm text-gray-400 mb-6">Confirme o nome e adicione sua logo — leva menos de 1 minuto.</p>
 
               <label className="block text-sm font-medium text-gray-300 mb-1.5">Nome da loja</label>
               <input value={nome} onChange={e => setNome(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl text-sm bg-[#201d16] border border-white/10 text-gray-100 outline-none focus:border-orange-500/50 mb-5" />
+                className="w-full px-4 py-3 rounded-xl text-sm bg-[#201d16] border border-white/10 text-gray-100 outline-none focus:border-[var(--admin-accent-border)] mb-5" />
 
               <ImageUpload label="Logo (opcional)" value={logoUrl} onChange={setLogoUrl} previewSize={72} />
 
               <button onClick={concluirPasso1} disabled={salvando}
-                className="w-full mt-6 bg-orange-500 hover:bg-orange-600 disabled:opacity-60 text-white font-bold py-3.5 rounded-xl flex items-center justify-center gap-2 transition-colors">
+                className="w-full mt-6 btn-admin-primary flex items-center justify-center gap-2">
                 {salvando ? 'Salvando...' : <>Continuar <ArrowRight size={16} /></>}
               </button>
             </>
@@ -132,19 +134,21 @@ export default function OnboardingPage() {
 
           {passo === 1 && (
             <>
-              <div className="text-3xl mb-3">🍽️</div>
+              <div className="w-12 h-12 rounded-2xl bg-[var(--admin-accent-soft)] flex items-center justify-center mb-3">
+                <UtensilsCrossed size={22} className="text-[var(--admin-accent)]" />
+              </div>
               <h1 className="text-xl font-bold text-white mb-1">Cadastre seu primeiro produto</h1>
               <p className="text-sm text-gray-400 mb-6">Só pra você ver o cardápio ganhando vida — dá pra editar tudo depois.</p>
 
               <label className="block text-sm font-medium text-gray-300 mb-1.5">Nome do produto</label>
               <input value={produtoNome} onChange={e => setProdutoNome(e.target.value)}
                 placeholder="Ex: Pizza Calabresa"
-                className="w-full px-4 py-3 rounded-xl text-sm bg-[#201d16] border border-white/10 text-gray-100 outline-none focus:border-orange-500/50 mb-4" />
+                className="w-full px-4 py-3 rounded-xl text-sm bg-[#201d16] border border-white/10 text-gray-100 outline-none focus:border-[var(--admin-accent-border)] mb-4" />
 
               <label className="block text-sm font-medium text-gray-300 mb-1.5">Preço (R$)</label>
               <input value={produtoPreco} onChange={e => setProdutoPreco(e.target.value)}
                 type="number" min="0" step="0.01" placeholder="39.90"
-                className="w-full px-4 py-3 rounded-xl text-sm bg-[#201d16] border border-white/10 text-gray-100 outline-none focus:border-orange-500/50" />
+                className="w-full px-4 py-3 rounded-xl text-sm bg-[#201d16] border border-white/10 text-gray-100 outline-none focus:border-[var(--admin-accent-border)]" />
 
               <div className="flex gap-2 mt-6">
                 <button onClick={pular}
@@ -152,7 +156,7 @@ export default function OnboardingPage() {
                   <SkipForward size={15} /> Pular
                 </button>
                 <button onClick={concluirPasso2} disabled={salvando}
-                  className="flex-1 bg-orange-500 hover:bg-orange-600 disabled:opacity-60 text-white font-bold py-3.5 rounded-xl flex items-center justify-center gap-2 transition-colors">
+                  className="flex-1 btn-admin-primary flex items-center justify-center gap-2">
                   {salvando ? 'Criando...' : <>Continuar <ArrowRight size={16} /></>}
                 </button>
               </div>
@@ -161,14 +165,16 @@ export default function OnboardingPage() {
 
           {passo === 2 && (
             <>
-              <div className="text-3xl mb-3">🎉</div>
+              <div className="w-12 h-12 rounded-2xl bg-[var(--admin-accent-soft)] flex items-center justify-center mb-3">
+                <PartyPopper size={22} className="text-[var(--admin-accent)]" />
+              </div>
               <h1 className="text-xl font-bold text-white mb-1">Seu link está pronto!</h1>
               <p className="text-sm text-gray-400 mb-6">Compartilhe com seus clientes agora mesmo — os pedidos já podem começar a chegar.</p>
 
               <div className="flex items-center gap-2 bg-[#201d16] border border-white/10 rounded-xl px-4 py-3 mb-4">
-                <Store size={15} className="text-orange-400 flex-shrink-0" />
+                <Store size={15} className="text-[var(--admin-accent)] flex-shrink-0" />
                 <span className="text-sm text-gray-200 font-mono truncate flex-1">{linkLoja}</span>
-                <button onClick={copiarLink} className="text-orange-400 hover:text-orange-300 flex-shrink-0">
+                <button onClick={copiarLink} className="text-[var(--admin-accent)] hover:text-[var(--admin-accent-hover)] flex-shrink-0">
                   {copiado ? <Check size={16} /> : <Copy size={16} />}
                 </button>
               </div>
@@ -180,7 +186,7 @@ export default function OnboardingPage() {
               </a>
 
               <button onClick={finalizar} disabled={salvando}
-                className="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-60 text-white font-bold py-3.5 rounded-xl flex items-center justify-center gap-2 transition-colors">
+                className="w-full btn-admin-primary flex items-center justify-center gap-2">
                 {salvando ? 'Um instante...' : <>Ir para o painel <Rocket size={16} /></>}
               </button>
             </>

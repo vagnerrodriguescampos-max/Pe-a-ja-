@@ -8,7 +8,7 @@ import { adminGetCardapio, adminCriarCategoria, adminAtualizarCategoria, adminDe
   adminCriarOpcao, adminAtualizarOpcao, adminDeletarOpcao } from '@/lib/api';
 import { Categoria, Produto, GrupoOpcao } from '@/types';
 import { formatCurrency } from '@/lib/utils';
-import { Plus, Pencil, Trash2, ChevronDown, ChevronRight, ToggleLeft, ToggleRight, ImageIcon, SlidersHorizontal, X, Check } from 'lucide-react';
+import { Plus, Pencil, Trash2, ChevronDown, ChevronRight, ToggleLeft, ToggleRight, ImageIcon, SlidersHorizontal, X, Check, CheckCircle2, XCircle } from 'lucide-react';
 import Image from 'next/image';
 import toast from 'react-hot-toast';
 import ImageUpload from '@/components/ImageUpload';
@@ -103,7 +103,7 @@ export default function CardapioAdminPage() {
   if (loading) return (
     <AdminLayout>
       <div className="flex items-center justify-center h-screen">
-        <div className="animate-spin w-8 h-8 border-4 border-gray-200 border-t-red-500 rounded-full" />
+        <div className="animate-spin w-8 h-8 border-4 border-gray-200 border-t-[var(--admin-accent)] rounded-full" />
       </div>
     </AdminLayout>
   );
@@ -112,9 +112,9 @@ export default function CardapioAdminPage() {
     <AdminLayout>
       <div className="p-4 md:p-6 max-w-3xl">
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-xl font-bold text-gray-900">Cardápio</h1>
+          <h1 className="text-page-title text-gray-900">Cardápio</h1>
           <button onClick={() => setModalCat({ aberto: true })}
-            className="btn-primary bg-red-500 flex items-center gap-2 text-sm py-2.5 px-4">
+            className="btn-admin-primary flex items-center gap-2 text-sm py-2.5 px-4">
             <Plus size={16} /> Nova Categoria
           </button>
         </div>
@@ -137,7 +137,7 @@ export default function CardapioAdminPage() {
                 </div>
                 <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
                   <button onClick={() => setModalProd({ aberto: true, categoriaId: cat.id })}
-                    className="bg-red-50 text-red-600 text-xs px-3 py-1.5 rounded-lg font-medium hover:bg-red-100 flex items-center gap-1">
+                    className="bg-[var(--admin-accent-soft)] text-[var(--admin-accent)] text-xs px-3 py-1.5 rounded-lg font-medium hover:opacity-80 flex items-center gap-1">
                     <Plus size={12} /> Produto
                   </button>
                   <button onClick={() => setModalCat({ aberto: true, editando: cat })}
@@ -156,7 +156,7 @@ export default function CardapioAdminPage() {
                 <div className="border-t border-gray-100 divide-y divide-gray-50">
                   {cat.produtos.length === 0 && (
                     <p className="text-center text-sm text-gray-400 py-6">
-                      Nenhum produto. <button onClick={() => setModalProd({ aberto: true, categoriaId: cat.id })} className="text-red-500 font-medium">Adicionar</button>
+                      Nenhum produto. <button onClick={() => setModalProd({ aberto: true, categoriaId: cat.id })} className="text-[var(--admin-accent)] font-medium">Adicionar</button>
                     </p>
                   )}
                   {cat.produtos.map(prod => (
@@ -164,7 +164,7 @@ export default function CardapioAdminPage() {
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-gray-800 text-sm">{prod.nome}</p>
                         <div className="flex items-center gap-2 mt-0.5">
-                          <span className="text-xs font-bold text-red-600">{formatCurrency(Number(prod.preco))}</span>
+                          <span className="text-xs font-bold text-[var(--admin-accent)]">{formatCurrency(Number(prod.preco))}</span>
                           {prod.status === 'esgotado' && <span className="text-xs text-orange-500 font-medium">Esgotado</span>}
                           {prod.status === 'inativo' && <span className="text-xs text-gray-400">Inativo</span>}
                         </div>
@@ -172,13 +172,13 @@ export default function CardapioAdminPage() {
                       <div className="flex items-center gap-2 flex-shrink-0">
                         <button onClick={() => setModalOpcoes({ aberto: true, produto: prod })}
                           title="Tamanhos, sabores e adicionais"
-                          className="flex items-center gap-1 text-xs px-2 py-1 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-red-200">
+                          className="flex items-center gap-1 text-xs px-2 py-1 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-[var(--admin-accent-border)]">
                           <SlidersHorizontal size={13} /> {prod.grupos_opcao?.length || 0}
                         </button>
                         <button onClick={() => toggleEsgotado(prod)}
                           title={prod.status === 'esgotado' ? 'Marcar disponível' : 'Marcar esgotado'}
                           className="text-xs px-2 py-1 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50">
-                          {prod.status === 'esgotado' ? '✅' : '❌'}
+                          {prod.status === 'esgotado' ? <CheckCircle2 size={14} className="text-green-500" /> : <XCircle size={14} className="text-red-500" />}
                         </button>
                         <button onClick={() => toggleStatus(prod)} title={prod.status === 'ativo' ? 'Desativar' : 'Ativar'}
                           className={`text-gray-400 hover:text-gray-700 transition-colors`}>
@@ -254,7 +254,7 @@ function ModalCategoria({ editando, onSalvar, onFechar }: {
         <div className="flex gap-3 mt-5">
           <button onClick={onFechar} className="flex-1 py-3 border border-gray-200 rounded-xl text-gray-600 text-sm font-medium">Cancelar</button>
           <button onClick={() => onSalvar(nome, fotoUrl, editando?.id)}
-            className="flex-1 py-3 bg-red-500 text-white rounded-xl text-sm font-semibold">Salvar</button>
+            className="flex-1 btn-admin-primary py-3">Salvar</button>
         </div>
       </div>
     </div>
@@ -309,13 +309,13 @@ function ModalProduto({ categorias, categoriaIdPadrao, editando, onSalvar, onFec
           />
           <label className="flex items-center gap-3 cursor-pointer">
             <input type="checkbox" checked={destaque} onChange={e => setDestaque(e.target.checked)}
-              className="w-4 h-4 rounded accent-red-500" />
+              className="w-4 h-4 rounded accent-[var(--admin-accent)]" />
             <span className="text-sm text-gray-700">Produto em destaque</span>
           </label>
         </div>
         <div className="flex gap-3 mt-5">
           <button onClick={onFechar} className="flex-1 py-3 border border-gray-200 rounded-xl text-gray-600 text-sm font-medium">Cancelar</button>
-          <button onClick={salvar} className="flex-1 py-3 bg-red-500 text-white rounded-xl text-sm font-semibold">Salvar</button>
+          <button onClick={salvar} className="flex-1 btn-admin-primary py-3">Salvar</button>
         </div>
       </div>
     </div>
@@ -396,7 +396,7 @@ function GerenciarOpcoesModal({ produto, onFechar, reload }: {
             <NovoGrupoForm salvando={salvando} onCriar={criarGrupo} onCancelar={() => setNovoGrupo(false)} />
           ) : (
             <button onClick={() => setNovoGrupo(true)}
-              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-dashed border-gray-200 text-gray-500 text-sm font-medium hover:border-red-300 hover:text-red-500 transition-colors">
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-dashed border-gray-200 text-gray-500 text-sm font-medium hover:border-[var(--admin-accent-border)] hover:text-[var(--admin-accent)] transition-colors">
               <Plus size={16} /> Adicionar grupo
             </button>
           )}
@@ -437,7 +437,7 @@ function GrupoEditor({ grupo, onSalvar, onRemover, onCriarOpcao, onSalvarOpcao, 
     <div className="border border-gray-200 rounded-2xl p-3">
       <div className="flex items-center gap-2 mb-2">
         <input value={nome} onChange={e => setNome(e.target.value)}
-          className="flex-1 px-3 py-2 rounded-lg border border-gray-200 text-sm font-semibold text-gray-800 outline-none focus:border-red-300" />
+          className="flex-1 px-3 py-2 rounded-lg border border-gray-200 text-sm font-semibold text-gray-800 outline-none focus:border-[var(--admin-accent)]" />
         <button onClick={onRemover} className="p-2 text-gray-300 hover:text-red-500" title="Remover grupo"><Trash2 size={15} /></button>
       </div>
       <div className="grid grid-cols-2 gap-2 mb-2">
@@ -447,7 +447,7 @@ function GrupoEditor({ grupo, onSalvar, onRemover, onCriarOpcao, onSalvarOpcao, 
           <option value="multiplo">Escolha vários (ex: Sabores)</option>
         </select>
         <label className="flex items-center gap-2 text-xs text-gray-600 px-2">
-          <input type="checkbox" checked={obrigatorio} onChange={e => setObrigatorio(e.target.checked)} className="w-4 h-4 accent-red-500" />
+          <input type="checkbox" checked={obrigatorio} onChange={e => setObrigatorio(e.target.checked)} className="w-4 h-4 accent-[var(--admin-accent)]" />
           Obrigatório
         </label>
       </div>
@@ -465,7 +465,7 @@ function GrupoEditor({ grupo, onSalvar, onRemover, onCriarOpcao, onSalvarOpcao, 
       )}
       {alterado && (
         <button onClick={salvar}
-          className="w-full mb-3 py-2 bg-red-500 text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1">
+          className="w-full mb-3 py-2 bg-[var(--admin-accent)] hover:bg-[var(--admin-accent-hover)] text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1 transition-colors">
           <Check size={13} /> Salvar alterações do grupo
         </button>
       )}
@@ -477,14 +477,14 @@ function GrupoEditor({ grupo, onSalvar, onRemover, onCriarOpcao, onSalvarOpcao, 
       </div>
       <div className="flex items-center gap-2 mt-2">
         <input value={novaOpNome} onChange={e => setNovaOpNome(e.target.value)}
-          placeholder="Nova opção (ex: Grande)" className="flex-1 px-3 py-1.5 rounded-lg border border-gray-200 text-sm outline-none focus:border-red-300" />
+          placeholder="Nova opção (ex: Grande)" className="flex-1 px-3 py-1.5 rounded-lg border border-gray-200 text-sm outline-none focus:border-[var(--admin-accent)]" />
         <div className="relative w-24">
           <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-gray-400">+R$</span>
           <input value={novaOpPreco} onChange={e => setNovaOpPreco(e.target.value)} type="number" step="0.01" placeholder="0,00"
             className="w-full pl-9 pr-2 py-1.5 rounded-lg border border-gray-200 text-sm outline-none" />
         </div>
         <button onClick={() => { if (!novaOpNome.trim()) return; onCriarOpcao({ nome: novaOpNome.trim(), preco_adicional: parseFloat(novaOpPreco) || 0 }); setNovaOpNome(''); setNovaOpPreco(''); }}
-          className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100" title="Adicionar opção"><Plus size={16} /></button>
+          className="p-2 bg-[var(--admin-accent-soft)] text-[var(--admin-accent)] rounded-lg hover:opacity-80" title="Adicionar opção"><Plus size={16} /></button>
       </div>
     </div>
   );
@@ -500,11 +500,11 @@ function OpcaoRow({ opcao, onSalvar, onRemover }: {
   return (
     <div className="flex items-center gap-2">
       <input value={nome} onChange={e => setNome(e.target.value)}
-        className="flex-1 px-3 py-1.5 rounded-lg border border-gray-100 bg-gray-50 text-sm outline-none focus:border-red-300 focus:bg-white" />
+        className="flex-1 px-3 py-1.5 rounded-lg border border-gray-100 bg-gray-50 text-sm outline-none focus:border-[var(--admin-accent)] focus:bg-white" />
       <div className="relative w-24">
         <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-gray-400">R$</span>
         <input value={preco} onChange={e => setPreco(e.target.value)} type="number" step="0.01"
-          className="w-full pl-7 pr-2 py-1.5 rounded-lg border border-gray-100 bg-gray-50 text-sm outline-none focus:border-red-300 focus:bg-white" />
+          className="w-full pl-7 pr-2 py-1.5 rounded-lg border border-gray-100 bg-gray-50 text-sm outline-none focus:border-[var(--admin-accent)] focus:bg-white" />
       </div>
       {alterado ? (
         <button onClick={() => onSalvar({ nome: nome.trim(), preco_adicional: parseFloat(preco) || 0 })}
@@ -525,10 +525,10 @@ function NovoGrupoForm({ salvando, onCriar, onCancelar }: {
   const [max, setMax] = useState('');
 
   return (
-    <div className="border-2 border-red-200 rounded-2xl p-3 space-y-2">
+    <div className="border-2 border-[var(--admin-accent-border)] rounded-2xl p-3 space-y-2">
       <input value={nome} onChange={e => setNome(e.target.value)} autoFocus
         placeholder="Nome do grupo (ex: Sabores, Tamanho, Borda...)"
-        className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-red-300" />
+        className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-[var(--admin-accent)]" />
       <select value={tipo} onChange={e => setTipo(e.target.value as any)}
         className="w-full px-2 py-2 rounded-lg border border-gray-200 text-sm text-gray-700 outline-none">
         <option value="unico">Escolha 1 (ex: Tamanho)</option>
@@ -536,7 +536,7 @@ function NovoGrupoForm({ salvando, onCriar, onCancelar }: {
       </select>
       <div className="flex items-center gap-3">
         <label className="flex items-center gap-2 text-sm text-gray-600">
-          <input type="checkbox" checked={obrigatorio} onChange={e => setObrigatorio(e.target.checked)} className="w-4 h-4 accent-red-500" />
+          <input type="checkbox" checked={obrigatorio} onChange={e => setObrigatorio(e.target.checked)} className="w-4 h-4 accent-[var(--admin-accent)]" />
           Obrigatório
         </label>
         {tipo === 'multiplo' && (
@@ -556,7 +556,7 @@ function NovoGrupoForm({ salvando, onCriar, onCancelar }: {
             if (obrigatorio) data.min = 1;
             onCriar(data);
           }}
-          className="flex-1 py-2 bg-red-500 text-white rounded-lg text-sm font-semibold disabled:opacity-50">Criar grupo</button>
+          className="flex-1 py-2 bg-[var(--admin-accent)] hover:bg-[var(--admin-accent-hover)] text-white rounded-lg text-sm font-semibold disabled:opacity-50 transition-colors">Criar grupo</button>
       </div>
     </div>
   );

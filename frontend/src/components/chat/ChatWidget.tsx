@@ -158,7 +158,10 @@ export default function ChatWidget({ slug }: { slug: string }) {
           {etapa === 'ident' ? (
             <form onSubmit={identificar} className="flex-1 p-5 flex flex-col gap-4 justify-center">
               <div className="text-center mb-2">
-                <p className="font-semibold text-gray-800">Olá! 👋</p>
+                <p className="font-semibold text-gray-800 inline-flex items-center gap-1.5">
+                  <MessageCircle className="w-4 h-4 text-red-500" />
+                  Olá!
+                </p>
                 <p className="text-sm text-gray-500 mt-1">Para continuar, informe seus dados</p>
               </div>
               <div>

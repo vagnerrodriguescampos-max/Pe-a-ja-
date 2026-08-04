@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { ArrowRight, Zap, Navigation, Gift, BadgePercent, Star } from 'lucide-react';
+import { ArrowRight, Zap, Navigation, Gift, BadgePercent, Star, Pizza } from 'lucide-react';
 
 export const metadata = {
   title: 'Peça Já — O delivery da sua loja, sem comissão',
@@ -29,7 +29,7 @@ export default function Home() {
       {/* nav */}
       <header className="relative z-10 mx-auto flex max-w-6xl items-center justify-between px-5 py-6">
         <div className="lp-reveal flex items-center gap-2 font-bold text-lg">
-          <span className="text-2xl">🍕</span> Peça Já
+          <Pizza className="h-6 w-6 text-orange-400" /> Peça Já
         </div>
         <Link href="/admin/login"
           className="lp-reveal rounded-xl border border-white/15 bg-white/5 px-4 py-2 text-sm font-medium text-white/90 backdrop-blur transition-colors hover:bg-white/10">
@@ -111,7 +111,7 @@ export default function Home() {
       {/* footer */}
       <footer className="relative z-10 border-t border-white/10">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 px-5 py-6 text-sm text-white/40 sm:flex-row">
-          <span className="flex items-center gap-2"><span className="text-lg">🍕</span> Peça Já — seu delivery, sua marca.</span>
+          <span className="flex items-center gap-2"><Pizza className="h-4 w-4 text-orange-400" /> Peça Já — seu delivery, sua marca.</span>
           <div className="flex gap-5">
             <Link href="/cadastrar" className="transition-colors hover:text-white/70">Criar loja</Link>
             <Link href="/admin/login" className="transition-colors hover:text-white/70">Entrar</Link>

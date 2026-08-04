@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { Produto, Loja, GrupoOpcao, Opcao } from '@/types';
 import { useCarrinhoStore } from '@/stores/carrinho.store';
 import { formatCurrency, cn } from '@/lib/utils';
-import { X, Plus, Minus, ChevronDown } from 'lucide-react';
+import { X, Plus, Minus, ChevronDown, UtensilsCrossed } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 interface Props {
@@ -78,8 +78,8 @@ export default function ProdutoModal({ produto, loja, onClose, onAdicionado }: P
             <Image src={produto.imagem_url} alt={produto.nome} width={600} height={280}
               className="w-full h-52 object-cover rounded-t-3xl sm:rounded-t-3xl" />
           ) : (
-            <div className="w-full h-40 bg-gradient-to-br from-orange-100 to-red-100 rounded-t-3xl flex items-center justify-center text-6xl">
-              🥙
+            <div className="w-full h-40 bg-gradient-to-br from-orange-100 to-red-100 rounded-t-3xl flex items-center justify-center">
+              <UtensilsCrossed className="w-14 h-14 text-orange-300" strokeWidth={1.5} />
             </div>
           )}
           <button onClick={onClose}
