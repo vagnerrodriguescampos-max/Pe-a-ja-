@@ -6,6 +6,8 @@ import { adminGetLoja, adminUpdateLoja } from '@/lib/api';
 import { Loja } from '@/types';
 import { Save, ToggleLeft, ToggleRight, ExternalLink, Bot, Link2, CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import ImageUpload from '@/components/ImageUpload';
+import WhatsAppConnect from '@/components/admin/WhatsAppConnect';
+import HorarioFuncionamento from '@/components/admin/HorarioFuncionamento';
 import { adminGetConfigIA, adminUpdateConfigIA } from '@/lib/api';
 import toast from 'react-hot-toast';
 
@@ -257,6 +259,9 @@ export default function ConfiguracoesPage() {
               className="input font-mono" placeholder="Sua chave PIX" />
           </div>
         </div>
+
+        <HorarioFuncionamento />
+        <WhatsAppConnect />
 
         <button onClick={salvar} disabled={saving}
           className="btn-primary bg-red-500 w-full flex items-center justify-center gap-2 py-4">

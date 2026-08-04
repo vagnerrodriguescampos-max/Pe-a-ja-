@@ -90,7 +90,7 @@ export default function CadastrarPage() {
       const data = await r.json();
       if (!r.ok) { setErro(data.message || 'Erro ao cadastrar'); return; }
       setAuth(data.access_token, data.usuario);
-      router.push('/admin/configuracoes');
+      router.push('/admin/onboarding');
     } catch { setErro('Erro de conexão'); }
     finally { setLoading(false); }
   };

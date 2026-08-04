@@ -8,6 +8,7 @@ import { PedidoGateway } from '../websocket/pedido.gateway';
 import { LojaService } from '../loja/loja.service';
 import { FidelizacaoService } from '../fidelizacao/fidelizacao.service';
 import { PushService } from '../push/push.service';
+import { WhatsappService } from '../whatsapp/whatsapp.service';
 import { Produto } from '../cardapio/produto/produto.entity';
 import { Opcao } from '../cardapio/grupo-opcao/opcao.entity';
 import { Carteira, TransacaoCarteira } from '../fidelizacao/fidelizacao.entity';
@@ -44,6 +45,7 @@ export class PedidoService {
     private lojaService: LojaService,
     @Optional() private fidelizacaoService: FidelizacaoService,
     @Optional() private pushService: PushService,
+    @Optional() private whatsappService: WhatsappService,
   ) {}
 
   /**
@@ -178,6 +180,12 @@ export class PedidoService {
       body: `${resultado.pedido.itens?.length || 0} itens — R$ ${Number(resultado.pedido.total).toFixed(2)}`,
       url: '/admin/pedidos',
     }).catch(() => {});
+    this.whatsappService?.enviarTemplate(
+      lojaId,
+      resultado.cliente.telefone,
+      'pedido_confirmado',
+      [String(resultado.pedido.numero_sequencial)],
+    ).catch(() => {});
 
     return {
       ...resultado.pedido,
@@ -233,7 +241,21 @@ export class PedidoService {
       this.fidelizacaoService.processarPosEntrega(id).catch(() => {});
     }
 
+    // Um único aviso de status via WhatsApp por pedido, além da confirmação: "pronto"
+    // para retirada, "saiu para entrega" para entrega — mantém o custo em 2 msgs/pedido.
+    const statusNotificavel = pedido.tipo === 'retirada' ? 'pronto' : 'saiu_para_entrega';
+    if (this.whatsappService && novoStatus === statusNotificavel) {
+      this.notificarStatusWhatsapp(lojaId, pedido, novoStatus).catch(() => {});
+    }
+
     return { id, status: novoStatus };
+  }
+
+  private async notificarStatusWhatsapp(lojaId: string, pedido: Pedido, novoStatus: string) {
+    const cliente = await this.clienteRepo.findOne({ where: { id: pedido.cliente_id } });
+    if (!cliente) return;
+    const template = novoStatus === 'saiu_para_entrega' ? 'pedido_saiu_entrega' : 'pedido_pronto';
+    await this.whatsappService?.enviarTemplate(lojaId, cliente.telefone, template, [String(pedido.numero_sequencial)]);
   }
 
   private async resolverCliente(

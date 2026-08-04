@@ -1,12 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useAuthStore } from '@/stores/auth.store';
 import { LayoutGrid, UtensilsCrossed, Settings, LogOut, Menu, X, MessageSquare, BarChart2, Users, Gift, Download, Bell, BellOff, UserCog, HelpCircle } from 'lucide-react';
 import { useInstallPrompt } from '@/hooks/useInstallPrompt';
 import { usePushNotification } from '@/hooks/usePushNotification';
+import { adminGetLoja } from '@/lib/api';
 import toast from 'react-hot-toast';
 
 const NAV = [
@@ -32,6 +33,19 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   useEffect(() => {
     if (!isAuthenticated()) router.replace('/admin/login');
   }, []);
+
+  // Leva o dono direto pro assistente de primeiros passos até ele concluir ou pular.
+  // Para de checar assim que confirma que já foi concluído, pra não bater na API a cada navegação.
+  const onboardingOk = useRef(false);
+  useEffect(() => {
+    if (!isAuthenticated() || pathname === '/admin/onboarding' || onboardingOk.current) return;
+    const ehDono = usuario?.papel === 'admin_loja' || usuario?.papel === 'super_admin';
+    if (!ehDono) { onboardingOk.current = true; return; }
+    adminGetLoja().then(loja => {
+      if (loja.onboarding_concluido) onboardingOk.current = true;
+      else router.replace('/admin/onboarding');
+    }).catch(() => {});
+  }, [pathname]);
 
   // Auto-subscribe to push after login if permission already granted
   useEffect(() => {

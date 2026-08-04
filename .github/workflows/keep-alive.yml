@@ -1,0 +1,13 @@
+name: Keep-alive backend
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Pingar /health do backend
+        run: curl -fsS --max-time 20 https://peca-ja-backend.onrender.com/health

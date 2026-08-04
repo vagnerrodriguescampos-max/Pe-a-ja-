@@ -25,6 +25,7 @@ describe('PedidoService', () => {
       lojaService as any,
       undefined,
       undefined,
+      undefined,
     );
   });
 

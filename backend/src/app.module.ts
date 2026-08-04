@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
+import { AppController } from './app.controller';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { SnakeNamingStrategy } from './database/snake-naming.strategy';
@@ -16,6 +17,7 @@ import { AiModule } from './ai/ai.module';
 import { PushModule } from './push/push.module';
 import { UploadModule } from './upload/upload.module';
 import { UsuarioModule } from './usuario/usuario.module';
+import { WhatsappModule } from './whatsapp/whatsapp.module';
 import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
@@ -45,7 +47,9 @@ import { ScheduleModule } from '@nestjs/schedule';
     PushModule,
     UploadModule,
     UsuarioModule,
+    WhatsappModule,
   ],
+  controllers: [AppController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
 export class AppModule {}

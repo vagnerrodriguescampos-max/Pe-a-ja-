@@ -1,3 +1,10 @@
+export interface HorarioDia {
+  dia_semana: number;
+  fechado: boolean;
+  abre: string;
+  fecha: string;
+}
+
 export interface Loja {
   id: string;
   nome: string;
@@ -15,6 +22,9 @@ export interface Loja {
   mensagem_topo?: string;
   taxa_entrega_padrao: number;
   pedido_minimo: number;
+  horario_automatico?: boolean;
+  horarios?: HorarioDia[] | null;
+  onboarding_concluido?: boolean;
 }
 
 export interface Opcao {

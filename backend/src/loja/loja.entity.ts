@@ -1,5 +1,14 @@
 import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
 
+// dia_semana: 0 = domingo ... 6 = sábado. abre/fecha em "HH:mm". Quando fecha < abre,
+// o expediente cruza a meia-noite (ex: 18:00–02:00).
+export interface HorarioDia {
+  dia_semana: number;
+  fechado: boolean;
+  abre: string;
+  fecha: string;
+}
+
 @Entity('loja')
 export class Loja {
   @PrimaryGeneratedColumn('uuid')
@@ -49,6 +58,27 @@ export class Loja {
 
   @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
   pedido_minimo: number;
+
+  @Column({ nullable: true })
+  whatsapp_waba_id: string;
+
+  @Column({ nullable: true, unique: true })
+  whatsapp_phone_number_id: string;
+
+  @Column({ nullable: true })
+  whatsapp_numero_display: string;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  whatsapp_conectado_em: Date;
+
+  @Column({ default: false })
+  horario_automatico: boolean;
+
+  @Column({ type: 'jsonb', nullable: true })
+  horarios: HorarioDia[];
+
+  @Column({ default: false })
+  onboarding_concluido: boolean;
 
   @CreateDateColumn()
   criado_em: Date;

@@ -48,7 +48,9 @@ async function bootstrap() {
     throw new Error('PORT deve ser um número entre 1 e 65535.');
   }
 
-  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  // rawBody fica disponível em toda requisição (request.rawBody) sem afetar o
+  // parsing normal de req.body — usado só para validar a assinatura do webhook da Meta.
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, { rawBody: true });
   app.getHttpAdapter().getInstance().disable('x-powered-by');
 
   const uploadsDir = process.env.UPLOADS_DIR || join(process.cwd(), 'uploads');

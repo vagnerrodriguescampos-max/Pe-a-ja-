@@ -67,3 +67,9 @@ export const adminCriarUsuario = (data: { nome: string; email: string; senha: st
 export const adminAtualizarUsuario = (id: string, data: { nome?: string; papel?: string; ativo?: boolean; senha?: string }) =>
   api.patch(`/admin/usuarios/${id}`, data).then(r => r.data);
 export const adminRemoverUsuario = (id: string) => api.delete(`/admin/usuarios/${id}`).then(r => r.data);
+
+// Conexão do WhatsApp da loja (Meta Cloud API / Embedded Signup)
+export const adminGetWhatsappStatus = () => api.get('/admin/whatsapp/status').then(r => r.data);
+export const adminConectarWhatsapp = (data: { waba_id: string; phone_number_id: string }) =>
+  api.post('/admin/whatsapp/conectar', data).then(r => r.data);
+export const adminDesconectarWhatsapp = () => api.post('/admin/whatsapp/desconectar').then(r => r.data);

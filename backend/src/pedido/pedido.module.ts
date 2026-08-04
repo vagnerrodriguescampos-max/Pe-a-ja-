@@ -8,6 +8,7 @@ import { WebsocketModule } from '../websocket/websocket.module';
 import { LojaModule } from '../loja/loja.module';
 import { FidelizacaoModule } from '../fidelizacao/fidelizacao.module';
 import { PushModule } from '../push/push.module';
+import { WhatsappModule } from '../whatsapp/whatsapp.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { PushModule } from '../push/push.module';
     LojaModule,
     FidelizacaoModule,
     PushModule,
+    WhatsappModule,
   ],
   providers: [PedidoService],
   controllers: [PedidoPublicoController, PedidoAdminController],
