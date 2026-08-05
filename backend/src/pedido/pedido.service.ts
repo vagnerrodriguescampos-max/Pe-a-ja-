@@ -99,6 +99,11 @@ export class PedidoService {
       const trocoParaCentavos = this.validarTroco(body, totalCentavos);
 
       const [{ nextval }] = await manager.query(`SELECT nextval('pedido_numero_seq') as nextval`);
+      // Gerado numa variável local e nunca relido da entidade: token_acesso tem
+      // select:false, e o reload que o TypeORM faz apos o INSERT usa o SELECT
+      // padrao (sem esse campo), apagando o valor em memoria se a gente tentasse
+      // ler de volta em savedPedido.token_acesso.
+      const tokenAcesso = randomBytes(32).toString('hex');
       const pedido = manager.create(Pedido, {
         loja_id: lojaId,
         cliente_id: cliente.id,
@@ -113,7 +118,7 @@ export class PedidoService {
         troco_para: trocoParaCentavos === null ? null : this.deCentavos(trocoParaCentavos),
         observacoes: body.observacoes?.trim() || null,
         endereco_entrega: enderecoSnapshot,
-        token_acesso: randomBytes(32).toString('hex'),
+        token_acesso: tokenAcesso,
       });
       const savedPedido = await manager.save(pedido);
 
@@ -169,7 +174,7 @@ export class PedidoService {
       });
       if (!pedidoCompleto) throw new NotFoundException('Pedido não encontrado');
 
-      return { pedido: pedidoCompleto, cliente, tokenAcesso: savedPedido.token_acesso };
+      return { pedido: pedidoCompleto, cliente, tokenAcesso };
     });
 
     // Eventos só são disparados após a transação confirmar o pedido e o débito.
