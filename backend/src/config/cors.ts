@@ -1,3 +1,5 @@
+import { ForbiddenException } from '@nestjs/common';
+
 const DEVELOPMENT_ORIGIN = 'http://localhost:3000';
 
 function getConfiguredOrigins(): string {
@@ -51,7 +53,9 @@ export function getHttpCorsOptions() {
   return {
     origin: (origin: string | undefined, callback: (error: Error | null, allow?: boolean) => void) => {
       if (!origin || allowedOrigins.includes(origin)) callback(null, true);
-      else callback(new Error('Origem não autorizada por CORS'));
+      // ForbiddenException (não Error genérico) para que o filtro de exceção do Nest
+      // devolva 403 em vez de tratar como falha interna não mapeada (500).
+      else callback(new ForbiddenException('Origem não autorizada por CORS'));
     },
     credentials: getCorsAllowCredentials(),
     methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],

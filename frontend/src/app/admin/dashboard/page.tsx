@@ -67,7 +67,9 @@ export default function DashboardPage() {
 
   const porDiaFormatado = porDia.map(d => ({
     ...d,
-    dia: new Date(d.dia + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
+    // d.dia vem como 'YYYY-MM-DD' da API, mas pega só os 10 primeiros caracteres
+    // por segurança caso algum dia volte como datetime ISO completo.
+    dia: new Date(`${d.dia.slice(0, 10)}T12:00:00`).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
   }));
 
   return (

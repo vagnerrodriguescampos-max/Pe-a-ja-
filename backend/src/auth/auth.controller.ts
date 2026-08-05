@@ -1,15 +1,17 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, UsePipes, ValidationPipe } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
+import { LoginDto, RegistrarDto } from './dto/auth.dto';
 
 @Controller('auth')
+@UsePipes(new ValidationPipe({ whitelist: true, transform: true }))
 export class AuthController {
   constructor(private authService: AuthService) {}
 
   // Limite estrito: dificulta força bruta de senha por IP.
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post('login')
-  login(@Body() body: { email: string; senha: string }) {
+  login(@Body() body: LoginDto) {
     return this.authService.login(body.email, body.senha);
   }
 
@@ -19,7 +21,7 @@ export class AuthController {
   }
 
   @Post('registrar')
-  registrar(@Body() body: { nome_loja: string; slug: string; nome_admin: string; email: string; senha: string }) {
+  registrar(@Body() body: RegistrarDto) {
     return this.authService.registrar(body);
   }
 }

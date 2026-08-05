@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { MotoboyService } from './motoboy.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -40,18 +40,19 @@ export class MotoboyController {
   }
 
   @Get('pedidos/:id/posicao')
-  getUltimaPosicao(@Param('id') pedidoId: string) {
-    return this.motoboyService.getUltimaPosicao(pedidoId);
+  getUltimaPosicao(@Param('id') pedidoId: string, @CurrentUser() user: any) {
+    return this.motoboyService.getUltimaPosicaoParaMotoboy(pedidoId, user.id);
   }
 }
 
-// Rota pública para cliente ver posição do motoboy
+// Rota pública para cliente ver posição do motoboy — exige o mesmo token_acesso do
+// pedido, igual à rota pública de detalhes (GET /pedidos/:id).
 @Controller('pedidos/:id/rastreamento')
 export class RastreamentoPublicoController {
   constructor(private motoboyService: MotoboyService) {}
 
   @Get()
-  getUltimaPosicao(@Param('id') pedidoId: string) {
-    return this.motoboyService.getUltimaPosicao(pedidoId);
+  getUltimaPosicao(@Param('id') pedidoId: string, @Query('token') token: string) {
+    return this.motoboyService.getUltimaPosicaoPublica(pedidoId, token);
   }
 }

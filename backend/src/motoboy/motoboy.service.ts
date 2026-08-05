@@ -50,8 +50,33 @@ export class MotoboyService {
     return { lat, lng, atualizado_em: rastreamento.criado_em };
   }
 
-  // Última posição do motoboy num pedido
-  async getUltimaPosicao(pedidoId: string) {
+  // Posição para o motoboy autenticado — só do próprio pedido atribuído, nunca de
+  // um pedido de outro motoboy da mesma loja.
+  async getUltimaPosicaoParaMotoboy(pedidoId: string, motoboyId: string) {
+    const pedido = await this.pedidoRepo.findOne({ where: { id: pedidoId, motoboy_id: motoboyId } });
+    if (!pedido) throw new NotFoundException('Pedido não encontrado');
+    return this.buscarUltimaPosicao(pedidoId);
+  }
+
+  // Posição para o cliente (rota pública) — o ID sozinho não concede acesso: exige o
+  // mesmo token_acesso do pedido, igual à rota pública de detalhes (pedido.service.ts).
+  async getUltimaPosicaoPublica(pedidoId: string, tokenAcesso: string) {
+    if (!/^[a-f0-9]{64}$/i.test(tokenAcesso || '')) {
+      throw new NotFoundException('Pedido não encontrado');
+    }
+
+    const pedido = await this.pedidoRepo
+      .createQueryBuilder('pedido')
+      .addSelect('pedido.token_acesso')
+      .where('pedido.id = :pedidoId', { pedidoId })
+      .andWhere('pedido.token_acesso = :tokenAcesso', { tokenAcesso })
+      .getOne();
+    if (!pedido) throw new NotFoundException('Pedido não encontrado');
+
+    return this.buscarUltimaPosicao(pedidoId);
+  }
+
+  private buscarUltimaPosicao(pedidoId: string) {
     return this.rastreamentoRepo.findOne({
       where: { pedido_id: pedidoId },
       order: { criado_em: 'DESC' },

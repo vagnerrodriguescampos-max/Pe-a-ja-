@@ -61,6 +61,23 @@ describe('PedidoService', () => {
       await expect(pedidoService.atualizarStatus('loja1', 'pedido1', 'cancelado'))
         .rejects.toThrow(BadRequestException);
     });
+
+    it('motoboy não pode alterar status de pedido atribuído a outro motoboy', async () => {
+      pedidoRepo.findOne.mockResolvedValue({ id: 'pedido1', status: 'pronto', motoboy_id: 'motoboy-dono' });
+
+      await expect(pedidoService.atualizarStatus('loja1', 'pedido1', 'saiu_para_entrega', 'motoboy-intruso'))
+        .rejects.toThrow(NotFoundException);
+      expect(pedidoRepo.update).not.toHaveBeenCalled();
+    });
+
+    it('motoboy pode alterar status do próprio pedido atribuído', async () => {
+      pedidoRepo.findOne.mockResolvedValue({ id: 'pedido1', status: 'pronto', motoboy_id: 'motoboy-dono' });
+
+      const resultado = await pedidoService.atualizarStatus('loja1', 'pedido1', 'saiu_para_entrega', 'motoboy-dono');
+
+      expect(resultado).toEqual({ id: 'pedido1', status: 'saiu_para_entrega' });
+      expect(pedidoRepo.update).toHaveBeenCalledWith('pedido1', { status: 'saiu_para_entrega' });
+    });
   });
 
   describe('criarPedido', () => {

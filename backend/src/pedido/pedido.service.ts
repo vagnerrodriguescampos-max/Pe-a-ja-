@@ -225,9 +225,12 @@ export class PedidoService {
     });
   }
 
-  async atualizarStatus(lojaId: string, id: string, novoStatus: string) {
+  async atualizarStatus(lojaId: string, id: string, novoStatus: string, motoboyId?: string) {
     const pedido = await this.pedidoRepo.findOne({ where: { id, loja_id: lojaId } });
     if (!pedido) throw new NotFoundException('Pedido não encontrado');
+    if (motoboyId && pedido.motoboy_id !== motoboyId) {
+      throw new NotFoundException('Pedido não encontrado');
+    }
 
     const permitidos = STATUS_TRANSITIONS[pedido.status] || [];
     if (!permitidos.includes(novoStatus)) {

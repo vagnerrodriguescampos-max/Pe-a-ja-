@@ -42,7 +42,10 @@ export class RelatoriosService {
     const rows = await this.pedidoRepo
       .createQueryBuilder('p')
       .select([
-        "DATE(p.criado_em AT TIME ZONE 'America/Sao_Paulo') AS dia",
+        // TO_CHAR (não DATE) para sempre voltar string 'YYYY-MM-DD' — o driver pg
+        // converte DATE em objeto Date, que vira ISO datetime completo no JSON e
+        // quebra o parse feito no frontend (Dashboard).
+        "TO_CHAR(p.criado_em AT TIME ZONE 'America/Sao_Paulo', 'YYYY-MM-DD') AS dia",
         'COUNT(*) AS pedidos',
         'COALESCE(SUM(p.total), 0) AS receita',
       ])

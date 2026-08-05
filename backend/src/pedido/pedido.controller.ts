@@ -17,7 +17,7 @@ import { LojaService } from '../loja/loja.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
-import { CurrentLoja } from '../auth/decorators/current-loja.decorator';
+import { CurrentLoja, CurrentUser } from '../auth/decorators/current-loja.decorator';
 import { AtualizarStatusPedidoDto, CriarPedidoDto } from './dto/criar-pedido.dto';
 
 @Controller()
@@ -63,9 +63,13 @@ export class PedidoAdminController {
   @Patch(':id/status')
   async atualizarStatus(
     @CurrentLoja() lojaId: string,
+    @CurrentUser() usuario: { id: string; papel: string },
     @Param('id', new ParseUUIDPipe()) id: string,
     @Body() body: AtualizarStatusPedidoDto,
   ) {
-    return this.pedidoService.atualizarStatus(lojaId, id, body.status);
+    // Motoboy só pode avançar o status de entregas atribuídas a ele mesmo — as demais
+    // roles administram qualquer pedido da loja.
+    const motoboyId = usuario.papel === 'motoboy' ? usuario.id : undefined;
+    return this.pedidoService.atualizarStatus(lojaId, id, body.status, motoboyId);
   }
 }
