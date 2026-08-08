@@ -54,6 +54,12 @@ export class Endereco {
   @Column()
   cidade: string;
 
+  @Column({ type: 'varchar', length: 2, nullable: true })
+  estado: string;
+
+  @Column({ type: 'varchar', length: 9, nullable: true })
+  cep: string;
+
   @Column({ nullable: true })
   referencia: string;
 

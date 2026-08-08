@@ -8,6 +8,7 @@ import { Loja, Categoria, Produto } from '@/types';
 import { useCarrinhoStore } from '@/stores/carrinho.store';
 import { formatCurrency } from '@/lib/utils';
 import { ShoppingCart, Search, Clock, ChevronRight, X, Star, Bike, MapPin, UtensilsCrossed } from 'lucide-react';
+import { useFaviconLoja } from '@/hooks/useFaviconLoja';
 import ProdutoModal from '@/components/cardapio/ProdutoModal';
 import CarrinhoDrawer from '@/components/carrinho/CarrinhoDrawer';
 import ChatWidget from '@/components/chat/ChatWidget';
@@ -27,6 +28,8 @@ export default function CardapioPage() {
   const [catDrawer, setCatDrawer] = useState<Categoria | null>(null);
 
   const { quantidadeTotal, total, setLoja: setLojaCarrinho } = useCarrinhoStore();
+
+  useFaviconLoja(loja?.logo_url);
 
   useEffect(() => {
     async function load() {

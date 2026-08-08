@@ -9,6 +9,7 @@ import ImageUpload from '@/components/ImageUpload';
 import WhatsAppConnect from '@/components/admin/WhatsAppConnect';
 import HorarioFuncionamento from '@/components/admin/HorarioFuncionamento';
 import { adminGetConfigIA, adminUpdateConfigIA } from '@/lib/api';
+import { buscarCep, cepCompleto, formatarCep } from '@/lib/cep';
 import toast from 'react-hot-toast';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
@@ -23,6 +24,7 @@ export default function ConfiguracoesPage() {
   const [configIA, setConfigIA] = useState<any>({ habilitada: false, nome_ia: 'Assistente', sistema_prompt_extra: '', delay_resposta_seg: 3 });
   const [savingIA, setSavingIA] = useState(false);
   const [slugStatus, setSlugStatus] = useState<SlugStatus>('idle');
+  const [buscandoCep, setBuscandoCep] = useState(false);
   const slugCheckRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -34,6 +36,32 @@ export default function ConfiguracoesPage() {
 
   function set(key: keyof Loja, value: any) {
     setForm(prev => ({ ...prev, [key]: value }));
+  }
+
+  // Mesmo comportamento do checkout do cliente: completou o CEP, o endereço vem pronto.
+  async function aoDigitarCep(valor: string) {
+    const formatado = formatarCep(valor);
+    set('cep', formatado);
+    if (!cepCompleto(formatado)) return;
+
+    setBuscandoCep(true);
+    const encontrado = await buscarCep(formatado);
+    setBuscandoCep(false);
+
+    if (!encontrado) {
+      toast.error('CEP não encontrado — preencha o endereço manualmente');
+      return;
+    }
+    setForm(prev => ({
+      ...prev,
+      cep: encontrado.cep,
+      // O logradouro do ViaCEP não traz número; preservamos o que já estava digitado
+      // se o dono da loja tiver escrito "Rua X, 210" à mão.
+      endereco: encontrado.logradouro || prev.endereco || '',
+      bairro: encontrado.bairro || prev.bairro || '',
+      cidade: encontrado.cidade,
+      estado: encontrado.estado,
+    }));
   }
 
   function handleSlugChange(val: string) {
@@ -172,8 +200,40 @@ export default function ConfiguracoesPage() {
             <input value={form.telefone || ''} onChange={e => set('telefone', e.target.value)} className="input" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Endereço</label>
-            <input value={form.endereco || ''} onChange={e => set('endereco', e.target.value)} className="input" />
+            <label className="block text-sm font-medium text-gray-700 mb-1">CEP</label>
+            <div className="relative">
+              <input value={form.cep || ''} onChange={e => aoDigitarCep(e.target.value)}
+                placeholder="00000-000" inputMode="numeric" maxLength={9} className="input" />
+              {buscandoCep && (
+                <span className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 border-2 border-gray-200 border-t-[var(--admin-accent)] rounded-full animate-spin" />
+              )}
+            </div>
+            <p className="text-xs text-gray-400 mt-1">
+              Preencha o CEP e o restante do endereço vem automático.
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Endereço (rua e número)</label>
+            <input value={form.endereco || ''} onChange={e => set('endereco', e.target.value)}
+              placeholder="Rua Exemplo, 210" className="input" />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Bairro</label>
+            <input value={form.bairro || ''} onChange={e => set('bairro', e.target.value)} className="input" />
+          </div>
+
+          <div className="grid grid-cols-3 gap-3">
+            <div className="col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Cidade</label>
+              <input value={form.cidade || ''} onChange={e => set('cidade', e.target.value)} className="input" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">UF</label>
+              <input value={form.estado || ''} maxLength={2}
+                onChange={e => set('estado', e.target.value.toUpperCase().slice(0, 2))} className="input" />
+            </div>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Mensagem do topo (banner)</label>

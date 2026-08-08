@@ -56,8 +56,26 @@ export default function MotoboyPage() {
     if (r.ok) setPedidos(await r.json());
   };
 
-  const iniciarRastreamento = (pedido: Pedido) => {
-    setPedidoAtivo(pedido);
+  // Iniciar a corrida é o evento que move o pedido para "Em Rota": o motoboy saiu com
+  // o pedido. Fazer isso aqui evita depender de alguém no balcão lembrar de avançar o
+  // card no Kanban — e é o que libera o mapa ao vivo para o cliente e para a loja.
+  const iniciarRastreamento = async (pedido: Pedido) => {
+    let emRota = pedido;
+
+    if (pedido.status === 'pronto') {
+      try {
+        const r = await fetch(`${API}/admin/pedidos/${pedido.id}/status`, {
+          method: 'PATCH', headers,
+          body: JSON.stringify({ status: 'saiu_para_entrega' }),
+        });
+        if (r.ok) {
+          emRota = { ...pedido, status: 'saiu_para_entrega' };
+          setPedidos(prev => prev.map(p => (p.id === pedido.id ? emRota : p)));
+        }
+      } catch { /* o GPS começa mesmo se o status falhar; não trava a entrega */ }
+    }
+
+    setPedidoAtivo(emRota);
     setRastreando(true);
     socketRef.current?.emit('motoboy:entrar_pedido', pedido.id);
 
@@ -158,7 +176,7 @@ export default function MotoboyPage() {
               <button onClick={() => iniciarRastreamento(pedidoAtivo)}
                 className="flex-1 bg-orange-500 hover:bg-orange-600 text-white py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2">
                 <Navigation size={15} />
-                Iniciar rastreamento
+                Iniciar corrida
               </button>
             ) : (
               <button onClick={pararRastreamento}

@@ -35,8 +35,22 @@ export class Loja {
   @Column({ nullable: true })
   telefone: string;
 
+  // `endereco` é o logradouro (rua + número). Bairro/cidade/estado/CEP ficam separados
+  // para permitir preenchimento automático via CEP e agrupamento por região.
   @Column({ nullable: true })
   endereco: string;
+
+  @Column({ nullable: true })
+  bairro: string;
+
+  @Column({ nullable: true })
+  cidade: string;
+
+  @Column({ type: 'varchar', length: 2, nullable: true })
+  estado: string;
+
+  @Column({ type: 'varchar', length: 9, nullable: true })
+  cep: string;
 
   @Column({ nullable: true })
   chave_pix: string;

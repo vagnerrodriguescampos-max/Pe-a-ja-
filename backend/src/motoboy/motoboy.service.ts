@@ -43,6 +43,49 @@ export class MotoboyService {
     });
   }
 
+  // Entregas em rota da loja, cada uma com a última posição conhecida do motoboy.
+  // Alimenta o mapa de acompanhamento do restaurante.
+  async getEntregasAtivas(lojaId: string) {
+    const pedidos = await this.pedidoRepo.find({
+      where: { loja_id: lojaId, status: 'saiu_para_entrega' as any },
+      order: { criado_em: 'ASC' },
+    });
+    if (!pedidos.length) return [];
+
+    const motoboyIds = [...new Set(pedidos.map(p => p.motoboy_id).filter(Boolean))];
+    const motoboys = motoboyIds.length
+      ? await this.usuarioRepo.find({ where: { id: In(motoboyIds) }, select: ['id', 'nome'] })
+      : [];
+    const nomePorMotoboy = new Map(motoboys.map(m => [m.id, m.nome]));
+
+    // DISTINCT ON traz a última posição de cada pedido numa query só — sem isso
+    // seria um SELECT por entrega, e o custo cresceria com o movimento da loja.
+    const posicoes = await this.rastreamentoRepo
+      .createQueryBuilder('r')
+      .distinctOn(['r.pedido_id'])
+      .where('r.pedido_id IN (:...ids)', { ids: pedidos.map(p => p.id) })
+      .orderBy('r.pedido_id')
+      .addOrderBy('r.criado_em', 'DESC')
+      .getMany();
+    const posicaoPorPedido = new Map(posicoes.map(p => [p.pedido_id, p]));
+
+    return pedidos.map(p => {
+      const pos = posicaoPorPedido.get(p.id);
+      return {
+        pedido_id: p.id,
+        numero_sequencial: p.numero_sequencial,
+        motoboy_id: p.motoboy_id ?? null,
+        motoboy_nome: p.motoboy_id ? nomePorMotoboy.get(p.motoboy_id) ?? null : null,
+        endereco_entrega: p.endereco_entrega,
+        total: p.total,
+        criado_em: p.criado_em,
+        posicao: pos
+          ? { lat: Number(pos.lat), lng: Number(pos.lng), atualizado_em: pos.criado_em }
+          : null,
+      };
+    });
+  }
+
   // Salvar posição GPS
   async salvarPosicao(pedidoId: string, motoboyId: string, lat: number, lng: number) {
     const rastreamento = this.rastreamentoRepo.create({ pedido_id: pedidoId, motoboy_id: motoboyId, lat, lng });

@@ -7,6 +7,7 @@ import dynamic from 'next/dynamic';
 import { getPedido, getLoja } from '@/lib/api';
 import { Pedido, Loja, StatusPedido } from '@/types';
 import { formatCurrency, STATUS_LABELS, PAGAMENTO_LABELS } from '@/lib/utils';
+import { useFaviconLoja } from '@/hooks/useFaviconLoja';
 import { CheckCircle, Clock, ChefHat, Package, Bike, Home, XCircle, QrCode, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 
@@ -37,6 +38,8 @@ export default function AcompanharPedidoPage() {
   const [posicaoMotoboy, setPosicaoMotoboy] = useState<{ lat: number; lng: number } | null>(null);
   const [tokenAcesso, setTokenAcesso] = useState('');
   const [tokenResolvido, setTokenResolvido] = useState(false);
+
+  useFaviconLoja(loja?.logo_url);
 
   useEffect(() => {
     const tokenDaUrl = searchParams.get('token');

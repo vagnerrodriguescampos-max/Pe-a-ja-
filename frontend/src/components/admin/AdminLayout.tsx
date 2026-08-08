@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useAuthStore } from '@/stores/auth.store';
-import { LayoutGrid, UtensilsCrossed, Settings, LogOut, Menu, X, MessageSquare, BarChart2, Users, Gift, Download, Bell, BellOff, UserCog, HelpCircle, Utensils } from 'lucide-react';
+import { LayoutGrid, UtensilsCrossed, Settings, LogOut, Menu, X, MessageSquare, BarChart2, Users, Gift, Download, Bell, BellOff, UserCog, HelpCircle, Utensils, Bike } from 'lucide-react';
 import { useInstallPrompt } from '@/hooks/useInstallPrompt';
 import { usePushNotification } from '@/hooks/usePushNotification';
 import { adminGetLoja } from '@/lib/api';
@@ -12,6 +12,7 @@ import toast from 'react-hot-toast';
 
 const NAV = [
   { href: '/admin/pedidos', label: 'Pedidos', icon: LayoutGrid },
+  { href: '/admin/entregas', label: 'Entregas', icon: Bike },
   { href: '/admin/chat', label: 'Chat', icon: MessageSquare },
   { href: '/admin/dashboard', label: 'Dashboard', icon: BarChart2, adminOnly: true },
   { href: '/admin/clientes', label: 'Clientes', icon: Users },
@@ -180,7 +181,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       )}
 
       {/* Conteúdo */}
-      <main className="flex-1 md:ml-56 pt-16 md:pt-0 overflow-auto">
+      {/* pt-14 = altura exata do header fixo do mobile (53px). Antes era pt-16 e
+          sobrava um vão morto acima do conteúdo em toda tela do painel. */}
+      <main className="flex-1 md:ml-56 pt-14 md:pt-0 overflow-auto">
         {children}
       </main>
     </div>

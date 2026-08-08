@@ -64,6 +64,11 @@ export class MotoboyGateway {
     this.server.to(`motoboy:${data.pedidoId}`).emit('motoboy:posicao_atualizada', payload);
     // Também emite para a sala do pedido (cliente acompanhando)
     this.server.to(`pedido:${data.pedidoId}`).emit('motoboy:posicao_atualizada', payload);
+    // E para a sala da loja, onde o painel acompanha todas as entregas num mapa só —
+    // sem isso o restaurante teria que entrar na sala de cada pedido em rota.
+    if (pedido.loja_id) {
+      this.server.to(`loja:${pedido.loja_id}`).emit('motoboy:posicao_atualizada', payload);
+    }
   }
 
   // Emitir para clientes quando motoboy é atribuído

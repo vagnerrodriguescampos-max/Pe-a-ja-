@@ -6,6 +6,8 @@ import { getLoja, criarPedido } from '@/lib/api';
 import { Loja, FormaPagamento, TipoPedido } from '@/types';
 import { useCarrinhoStore } from '@/stores/carrinho.store';
 import { formatCurrency, PAGAMENTO_LABELS } from '@/lib/utils';
+import { useFaviconLoja } from '@/hooks/useFaviconLoja';
+import { buscarCep, cepCompleto, formatarCep } from '@/lib/cep';
 import { ArrowLeft, MapPin, User, CreditCard, QrCode, ChevronRight, Wallet, Star, Bike, Footprints, Landmark, Banknote, type LucideIcon } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Link from 'next/link';
@@ -23,16 +25,22 @@ export default function CheckoutPage() {
 
   const [nome, setNome] = useState('');
   const [telefone, setTelefone] = useState('');
+  const [dataNascimento, setDataNascimento] = useState('');
+  const [cep, setCep] = useState('');
+  const [buscandoCep, setBuscandoCep] = useState(false);
   const [rua, setRua] = useState('');
   const [numero, setNumero] = useState('');
   const [complemento, setComplemento] = useState('');
   const [bairro, setBairro] = useState('');
   const [cidade, setCidade] = useState('');
+  const [estado, setEstado] = useState('');
   const [referencia, setReferencia] = useState('');
 
   const [saldoCarteira, setSaldoCarteira] = useState(0);
   const [selosInfo, setSelosInfo] = useState<{ atuais: number; meta: number } | null>(null);
   const [usarCarteira, setUsarCarteira] = useState(false);
+
+  useFaviconLoja(loja?.logo_url);
 
   const { itens, subtotal, limpar, lojaId } = useCarrinhoStore();
   const sub = subtotal();
@@ -117,8 +125,10 @@ export default function CheckoutPage() {
         // The server recalculates every amount from the current menu. The
         // browser only submits the customer's choices, never prices or a discount.
         usar_carteira: usarCarteira,
-        cliente: { nome, telefone },
-        endereco: tipo === 'entrega' ? { rua, numero, complemento, bairro, cidade, referencia } : null,
+        cliente: { nome, telefone, ...(dataNascimento ? { data_nascimento: dataNascimento } : {}) },
+        endereco: tipo === 'entrega'
+          ? { rua, numero, complemento, bairro, cidade, estado, cep, referencia }
+          : null,
         itens: itens.map(item => ({
           produto_id: item.produto_id,
           quantidade: item.quantidade,
@@ -144,6 +154,28 @@ export default function CheckoutPage() {
       <div className="animate-spin w-8 h-8 border-4 border-white/10 border-t-[var(--color-primary)] rounded-full" />
     </div>
   );
+
+  // Busca o endereço assim que o CEP fica completo. O foco vai direto para o número,
+  // que é o único campo que o CEP nunca consegue preencher.
+  async function aoDigitarCep(valor: string) {
+    const formatado = formatarCep(valor);
+    setCep(formatado);
+    if (!cepCompleto(formatado)) return;
+
+    setBuscandoCep(true);
+    const encontrado = await buscarCep(formatado);
+    setBuscandoCep(false);
+
+    if (!encontrado) {
+      toast.error('CEP não encontrado — preencha o endereço manualmente');
+      return;
+    }
+    if (encontrado.logradouro) setRua(encontrado.logradouro);
+    if (encontrado.bairro) setBairro(encontrado.bairro);
+    setCidade(encontrado.cidade);
+    setEstado(encontrado.estado);
+    document.getElementById('checkout-numero')?.focus();
+  }
 
   const inputCls = "w-full px-4 py-3 rounded-xl text-sm outline-none text-gray-100 bg-[#17140e] border border-white/8 placeholder-gray-600 focus:border-white/20 transition-colors";
 
@@ -192,6 +224,14 @@ export default function CheckoutPage() {
               onChange={e => setTelefone(e.target.value)}
               onBlur={e => buscarFidelizacao(e.target.value, nome)}
               placeholder="WhatsApp / Telefone *" className={inputCls} type="tel" />
+            <div>
+              <label htmlFor="checkout-nascimento" className="block text-xs text-gray-500 mb-1.5">
+                Data de nascimento (opcional) — ganhe um mimo no seu aniversário
+              </label>
+              <input id="checkout-nascimento" value={dataNascimento}
+                onChange={e => setDataNascimento(e.target.value)}
+                className={inputCls} type="date" max={new Date().toISOString().slice(0, 10)} />
+            </div>
           </div>
 
           {/* Endereço (só se entrega) */}
@@ -200,18 +240,29 @@ export default function CheckoutPage() {
               <h2 className="font-bold text-white flex items-center gap-2">
                 <MapPin size={16} /> Endereço de entrega
               </h2>
+              <div className="relative">
+                <input value={cep} onChange={e => aoDigitarCep(e.target.value)}
+                  placeholder="CEP" className={inputCls} type="tel" inputMode="numeric" maxLength={9} />
+                {buscandoCep && (
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />
+                )}
+              </div>
               <div className="grid grid-cols-3 gap-3">
                 <input value={rua} onChange={e => setRua(e.target.value)}
                   placeholder="Rua / Av. *" className={`${inputCls} col-span-2`} />
-                <input value={numero} onChange={e => setNumero(e.target.value)}
+                <input id="checkout-numero" value={numero} onChange={e => setNumero(e.target.value)}
                   placeholder="Nº *" className={inputCls} />
               </div>
               <input value={complemento} onChange={e => setComplemento(e.target.value)}
                 placeholder="Complemento (apto, bloco...)" className={inputCls} />
               <input value={bairro} onChange={e => setBairro(e.target.value)}
                 placeholder="Bairro *" className={inputCls} />
-              <input value={cidade} onChange={e => setCidade(e.target.value)}
-                placeholder="Cidade *" className={inputCls} />
+              <div className="grid grid-cols-3 gap-3">
+                <input value={cidade} onChange={e => setCidade(e.target.value)}
+                  placeholder="Cidade *" className={`${inputCls} col-span-2`} />
+                <input value={estado} onChange={e => setEstado(e.target.value.toUpperCase().slice(0, 2))}
+                  placeholder="UF" className={inputCls} maxLength={2} />
+              </div>
               <input value={referencia} onChange={e => setReferencia(e.target.value)}
                 placeholder="Ponto de referência" className={inputCls} />
             </div>

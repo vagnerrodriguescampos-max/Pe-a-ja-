@@ -28,6 +28,7 @@ export class LojaController {
   @Patch('admin/loja')
   async updateLoja(@CurrentLoja() lojaId: string, @Body() body: any) {
     const allowed = ['nome', 'logo_url', 'cor_primaria', 'telefone', 'endereco',
+      'bairro', 'cidade', 'estado', 'cep',
       'chave_pix', 'tipo_chave_pix', 'aberta', 'prazo_medio_min',
       'mensagem_topo', 'taxa_entrega_padrao', 'pedido_minimo',
       'horario_automatico', 'horarios', 'onboarding_concluido'];

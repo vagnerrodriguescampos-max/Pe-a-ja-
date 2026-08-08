@@ -17,6 +17,12 @@ export class MotoboyAdminController {
     return this.motoboyService.listarMotoboys(lojaId);
   }
 
+  // Entregas em rota + última posição de cada motoboy (mapa de acompanhamento).
+  @Get('entregas')
+  entregasAtivas(@CurrentLoja() lojaId: string) {
+    return this.motoboyService.getEntregasAtivas(lojaId);
+  }
+
   @Post('pedido/:pedidoId/atribuir')
   atribuir(
     @CurrentLoja() lojaId: string,

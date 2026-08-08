@@ -36,6 +36,12 @@ export class ClientePedidoDto {
   @IsEmail()
   @MaxLength(254)
   email?: string;
+
+  // Formato ISO (YYYY-MM-DD) para casar com a coluna `date` sem depender do fuso do
+  // navegador. É o que permite disparar cupom de aniversário depois.
+  @IsOptional()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/, { message: 'Data de nascimento inválida' })
+  data_nascimento?: string;
 }
 
 export class EnderecoPedidoDto {
@@ -63,6 +69,17 @@ export class EnderecoPedidoDto {
   @IsNotEmpty()
   @MaxLength(100)
   cidade: string;
+
+  // Vêm preenchidos pela busca de CEP; opcionais para não quebrar quem digita o
+  // endereço manualmente quando o CEP não é encontrado.
+  @IsOptional()
+  @IsString()
+  @MaxLength(2)
+  estado?: string;
+
+  @IsOptional()
+  @Matches(/^\d{5}-?\d{3}$/, { message: 'CEP inválido' })
+  cep?: string;
 
   @IsOptional()
   @IsString()

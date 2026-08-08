@@ -110,8 +110,8 @@ export default function CardapioAdminPage() {
 
   return (
     <AdminLayout>
-      <div className="p-4 md:p-6 max-w-3xl">
-        <div className="flex items-center justify-between mb-6">
+      <div className="px-4 md:px-6 pt-3 md:pt-5 pb-6 max-w-3xl">
+        <div className="flex items-center justify-between mb-4">
           <h1 className="text-page-title text-gray-900">Cardápio</h1>
           <button onClick={() => setModalCat({ aberto: true })}
             className="btn-admin-primary flex items-center gap-2 text-sm py-2.5 px-4">

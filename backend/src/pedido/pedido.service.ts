@@ -274,6 +274,14 @@ export class PedidoService {
     nomeCliente: string,
   ): Promise<Cliente> {
     const email = body.cliente.email?.trim() || null;
+    const dataNascimento = body.cliente.data_nascimento || null;
+
+    // Aniversário só é gravado quando vem preenchido. Um pedido posterior sem o campo
+    // não pode apagar a data que o cliente já informou — é ela que alimenta o cupom
+    // de aniversário.
+    const dadosCliente = dataNascimento
+      ? { nome: nomeCliente, email, data_nascimento: dataNascimento }
+      : { nome: nomeCliente, email };
 
     if (body.usar_carteira) {
       if (!body.cliente_id_fidelizacao) {
@@ -287,8 +295,8 @@ export class PedidoService {
         throw new BadRequestException('Cliente da carteira não confere com o telefone informado');
       }
 
-      await manager.update(Cliente, clienteDaCarteira.id, { nome: nomeCliente, email });
-      return { ...clienteDaCarteira, nome: nomeCliente, email };
+      await manager.update(Cliente, clienteDaCarteira.id, dadosCliente);
+      return { ...clienteDaCarteira, ...dadosCliente };
     }
 
     let cliente = await manager.findOne(Cliente, {
@@ -297,15 +305,14 @@ export class PedidoService {
     if (!cliente) {
       cliente = manager.create(Cliente, {
         loja_id: lojaId,
-        nome: nomeCliente,
         telefone,
-        email,
+        ...dadosCliente,
       });
       return manager.save(cliente);
     }
 
-    await manager.update(Cliente, cliente.id, { nome: nomeCliente, email });
-    return { ...cliente, nome: nomeCliente, email };
+    await manager.update(Cliente, cliente.id, dadosCliente);
+    return { ...cliente, ...dadosCliente };
   }
 
   private async salvarEnderecoSeNecessario(
@@ -326,6 +333,8 @@ export class PedidoService {
       complemento: endereco.complemento?.trim() || null,
       bairro: endereco.bairro.trim(),
       cidade: endereco.cidade.trim(),
+      estado: endereco.estado?.trim().toUpperCase() || null,
+      cep: endereco.cep?.replace(/\D/g, '') || null,
       referencia: endereco.referencia?.trim() || null,
       lat: endereco.lat ?? null,
       lng: endereco.lng ?? null,

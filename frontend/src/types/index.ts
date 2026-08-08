@@ -15,6 +15,10 @@ export interface Loja {
   cor_primaria: string;
   telefone?: string;
   endereco?: string;
+  bairro?: string;
+  cidade?: string;
+  estado?: string;
+  cep?: string;
   chave_pix?: string;
   tipo_chave_pix?: string;
   aberta: boolean;

@@ -51,6 +51,7 @@ export const adminAtualizarOpcao = (id: string, data: any) => api.patch(`/admin/
 export const adminDeletarOpcao = (id: string) => api.delete(`/admin/opcoes/${id}`).then(r => r.data);
 
 export const adminListarMotoboys = () => api.get('/admin/motoboys').then(r => r.data);
+export const adminGetEntregasAtivas = () => api.get('/admin/motoboys/entregas').then(r => r.data);
 export const adminAtribuirMotoboy = (pedidoId: string, motoboyId: string) =>
   api.post(`/admin/motoboys/pedido/${pedidoId}/atribuir`, { motoboy_id: motoboyId }).then(r => r.data);
 

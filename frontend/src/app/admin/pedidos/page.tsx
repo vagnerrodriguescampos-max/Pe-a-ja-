@@ -72,8 +72,15 @@ export default function PedidosPage() {
   }, [usuario?.loja_id, token]);
 
   async function atribuirMotoboy(pedidoId: string, motoboyId: string) {
+    // O <select> tem uma opção vazia ("Selecionar motoboy..."); voltar pra ela não é
+    // uma atribuição — a API responderia 404 tentando achar um motoboy sem id.
+    if (!motoboyId) return;
     try {
       await adminAtribuirMotoboy(pedidoId, motoboyId);
+      // Refletir no estado local: sem isso o modal reabre lendo o `pedidos` antigo e
+      // o select volta pra "Selecionar motoboy...", dando a impressão de que não salvou.
+      setPedidos(prev => prev.map(p => p.id === pedidoId ? { ...p, motoboy_id: motoboyId } : p));
+      setPedidoAberto(prev => prev?.id === pedidoId ? { ...prev, motoboy_id: motoboyId } : prev);
       toast.success('Motoboy atribuído!');
     } catch { toast.error('Erro ao atribuir motoboy'); }
   }
@@ -137,6 +144,7 @@ export default function PedidosPage() {
                 <div className="space-y-2 max-h-[calc(100vh-200px)] overflow-y-auto">
                   {lista.map(p => (
                     <PedidoCard key={p.id} pedido={p}
+                      motoboyNome={motoboys.find((m: any) => m.id === p.motoboy_id)?.nome}
                       onClick={() => setPedidoAberto(p)}
                       onAvancar={() => {
                         const proximos = PROXIMOS_STATUS[p.status] || [];
@@ -207,7 +215,7 @@ export default function PedidosPage() {
               <div className="mb-4">
                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Motoboy</p>
                 <select
-                  defaultValue={pedidoAberto.motoboy_id || ''}
+                  value={pedidoAberto.motoboy_id || ''}
                   onChange={e => atribuirMotoboy(pedidoAberto.id, e.target.value)}
                   className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[var(--admin-accent)]">
                   <option value="">Selecionar motoboy...</option>
@@ -241,8 +249,8 @@ export default function PedidosPage() {
   );
 }
 
-function PedidoCard({ pedido, onClick, onAvancar }: {
-  pedido: Pedido; onClick: () => void; onAvancar: () => void;
+function PedidoCard({ pedido, motoboyNome, onClick, onAvancar }: {
+  pedido: Pedido; motoboyNome?: string; onClick: () => void; onAvancar: () => void;
 }) {
   const minAtras = Math.floor((Date.now() - new Date(pedido.criado_em).getTime()) / 60000);
   const temProximo = !!PROXIMOS_STATUS[pedido.status]?.filter(s => s !== 'cancelado').length;
@@ -265,6 +273,11 @@ function PedidoCard({ pedido, onClick, onAvancar }: {
         {pedido.itens.slice(0, 2).map(i => `${i.quantidade}x ${i.nome_snapshot}`).join(', ')}
         {pedido.itens.length > 2 && ` +${pedido.itens.length - 2} itens`}
       </p>
+      {motoboyNome && (
+        <p className="text-xs text-gray-500 flex items-center gap-1 mb-2">
+          <Bike size={11} /> {motoboyNome}
+        </p>
+      )}
       <div className="flex items-center justify-between">
         <span className="font-bold text-sm text-gray-900">{formatCurrency(Number(pedido.total))}</span>
         {temProximo && (
