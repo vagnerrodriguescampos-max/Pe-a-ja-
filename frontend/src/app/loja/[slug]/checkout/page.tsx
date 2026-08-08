@@ -8,7 +8,8 @@ import { useCarrinhoStore } from '@/stores/carrinho.store';
 import { formatCurrency, PAGAMENTO_LABELS } from '@/lib/utils';
 import { useFaviconLoja } from '@/hooks/useFaviconLoja';
 import { buscarCep, cepCompleto, formatarCep } from '@/lib/cep';
-import { ArrowLeft, MapPin, User, CreditCard, QrCode, ChevronRight, Wallet, Star, Bike, Footprints, Landmark, Banknote, type LucideIcon } from 'lucide-react';
+import { validarCupom } from '@/lib/api';
+import { ArrowLeft, MapPin, User, CreditCard, QrCode, ChevronRight, Wallet, Star, Bike, Footprints, Landmark, Banknote, Ticket, type LucideIcon } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Link from 'next/link';
 
@@ -40,13 +41,23 @@ export default function CheckoutPage() {
   const [selosInfo, setSelosInfo] = useState<{ atuais: number; meta: number } | null>(null);
   const [usarCarteira, setUsarCarteira] = useState(false);
 
+  const [cupomCodigo, setCupomCodigo] = useState('');
+  const [cupomAplicado, setCupomAplicado] = useState<{ codigo: string; desconto: number } | null>(null);
+  const [validandoCupom, setValidandoCupom] = useState(false);
+
   useFaviconLoja(loja?.logo_url);
 
   const { itens, subtotal, limpar, lojaId } = useCarrinhoStore();
   const sub = subtotal();
+  const descontoCupom = cupomAplicado?.desconto ?? 0;
   const taxaEntrega = tipo === 'entrega' ? Number(loja?.taxa_entrega_padrao || 0) : 0;
-  const descontoCarteira = usarCarteira ? Math.min(saldoCarteira, sub + taxaEntrega) : 0;
-  const total = sub + taxaEntrega - descontoCarteira;
+  // O cupom desconta dos itens; a carteira desconta do que sobrou (itens + entrega).
+  // Mesma ordem aplicada no servidor, para o total exibido bater com o cobrado.
+  const subtotalComCupom = Math.max(0, sub - descontoCupom);
+  const descontoCarteira = usarCarteira
+    ? Math.min(saldoCarteira, subtotalComCupom + taxaEntrega)
+    : 0;
+  const total = subtotalComCupom + taxaEntrega - descontoCarteira;
 
   const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -126,6 +137,7 @@ export default function CheckoutPage() {
         // browser only submits the customer's choices, never prices or a discount.
         usar_carteira: usarCarteira,
         cliente: { nome, telefone, ...(dataNascimento ? { data_nascimento: dataNascimento } : {}) },
+        cupom_codigo: cupomAplicado?.codigo || undefined,
         endereco: tipo === 'entrega'
           ? { rua, numero, complemento, bairro, cidade, estado, cep, referencia }
           : null,
@@ -175,6 +187,30 @@ export default function CheckoutPage() {
     setCidade(encontrado.cidade);
     setEstado(encontrado.estado);
     document.getElementById('checkout-numero')?.focus();
+  }
+
+  async function aplicarCupom() {
+    const codigo = cupomCodigo.trim().toUpperCase();
+    if (!codigo) return;
+
+    setValidandoCupom(true);
+    try {
+      // A prévia é só para o cliente ver o valor antes de fechar; o desconto real é
+      // recalculado no servidor na criação do pedido.
+      const r = await validarCupom(slug, codigo, sub, telefone || undefined);
+      setCupomAplicado({ codigo: r.codigo, desconto: Number(r.desconto) });
+      toast.success(`Cupom aplicado! -${formatCurrency(Number(r.desconto))}`);
+    } catch (err: any) {
+      setCupomAplicado(null);
+      toast.error(err?.response?.data?.message || 'Cupom inválido');
+    } finally {
+      setValidandoCupom(false);
+    }
+  }
+
+  function removerCupom() {
+    setCupomAplicado(null);
+    setCupomCodigo('');
   }
 
   const inputCls = "w-full px-4 py-3 rounded-xl text-sm outline-none text-gray-100 bg-[#17140e] border border-white/8 placeholder-gray-600 focus:border-white/20 transition-colors";
@@ -365,6 +401,36 @@ export default function CheckoutPage() {
             </div>
           )}
 
+          {/* Cupom de desconto */}
+          <div className="bg-[#201d16] border border-white/5 rounded-2xl p-4">
+            <h2 className="font-bold text-white flex items-center gap-2 mb-3">
+              <Ticket size={16} /> Cupom de desconto
+            </h2>
+            {cupomAplicado ? (
+              <div className="flex items-center justify-between bg-green-500/10 border border-green-500/25 rounded-xl px-4 py-3">
+                <div>
+                  <p className="text-sm font-bold text-green-400 font-mono">{cupomAplicado.codigo}</p>
+                  <p className="text-xs text-green-500/80">-{formatCurrency(cupomAplicado.desconto)} no pedido</p>
+                </div>
+                <button onClick={removerCupom} className="text-xs text-gray-400 hover:text-white underline">
+                  remover
+                </button>
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                <input value={cupomCodigo}
+                  onChange={e => setCupomCodigo(e.target.value.toUpperCase())}
+                  onKeyDown={e => e.key === 'Enter' && aplicarCupom()}
+                  placeholder="Tem um cupom?" className={`${inputCls} font-mono flex-1`} maxLength={30} />
+                <button onClick={aplicarCupom} disabled={validandoCupom || !cupomCodigo.trim()}
+                  className="px-5 rounded-xl text-sm font-semibold text-white disabled:opacity-40 transition-opacity"
+                  style={{ background: loja.cor_primaria }}>
+                  {validandoCupom ? '...' : 'Aplicar'}
+                </button>
+              </div>
+            )}
+          </div>
+
           {/* Resumo do pedido */}
           <div className="bg-[#201d16] border border-white/5 rounded-2xl p-4">
             <h2 className="font-bold text-white mb-3">Resumo</h2>
@@ -385,6 +451,12 @@ export default function CheckoutPage() {
                 <div className="flex justify-between text-gray-400">
                   <span>Entrega</span>
                   <span>{taxaEntrega > 0 ? formatCurrency(taxaEntrega) : 'Grátis'}</span>
+                </div>
+              )}
+              {descontoCupom > 0 && (
+                <div className="flex justify-between text-green-400 font-medium">
+                  <span>Cupom {cupomAplicado?.codigo}</span>
+                  <span>-{formatCurrency(descontoCupom)}</span>
                 </div>
               )}
               {descontoCarteira > 0 && (

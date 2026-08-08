@@ -7,12 +7,14 @@ describe('PedidoService', () => {
   let pedidoGateway: { emitStatusAtualizado: jest.Mock; emitNovoPedido: jest.Mock };
   let lojaService: { findById: jest.Mock };
   let dataSource: { transaction: jest.Mock };
+  let cupomService: { avaliar: jest.Mock; registrarUso: jest.Mock };
 
   beforeEach(() => {
     pedidoRepo = { findOne: jest.fn(), update: jest.fn() };
     pedidoGateway = { emitStatusAtualizado: jest.fn(), emitNovoPedido: jest.fn() };
     lojaService = { findById: jest.fn() };
     dataSource = { transaction: jest.fn() };
+    cupomService = { avaliar: jest.fn(), registrarUso: jest.fn() };
 
     pedidoService = new PedidoService(
       pedidoRepo as any,
@@ -23,6 +25,7 @@ describe('PedidoService', () => {
       dataSource as any,
       pedidoGateway as any,
       lojaService as any,
+      cupomService as any,
       undefined,
       undefined,
       undefined,

@@ -148,6 +148,12 @@ export class CriarPedidoDto {
   @IsBoolean()
   usar_carteira?: boolean;
 
+  // Só o código trafega — valor e regras do cupom são sempre resolvidos no servidor.
+  @IsOptional()
+  @IsString()
+  @MaxLength(30)
+  cupom_codigo?: string;
+
   @IsOptional()
   @IsUUID()
   cliente_id_fidelizacao?: string;

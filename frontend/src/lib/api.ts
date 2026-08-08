@@ -50,6 +50,18 @@ export const adminCriarOpcao = (grupoId: string, data: any) => api.post(`/admin/
 export const adminAtualizarOpcao = (id: string, data: any) => api.patch(`/admin/opcoes/${id}`, data).then(r => r.data);
 export const adminDeletarOpcao = (id: string) => api.delete(`/admin/opcoes/${id}`).then(r => r.data);
 
+// Cupons de desconto
+export const adminListarCupons = () => api.get('/admin/cupons').then(r => r.data);
+export const adminCriarCupom = (data: any) => api.post('/admin/cupons', data).then(r => r.data);
+export const adminAtualizarCupom = (id: string, data: any) =>
+  api.patch(`/admin/cupons/${id}`, data).then(r => r.data);
+export const adminRemoverCupom = (id: string) => api.delete(`/admin/cupons/${id}`).then(r => r.data);
+export const adminEstatisticasCupom = (id: string) =>
+  api.get(`/admin/cupons/${id}/estatisticas`).then(r => r.data);
+
+export const validarCupom = (slug: string, codigo: string, subtotal: number, telefone?: string) =>
+  api.post(`/loja/${slug}/cupom/validar`, { codigo, subtotal, telefone }).then(r => r.data);
+
 export const adminListarMotoboys = () => api.get('/admin/motoboys').then(r => r.data);
 export const adminGetEntregasAtivas = () => api.get('/admin/motoboys/entregas').then(r => r.data);
 export const adminAtribuirMotoboy = (pedidoId: string, motoboyId: string) =>

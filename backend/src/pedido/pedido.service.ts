@@ -13,6 +13,7 @@ import { Produto } from '../cardapio/produto/produto.entity';
 import { Opcao } from '../cardapio/grupo-opcao/opcao.entity';
 import { Carteira, TransacaoCarteira } from '../fidelizacao/fidelizacao.entity';
 import { CriarPedidoDto, PedidoItemDto } from './dto/criar-pedido.dto';
+import { CupomService } from '../cupom/cupom.service';
 
 const STATUS_TRANSITIONS: Record<string, string[]> = {
   recebido: ['confirmado', 'cancelado'],
@@ -43,6 +44,7 @@ export class PedidoService {
     private dataSource: DataSource,
     private pedidoGateway: PedidoGateway,
     private lojaService: LojaService,
+    private cupomService: CupomService,
     @Optional() private fidelizacaoService: FidelizacaoService,
     @Optional() private pushService: PushService,
     @Optional() private whatsappService: WhatsappService,
@@ -85,7 +87,17 @@ export class PedidoService {
       const taxaEntregaCentavos = body.tipo === 'entrega'
         ? this.paraCentavos(loja.taxa_entrega_padrao, 'taxa de entrega')
         : 0;
-      const totalAntesDoDesconto = subtotalCentavos + taxaEntregaCentavos;
+
+      // Cupom incide sobre os itens, nunca sobre a taxa de entrega — descontar o frete
+      // sairia do bolso da loja sem o cliente perceber o que ganhou.
+      // Revalidado aqui dentro da transação: a prévia do checkout é só informativa e
+      // não pode ser a fonte de verdade do desconto.
+      const cupomAplicado = body.cupom_codigo
+        ? await this.cupomService.avaliar(manager, lojaId, body.cupom_codigo, cliente, subtotalCentavos)
+        : null;
+      const descontoCupomCentavos = cupomAplicado?.descontoCentavos ?? 0;
+
+      const totalAntesDoDesconto = subtotalCentavos - descontoCupomCentavos + taxaEntregaCentavos;
 
       const { carteira, descontoCentavos } = await this.calcularDescontoCarteira(
         manager,
@@ -113,6 +125,8 @@ export class PedidoService {
         subtotal: this.deCentavos(subtotalCentavos),
         taxa_entrega: this.deCentavos(taxaEntregaCentavos),
         desconto: this.deCentavos(descontoCentavos),
+        cupom_id: cupomAplicado?.cupom.id ?? null,
+        desconto_cupom: this.deCentavos(descontoCupomCentavos),
         total: this.deCentavos(totalCentavos),
         forma_pagamento: body.forma_pagamento,
         troco_para: trocoParaCentavos === null ? null : this.deCentavos(trocoParaCentavos),
@@ -166,6 +180,18 @@ export class PedidoService {
           descricao: `Desconto no pedido #${savedPedido.numero_sequencial}`,
           pedido_id: savedPedido.id,
         }));
+      }
+
+      // Registrado dentro da mesma transação do pedido: se o pedido falhar depois
+      // daqui, o resgate do cupom volta atrás junto e o cliente não perde o benefício.
+      if (cupomAplicado) {
+        await this.cupomService.registrarUso(
+          manager,
+          cupomAplicado.cupom,
+          cliente.id,
+          savedPedido.id,
+          descontoCupomCentavos,
+        );
       }
 
       const pedidoCompleto = await manager.findOne(Pedido, {

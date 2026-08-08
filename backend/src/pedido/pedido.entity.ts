@@ -30,8 +30,18 @@ export class Pedido {
   @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
   taxa_entrega: number;
 
+  /** Desconto vindo da carteira de fidelização. */
   @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
   desconto: number;
+
+  // Cupom fica separado do desconto da carteira para o relatório saber quanto cada
+  // mecanismo custou. O id é guardado para o histórico continuar rastreável mesmo se
+  // o cupom for editado ou desativado depois.
+  @Column({ nullable: true })
+  cupom_id: string;
+
+  @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
+  desconto_cupom: number;
 
   @Column({ type: 'decimal', precision: 10, scale: 2 })
   total: number;

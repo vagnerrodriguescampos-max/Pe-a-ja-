@@ -9,6 +9,7 @@ import { LojaModule } from '../loja/loja.module';
 import { FidelizacaoModule } from '../fidelizacao/fidelizacao.module';
 import { PushModule } from '../push/push.module';
 import { WhatsappModule } from '../whatsapp/whatsapp.module';
+import { CupomModule } from '../cupom/cupom.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { WhatsappModule } from '../whatsapp/whatsapp.module';
     FidelizacaoModule,
     PushModule,
     WhatsappModule,
+    CupomModule,
   ],
   providers: [PedidoService],
   controllers: [PedidoPublicoController, PedidoAdminController],
