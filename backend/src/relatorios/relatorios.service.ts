@@ -190,4 +190,37 @@ export class RelatoriosService {
       take: 50,
     });
   }
+
+  /**
+   * Pedidos por canal de divulgação (`?origem=` do link/QR Code).
+   *
+   * Responde "qual divulgação trouxe pedido de verdade" — o lojista compara
+   * Instagram x panfleto x QR na mesa por receita, não por achismo.
+   * Pedidos sem origem entram como "direto" (quem digitou/salvou o link).
+   */
+  async getPedidosPorOrigem(lojaId: string, dias = 30) {
+    const desde = new Date();
+    desde.setDate(desde.getDate() - dias);
+
+    const rows = await this.pedidoRepo
+      .createQueryBuilder('p')
+      .select([
+        "COALESCE(NULLIF(p.origem, ''), 'direto') AS origem",
+        'COUNT(*) AS pedidos',
+        'COALESCE(SUM(p.total), 0) AS receita',
+      ])
+      .where('p.loja_id = :lojaId', { lojaId })
+      .andWhere('p.criado_em >= :desde', { desde })
+      // Cancelado não é resultado de divulgação — inflaria o canal sem receita real.
+      .andWhere("p.status != 'cancelado'")
+      .groupBy('1')
+      .orderBy('receita', 'DESC')
+      .getRawMany();
+
+    return rows.map(r => ({
+      origem: r.origem,
+      pedidos: parseInt(r.pedidos || '0'),
+      receita: parseFloat(r.receita || '0'),
+    }));
+  }
 }

@@ -47,7 +47,7 @@ export default function CheckoutPage() {
 
   useFaviconLoja(loja?.logo_url);
 
-  const { itens, subtotal, limpar, lojaId } = useCarrinhoStore();
+  const { itens, subtotal, limpar, lojaId, origem } = useCarrinhoStore();
   const sub = subtotal();
   const descontoCupom = cupomAplicado?.desconto ?? 0;
   const taxaEntrega = tipo === 'entrega' ? Number(loja?.taxa_entrega_padrao || 0) : 0;
@@ -138,6 +138,7 @@ export default function CheckoutPage() {
         usar_carteira: usarCarteira,
         cliente: { nome, telefone, ...(dataNascimento ? { data_nascimento: dataNascimento } : {}) },
         cupom_codigo: cupomAplicado?.codigo || undefined,
+        origem: origem || undefined,
         endereco: tipo === 'entrega'
           ? { rua, numero, complemento, bairro, cidade, estado, cep, referencia }
           : null,

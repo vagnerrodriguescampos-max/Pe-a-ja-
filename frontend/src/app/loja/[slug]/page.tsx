@@ -27,9 +27,16 @@ export default function CardapioPage() {
   const [carrinhoAberto, setCarrinhoAberto] = useState(false);
   const [catDrawer, setCatDrawer] = useState<Categoria | null>(null);
 
-  const { quantidadeTotal, total, setLoja: setLojaCarrinho } = useCarrinhoStore();
+  const { quantidadeTotal, total, setLoja: setLojaCarrinho, setOrigem } = useCarrinhoStore();
 
   useFaviconLoja(loja?.logo_url);
+
+  // De onde veio o cliente (?origem=instagram, ?origem=qr-mesa...). Lido de
+  // window em vez de useSearchParams para não exigir <Suspense> no build.
+  useEffect(() => {
+    const origem = new URLSearchParams(window.location.search).get('origem');
+    if (origem) setOrigem(origem);
+  }, []);
 
   useEffect(() => {
     async function load() {

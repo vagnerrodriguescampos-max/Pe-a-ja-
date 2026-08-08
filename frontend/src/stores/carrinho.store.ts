@@ -5,12 +5,15 @@ import { ItemCarrinho, Produto, Opcao } from '@/types';
 interface CarrinhoState {
   lojaId: string | null;
   lojaSlug: string | null;
+  /** Canal de divulgação que trouxe o cliente (`?origem=` do link/QR Code). */
+  origem: string | null;
   itens: ItemCarrinho[];
   adicionarItem: (produto: Produto, quantidade: number, opcoesSelecionadas: Record<string, Opcao[]>, observacao?: string) => void;
   removerItem: (id: string) => void;
   alterarQuantidade: (id: string, quantidade: number) => void;
   limpar: () => void;
   setLoja: (lojaId: string, slug: string) => void;
+  setOrigem: (origem: string) => void;
   total: () => number;
   subtotal: () => number;
   quantidadeTotal: () => number;
@@ -26,9 +29,18 @@ export const useCarrinhoStore = create<CarrinhoState>()(
     (set, get) => ({
       lojaId: null,
       lojaSlug: null,
+      origem: null,
       itens: [],
 
       setLoja: (lojaId, slug) => set({ lojaId, lojaSlug: slug }),
+
+      // Só grava quando vem origem de verdade: navegar do cardápio para o checkout
+      // perde o ?origem= da URL, e sobrescrever com vazio apagaria a atribuição
+      // no meio do caminho. Link novo com origem diferente vence (last-touch).
+      setOrigem: (origem) => {
+        const limpa = origem.trim().toLowerCase().slice(0, 50);
+        if (limpa) set({ origem: limpa });
+      },
 
       adicionarItem: (produto, quantidade, opcoesSelecionadas, observacao) => {
         const opcoes: ItemCarrinho['opcoes'] = [];
@@ -73,7 +85,8 @@ export const useCarrinhoStore = create<CarrinhoState>()(
         }));
       },
 
-      limpar: () => set({ itens: [], lojaId: null, lojaSlug: null }),
+      // origem zera junto: ela vale para a compra que acabou de sair, não para a próxima.
+      limpar: () => set({ itens: [], lojaId: null, lojaSlug: null, origem: null }),
 
       subtotal: () => get().itens.reduce((acc, i) => acc + i.total, 0),
       total: () => get().subtotal(),

@@ -7,7 +7,8 @@ import { Pedido, Loja, StatusPedido } from '@/types';
 import { formatCurrency, STATUS_LABELS, PAGAMENTO_LABELS } from '@/lib/utils';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { useAuthStore } from '@/stores/auth.store';
-import { RefreshCw, Clock, ChevronRight, Bell, CheckCircle2, XCircle, Bike, ShoppingBag } from 'lucide-react';
+import { RefreshCw, Clock, ChevronRight, Bell, CheckCircle2, XCircle, Bike, ShoppingBag, Plus } from 'lucide-react';
+import NovoPedidoModal from '@/components/admin/NovoPedidoModal';
 import toast from 'react-hot-toast';
 
 const COLUNAS: { status: StatusPedido; label: string; cor: string }[] = [
@@ -33,6 +34,7 @@ export default function PedidosPage() {
   const [loading, setLoading] = useState(true);
   const [pedidoAberto, setPedidoAberto] = useState<Pedido | null>(null);
   const [motoboys, setMotoboys] = useState<any[]>([]);
+  const [novoPedidoAberto, setNovoPedidoAberto] = useState(false);
   const { usuario, token } = useAuthStore();
 
   const carregarPedidos = useCallback(async () => {
@@ -123,6 +125,12 @@ export default function PedidosPage() {
                 {loja.aberta ? <><CheckCircle2 size={13} /> Aberta</> : <><XCircle size={13} /> Fechada</>}
               </span>
             )}
+            <button
+              onClick={() => setNovoPedidoAberto(true)}
+              className="btn-admin-primary py-2 px-3.5 inline-flex items-center gap-1.5"
+            >
+              <Plus size={16} /> Novo pedido
+            </button>
             <button onClick={carregarPedidos} className="p-2 bg-white rounded-xl border border-gray-200 text-gray-500 hover:text-gray-800 transition-colors">
               <RefreshCw size={16} />
             </button>
@@ -244,6 +252,13 @@ export default function PedidosPage() {
             )}
           </div>
         </div>
+      )}
+
+      {novoPedidoAberto && (
+        <NovoPedidoModal
+          onFechar={() => setNovoPedidoAberto(false)}
+          onCriado={carregarPedidos}
+        />
       )}
     </AdminLayout>
   );

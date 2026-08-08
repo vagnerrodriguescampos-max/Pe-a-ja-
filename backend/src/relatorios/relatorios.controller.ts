@@ -35,6 +35,11 @@ export class RelatoriosController {
   getHeatmap(@CurrentLoja() lojaId: string, @Query('dias') dias?: string) {
     return this.relatoriosService.getHeatmapHorario(lojaId, dias ? parseInt(dias) : 30);
   }
+
+  @Get('por-origem')
+  getPorOrigem(@CurrentLoja() lojaId: string, @Query('dias') dias?: string) {
+    return this.relatoriosService.getPedidosPorOrigem(lojaId, dias ? parseInt(dias) : 30);
+  }
 }
 
 @UseGuards(JwtAuthGuard, RolesGuard)

@@ -65,6 +65,10 @@ export class Pedido {
   @Column({ nullable: true })
   motoboy_id: string;
 
+  /** Canal de divulgação que trouxe o pedido (`?origem=` do link/QR Code). */
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  origem: string;
+
   @OneToMany(() => PedidoItem, i => i.pedido, { eager: true, cascade: true })
   itens: PedidoItem[];
 

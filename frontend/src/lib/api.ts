@@ -62,6 +62,14 @@ export const adminEstatisticasCupom = (id: string) =>
 export const validarCupom = (slug: string, codigo: string, subtotal: number, telefone?: string) =>
   api.post(`/loja/${slug}/cupom/validar`, { codigo, subtotal, telefone }).then(r => r.data);
 
+// Divulgação: quanto cada canal (?origem= do link/QR) trouxe de pedido e receita.
+export const adminRelatorioPorOrigem = (dias = 30) =>
+  api.get('/admin/relatorios/por-origem', { params: { dias } }).then(r => r.data);
+
+// Pedido digitado pelo balcão (chegou por telefone/WhatsApp).
+export const adminCriarPedidoManual = (body: any) =>
+  api.post('/admin/pedidos', body).then(r => r.data);
+
 export const adminListarMotoboys = () => api.get('/admin/motoboys').then(r => r.data);
 export const adminGetEntregasAtivas = () => api.get('/admin/motoboys/entregas').then(r => r.data);
 export const adminAtribuirMotoboy = (pedidoId: string, motoboyId: string) =>

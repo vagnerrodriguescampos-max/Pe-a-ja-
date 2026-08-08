@@ -154,6 +154,12 @@ export class CriarPedidoDto {
   @MaxLength(30)
   cupom_codigo?: string;
 
+  // Canal de divulgação (?origem= do link/QR). Restrito a um slug curto porque vai
+  // direto para relatório: texto livre viraria lixo agrupado errado.
+  @IsOptional()
+  @Matches(/^[a-z0-9_-]{1,50}$/i, { message: 'Origem inválida' })
+  origem?: string;
+
   @IsOptional()
   @IsUUID()
   cliente_id_fidelizacao?: string;

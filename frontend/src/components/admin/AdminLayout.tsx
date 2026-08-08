@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useAuthStore } from '@/stores/auth.store';
-import { LayoutGrid, UtensilsCrossed, Settings, LogOut, Menu, X, MessageSquare, BarChart2, Users, Gift, Download, Bell, BellOff, UserCog, HelpCircle, Utensils, Bike, Ticket } from 'lucide-react';
+import { LayoutGrid, UtensilsCrossed, Settings, LogOut, Menu, X, MessageSquare, BarChart2, Users, Gift, Download, Bell, BellOff, UserCog, HelpCircle, Utensils, Bike, Ticket, QrCode } from 'lucide-react';
 import { useInstallPrompt } from '@/hooks/useInstallPrompt';
 import { usePushNotification } from '@/hooks/usePushNotification';
 import { adminGetLoja } from '@/lib/api';
@@ -18,6 +18,7 @@ const NAV = [
   { href: '/admin/clientes', label: 'Clientes', icon: Users },
   { href: '/admin/fidelizacao', label: 'Fidelização', icon: Gift, adminOnly: true },
   { href: '/admin/cupons', label: 'Cupons', icon: Ticket, adminOnly: true },
+  { href: '/admin/divulgacao', label: 'Divulgação', icon: QrCode, adminOnly: true },
   { href: '/admin/cardapio', label: 'Cardápio', icon: UtensilsCrossed },
   { href: '/admin/usuarios', label: 'Usuários', icon: UserCog, adminOnly: true },
   { href: '/admin/configuracoes', label: 'Configurações', icon: Settings, adminOnly: true },

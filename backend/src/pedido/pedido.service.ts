@@ -54,10 +54,19 @@ export class PedidoService {
    * The browser only chooses product and option IDs. Names, prices and totals
    * are always resolved from the store's current catalog inside the transaction.
    */
-  async criarPedido(lojaId: string, body: CriarPedidoDto) {
+  async criarPedido(
+    lojaId: string,
+    body: CriarPedidoDto,
+    // Lançamento manual pelo balcão: o atendente digita um pedido que chegou por
+    // telefone/WhatsApp, e isso precisa funcionar fora do horário de atendimento
+    // (fechar a loja bloqueia o autoatendimento, não o trabalho de quem está lá).
+    opcoes: { ignorarLojaFechada?: boolean } = {},
+  ) {
     const loja = await this.lojaService.findById(lojaId);
 
-    if (!loja.aberta) throw new BadRequestException('Loja fechada no momento');
+    if (!loja.aberta && !opcoes.ignorarLojaFechada) {
+      throw new BadRequestException('Loja fechada no momento');
+    }
 
     const resultado = await this.dataSource.transaction(async manager => {
       const telefone = this.normalizarTelefone(body.cliente?.telefone);
@@ -132,6 +141,7 @@ export class PedidoService {
         troco_para: trocoParaCentavos === null ? null : this.deCentavos(trocoParaCentavos),
         observacoes: body.observacoes?.trim() || null,
         endereco_entrega: enderecoSnapshot,
+        origem: body.origem?.toLowerCase() || null,
         token_acesso: tokenAcesso,
       });
       const savedPedido = await manager.save(pedido);

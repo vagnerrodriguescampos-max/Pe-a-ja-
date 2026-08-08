@@ -58,6 +58,23 @@ export class PedidoAdminController {
     return this.pedidoService.listarPedidos(lojaId, status);
   }
 
+  /**
+   * Pedido lançado à mão pelo balcão (chegou por telefone/WhatsApp).
+   *
+   * Separado da rota pública porque o contexto é outro: aqui já há sessão
+   * autenticada (sem rate limit de antispam), a loja pode estar fechada, e a
+   * origem é fixada no servidor para o relatório de divulgação não ser
+   * contaminado por um valor vindo do formulário.
+   */
+  @Post()
+  async criarManual(@CurrentLoja() lojaId: string, @Body() body: CriarPedidoDto) {
+    return this.pedidoService.criarPedido(
+      lojaId,
+      { ...body, origem: 'manual' },
+      { ignorarLojaFechada: true },
+    );
+  }
+
   // O app do motoboy usa esta mesma rota para marcar "entregue" — por isso o papel motoboy também entra.
   @Roles('admin_loja', 'super_admin', 'atendente', 'motoboy')
   @Patch(':id/status')
