@@ -1,0 +1,10 @@
+node_modules
+.next
+out
+.netlify
+data/imports
+data/registry.json
+data/uploads
+*.log
+.DS_Store
+.env*.local
