@@ -1,0 +1,10 @@
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+# Upload de planilhas grandes pode levar mais de 10s (limite padrão de função).
+[functions]
+  node_bundler = "esbuild"

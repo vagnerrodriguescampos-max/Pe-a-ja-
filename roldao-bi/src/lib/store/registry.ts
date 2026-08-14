@@ -1,54 +1,57 @@
-import fs from 'node:fs';
 import type { ImportRecord, Registry } from '../types';
-import { ensureDataDirs, REGISTRY_PATH } from './paths';
+import { getBiStore } from './blobStore';
 
-function readRaw(): Registry {
-  ensureDataDirs();
-  if (!fs.existsSync(REGISTRY_PATH)) return { imports: [], activeImportId: null };
+const REGISTRY_KEY = 'registry.json';
+
+async function readRaw(): Promise<Registry> {
+  const store = getBiStore();
   try {
-    const txt = fs.readFileSync(REGISTRY_PATH, 'utf-8');
-    return JSON.parse(txt) as Registry;
+    const reg = await store.get(REGISTRY_KEY, { type: 'json' });
+    return (reg as Registry) ?? { imports: [], activeImportId: null };
   } catch {
     return { imports: [], activeImportId: null };
   }
 }
 
-function writeRaw(reg: Registry) {
-  ensureDataDirs();
-  fs.writeFileSync(REGISTRY_PATH, JSON.stringify(reg, null, 2), 'utf-8');
+async function writeRaw(reg: Registry): Promise<void> {
+  const store = getBiStore();
+  await store.setJSON(REGISTRY_KEY, reg);
 }
 
 /** Lista o histórico completo de importações. Nunca é apagado automaticamente. */
-export function listImports(): ImportRecord[] {
-  return readRaw().imports.slice().sort((a, b) => (a.importedAt < b.importedAt ? 1 : -1));
+export async function listImports(): Promise<ImportRecord[]> {
+  const reg = await readRaw();
+  return reg.imports.slice().sort((a, b) => (a.importedAt < b.importedAt ? 1 : -1));
 }
 
-export function getImport(id: string): ImportRecord | undefined {
-  return readRaw().imports.find((i) => i.id === id);
+export async function getImport(id: string): Promise<ImportRecord | undefined> {
+  const reg = await readRaw();
+  return reg.imports.find((i) => i.id === id);
 }
 
-export function getActiveImport(): ImportRecord | undefined {
-  const reg = readRaw();
+export async function getActiveImport(): Promise<ImportRecord | undefined> {
+  const reg = await readRaw();
   if (!reg.activeImportId) return undefined;
   return reg.imports.find((i) => i.id === reg.activeImportId);
 }
 
-export function getActiveImportId(): string | null {
-  return readRaw().activeImportId;
+export async function getActiveImportId(): Promise<string | null> {
+  const reg = await readRaw();
+  return reg.activeImportId;
 }
 
-export function upsertImport(record: ImportRecord) {
-  const reg = readRaw();
+export async function upsertImport(record: ImportRecord): Promise<void> {
+  const reg = await readRaw();
   const idx = reg.imports.findIndex((i) => i.id === record.id);
   if (idx >= 0) reg.imports[idx] = record;
   else reg.imports.push(record);
-  writeRaw(reg);
+  await writeRaw(reg);
 }
 
-export function setActiveImport(id: string) {
-  const reg = readRaw();
+export async function setActiveImport(id: string): Promise<void> {
+  const reg = await readRaw();
   if (!reg.imports.some((i) => i.id === id)) throw new Error('Importação não encontrada');
   reg.imports = reg.imports.map((i) => ({ ...i, isActive: i.id === id }));
   reg.activeImportId = id;
-  writeRaw(reg);
+  await writeRaw(reg);
 }

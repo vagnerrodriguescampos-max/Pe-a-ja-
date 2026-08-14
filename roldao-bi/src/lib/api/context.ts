@@ -2,10 +2,11 @@ import type { FactRow, GlobalFilters, ImportRecord } from '../types';
 import { getActiveImport } from '../store/registry';
 import { loadFacts } from '../store/facts';
 
-export function getActiveContext(): { record: ImportRecord | null; facts: FactRow[] } {
-  const record = getActiveImport();
+export async function getActiveContext(): Promise<{ record: ImportRecord | null; facts: FactRow[] }> {
+  const record = await getActiveImport();
   if (!record) return { record: null, facts: [] };
-  return { record, facts: loadFacts(record.id) };
+  const facts = await loadFacts(record.id);
+  return { record, facts };
 }
 
 function parseList(sp: URLSearchParams, key: string): string[] | undefined {

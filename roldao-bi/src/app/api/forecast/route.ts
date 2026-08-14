@@ -5,7 +5,7 @@ import { computeForecast } from '@/lib/kpi/forecast';
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
-  const { facts } = getActiveContext();
+  const { facts } = await getActiveContext();
   const filters = parseFilters(req.nextUrl.searchParams);
   const forecast = computeForecast(facts, filters);
   return NextResponse.json({ forecast });

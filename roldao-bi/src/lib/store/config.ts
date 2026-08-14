@@ -1,5 +1,4 @@
-import fs from 'node:fs';
-import { CONFIG_PATH, ensureDataDirs } from './paths';
+import { getBiStore } from './blobStore';
 
 export interface BiConfig {
   atingimentoCritico: number; // < este valor = crítico
@@ -21,19 +20,22 @@ export const DEFAULT_CONFIG: BiConfig = {
   usuarioLogado: 'Vagner Campos',
 };
 
-export function getConfig(): BiConfig {
-  ensureDataDirs();
-  if (!fs.existsSync(CONFIG_PATH)) return DEFAULT_CONFIG;
+const CONFIG_KEY = 'config.json';
+
+export async function getConfig(): Promise<BiConfig> {
+  const store = getBiStore();
   try {
-    return { ...DEFAULT_CONFIG, ...JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf-8')) };
+    const cfg = await store.get(CONFIG_KEY, { type: 'json' });
+    return { ...DEFAULT_CONFIG, ...((cfg as Partial<BiConfig>) ?? {}) };
   } catch {
     return DEFAULT_CONFIG;
   }
 }
 
-export function saveConfig(cfg: Partial<BiConfig>) {
-  ensureDataDirs();
-  const merged = { ...getConfig(), ...cfg };
-  fs.writeFileSync(CONFIG_PATH, JSON.stringify(merged, null, 2), 'utf-8');
+export async function saveConfig(cfg: Partial<BiConfig>): Promise<BiConfig> {
+  const current = await getConfig();
+  const merged = { ...current, ...cfg };
+  const store = getBiStore();
+  await store.setJSON(CONFIG_KEY, merged);
   return merged;
 }

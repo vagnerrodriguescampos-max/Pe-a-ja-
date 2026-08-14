@@ -18,7 +18,7 @@ function csvEscape(v: unknown): string {
 }
 
 export async function GET(req: NextRequest) {
-  const { facts } = getActiveContext();
+  const { facts } = await getActiveContext();
   const filters = parseFilters(req.nextUrl.searchParams);
   const dimParam = (req.nextUrl.searchParams.get('dim') as RankingDim) || 'loja_codigo';
   const dim = VALID_DIMS.includes(dimParam) ? dimParam : 'loja_codigo';

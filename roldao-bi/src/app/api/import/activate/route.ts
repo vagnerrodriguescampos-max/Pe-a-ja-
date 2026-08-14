@@ -7,7 +7,7 @@ export async function POST(req: NextRequest) {
   const { id } = await req.json();
   if (!id) return NextResponse.json({ error: 'id é obrigatório' }, { status: 400 });
   try {
-    setActiveImport(id);
+    await setActiveImport(id);
     return NextResponse.json({ ok: true });
   } catch (err) {
     return NextResponse.json({ error: err instanceof Error ? err.message : 'Erro' }, { status: 400 });

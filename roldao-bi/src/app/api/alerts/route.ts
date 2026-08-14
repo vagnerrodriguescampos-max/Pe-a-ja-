@@ -6,9 +6,9 @@ import { getConfig } from '@/lib/store/config';
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
-  const { facts } = getActiveContext();
+  const { facts } = await getActiveContext();
   const filters = parseFilters(req.nextUrl.searchParams);
-  const cfg = getConfig();
+  const cfg = await getConfig();
   const alerts = generateAlerts(facts, filters, cfg);
   return NextResponse.json({ alerts });
 }

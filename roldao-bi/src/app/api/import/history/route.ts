@@ -4,5 +4,5 @@ import { listImports } from '@/lib/store/registry';
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-  return NextResponse.json({ imports: listImports() });
+  return NextResponse.json({ imports: await listImports() });
 }

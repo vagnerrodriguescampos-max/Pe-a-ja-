@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
 
 /** Loja (top N por venda) x Dia — célula = atingimento % quando há orçamento diário, senão venda. */
 export async function GET(req: NextRequest) {
-  const { facts } = getActiveContext();
+  const { facts } = await getActiveContext();
   const filters = withDefaultPeriod(facts, parseFilters(req.nextUrl.searchParams));
   const limit = Number(req.nextUrl.searchParams.get('limit') ?? 12);
   const filtered = applyFilters(facts, filters);

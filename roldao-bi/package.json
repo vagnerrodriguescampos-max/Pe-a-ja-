@@ -11,6 +11,7 @@
     "sample:generate": "node scripts/generate-sample.mjs"
   },
   "dependencies": {
+    "@netlify/blobs": "^10.7.13",
     "clsx": "^2.1.1",
     "date-fns": "^3.6.0",
     "lucide-react": "^0.379.0",
@@ -22,6 +23,7 @@
     "zustand": "^4.5.2"
   },
   "devDependencies": {
+    "@netlify/plugin-nextjs": "^5.15.13",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",

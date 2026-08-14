@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
   const buffer = Buffer.from(arrayBuffer);
 
   try {
-    const record = runImport({
+    const record = await runImport({
       fileName: file.name,
       fileSizeBytes: buffer.byteLength,
       buffer,

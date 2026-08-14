@@ -12,7 +12,7 @@ export interface RunImportOptions {
   activate: boolean;
 }
 
-export function runImport(opts: RunImportOptions): ImportRecord {
+export async function runImport(opts: RunImportOptions): Promise<ImportRecord> {
   const importId = uuid();
   const importedAt = new Date().toISOString();
 
@@ -80,17 +80,17 @@ export function runImport(opts: RunImportOptions): ImportRecord {
   };
 
   if (status !== 'erro') {
-    saveFacts(importId, facts);
+    await saveFacts(importId, facts);
     const preview: Record<string, unknown[]> = {};
     for (const s of sheets) {
       preview[s.sheetName] = facts.filter((f) => f.sheetName === s.sheetName).slice(0, 30);
     }
-    saveRawPreview(importId, preview);
+    await saveRawPreview(importId, preview);
   }
 
-  upsertImport(record);
+  await upsertImport(record);
   if (opts.activate && status !== 'erro') {
-    setActiveImport(importId);
+    await setActiveImport(importId);
     record.isActive = true;
   }
 

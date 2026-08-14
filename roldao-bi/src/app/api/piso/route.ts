@@ -7,7 +7,7 @@ import { pct } from '@/lib/kpi/format';
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
-  const { facts } = getActiveContext();
+  const { facts } = await getActiveContext();
   const filters = withDefaultPeriod(facts, parseFilters(req.nextUrl.searchParams));
   const current = applyFilters(facts, filters).filter((f) => f.sheetRole === 'PISO');
   const porLoja = aggregateByDim(current, 'loja_codigo', 'loja_nome');

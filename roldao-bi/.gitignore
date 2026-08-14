@@ -1,6 +1,7 @@
 node_modules
 .next
 out
+.netlify
 data/imports
 data/registry.json
 data/uploads

@@ -6,11 +6,16 @@ Sistema de Business Intelligence para a rede de atacarejo **Roldão Atacadista**
 
 ## Como rodar
 
+O armazenamento (histórico de importações, fatos, configurações) usa **Netlify Blobs** — para ter isso emulado localmente, rode com o Netlify CLI:
+
 ```bash
 cd roldao-bi
 npm install
-npm run dev        # http://localhost:4000
+npx netlify link --id <SITE_ID>   # uma vez, para conectar ao site bi-roldao
+npx netlify dev                    # http://localhost:8888
 ```
+
+`npm run dev` (sem o CLI) também sobe o site, mas qualquer rota que leia/grave dados (import, KPIs, config...) falha com "environment has not been configured to use Netlify Blobs" — use `netlify dev` para ter isso funcionando localmente.
 
 Não há nenhuma base pré-carregada — a tela inicial pede para importar uma planilha. Para gerar uma planilha de exemplo (dados fictícios, mesma estrutura de abas do Roldão) e testar o fluxo completo sem precisar do arquivo real:
 
@@ -42,7 +47,7 @@ src/
                               "despivota" colunas de período em linhas de fato, enriquece dimensões
       cellUtils.ts            parsing de número/data tolerante a formatos BR
       runImport.ts             orquestra parseWorkbook + grava no histórico
-    store/                  persistência em arquivo (data/) — registry de importações + fatos por importação
+    store/                  persistência em Netlify Blobs — registry de importações + fatos por importação
     query/                  filtros, agregação, ranking, resolução de "abas primárias" (evita dupla contagem)
     kpi/                    fórmulas executivas, forecast, gauge, alertas/oportunidades, qualidade da base
   app/
@@ -76,7 +81,23 @@ Isso é exibido no tooltip de cada KPI card. Quando a própria planilha já forn
 
 ## Importação de novas planilhas
 
-`Importar Base` aceita qualquer nova versão do arquivo — não é preciso reconstruir nada. O histórico de importações fica em `data/registry.json` e nunca é apagado automaticamente; é possível reativar uma importação anterior a qualquer momento para comparação. Cada importação registra, por aba: papel identificado, linhas válidas/erro, colunas mapeadas e colunas não reconhecidas — visível também em **Qualidade dos Dados**.
+`Importar Base` aceita qualquer nova versão do arquivo — não é preciso reconstruir nada. O histórico de importações fica no Netlify Blobs (store `roldao-bi`, escopo global — sobrevive a novos deploys) e nunca é apagado automaticamente; é possível reativar uma importação anterior a qualquer momento para comparação. Cada importação registra, por aba: papel identificado, linhas válidas/erro, colunas mapeadas e colunas não reconhecidas — visível também em **Qualidade dos Dados**.
+
+## Deploy no Netlify
+
+O site `bi-roldao` (https://bi-roldao.netlify.app) já foi criado na conta Netlify do usuário. `netlify.toml` já configura o build (`npm run build`) e o plugin oficial `@netlify/plugin-nextjs`.
+
+Duas formas de publicar:
+
+1. **CLI/API** (deploy único, a partir de `roldao-bi/`):
+   ```bash
+   npx @netlify/mcp@latest --site-id <SITE_ID> --proxy-path "<PROXY_PATH_TOKEN>"
+   ```
+   (peça um comando com token novo — o token de deploy expira).
+
+2. **Git-based (recomendado, deploy contínuo)**: no painel do site → *Site configuration → Build & deploy → Link repository* → repositório `vagnerrodriguescampos-max/Pe-a-ja-`, **base directory** `roldao-bi`, branch desejada. A partir daí todo push já builda e publica automaticamente.
+
+A persistência via Netlify Blobs funciona sem nenhuma configuração adicional em produção (provisionada automaticamente pelo runtime do Netlify).
 
 ## Limitações conhecidas / próximos passos
 
@@ -84,7 +105,7 @@ Isso é exibido no tooltip de cada KPI card. Quando a própria planilha já forn
 - **Exportação**: implementada em CSV (`/api/export/csv`); exportação em Excel/PDF/imagem do dashboard ficou fora do escopo desta primeira versão.
 - **Heatmaps**: implementado Loja × Dia (Venda Diária). Categoria/Segmento/Subcategoria × Período podem ser adicionados reaproveitando `HeatmapGrid` + uma nova rota de agregação 2D.
 - **Autenticação**: o "usuário logado" no cabeçalho é configurável em Configurações; não há login/multiusuário nesta versão.
-- **Persistência**: arquivo local (`data/`), adequado para uma instância única. Para múltiplos usuários simultâneos importando ao mesmo tempo, trocar por um banco de dados é o próximo passo natural — o modelo de dados (`FactRow`) já é tabular e migra diretamente para SQL.
+- **Consistência dos Blobs**: leitura "eventualmente consistente" por padrão (propagação em até ~60s); como o volume de escritas é baixo (uma por importação/config), isso raramente é perceptível. Para múltiplos usuários editando simultaneamente, considerar `consistency: 'strong'` no store.
 
 ## Segurança
 

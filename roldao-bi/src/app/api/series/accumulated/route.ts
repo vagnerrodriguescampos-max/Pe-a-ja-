@@ -7,7 +7,7 @@ import { hasPrimarySheets, restrictToPrimary } from '@/lib/query/primary';
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
-  const { facts } = getActiveContext();
+  const { facts } = await getActiveContext();
   const filters = withDefaultPeriod(facts, parseFilters(req.nextUrl.searchParams));
   const isDimensionalDrilldown = Boolean(filters.categoria?.length || filters.segmento?.length || filters.subcategoria?.length || filters.canal?.length);
   const usesPrimary = hasPrimarySheets(facts);
