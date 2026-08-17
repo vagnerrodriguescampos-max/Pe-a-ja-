@@ -15,7 +15,12 @@ function rawPreviewKey(importId: string) {
 
 export async function saveFacts(importId: string, facts: FactRow[]): Promise<void> {
   const store = getBiStore();
-  await store.setJSON(factsKey(importId), facts);
+  try {
+    await store.setJSON(factsKey(importId), facts);
+  } catch (err) {
+    console.error(`[facts] falha ao gravar facts/${importId}.json (${facts.length} registros) no Blob Store:`, err);
+    throw err;
+  }
   cache.set(importId, facts);
 }
 
@@ -23,7 +28,13 @@ export async function loadFacts(importId: string): Promise<FactRow[]> {
   const cached = cache.get(importId);
   if (cached) return cached;
   const store = getBiStore();
-  const facts = (await store.get(factsKey(importId), { type: 'json' })) as FactRow[] | null;
+  let facts: FactRow[] | null;
+  try {
+    facts = (await store.get(factsKey(importId), { type: 'json' })) as FactRow[] | null;
+  } catch (err) {
+    console.error(`[facts] falha ao ler facts/${importId}.json do Blob Store:`, err);
+    throw err;
+  }
   const result = facts ?? [];
   cache.set(importId, result);
   return result;

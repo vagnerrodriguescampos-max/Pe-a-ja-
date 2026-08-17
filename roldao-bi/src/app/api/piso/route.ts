@@ -3,10 +3,11 @@ import { getActiveContext, parseFilters } from '@/lib/api/context';
 import { applyFilters, withDefaultPeriod } from '@/lib/query/filters';
 import { aggregateByDim } from '@/lib/query/aggregate';
 import { pct } from '@/lib/kpi/format';
+import { withApiErrorHandling } from '@/lib/api/handler';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(req: NextRequest) {
+export const GET = withApiErrorHandling(async (req: NextRequest) => {
   const { facts } = await getActiveContext();
   const filters = withDefaultPeriod(facts, parseFilters(req.nextUrl.searchParams));
   const current = applyFilters(facts, filters).filter((f) => f.sheetRole === 'PISO');
@@ -24,4 +25,4 @@ export async function GET(req: NextRequest) {
   })).sort((a, b) => (a.atingimentoPisoPct ?? 999) - (b.atingimentoPisoPct ?? 999));
 
   return NextResponse.json({ rows, disponivel: current.length > 0 });
-}
+});

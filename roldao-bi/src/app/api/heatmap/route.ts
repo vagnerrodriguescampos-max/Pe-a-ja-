@@ -4,11 +4,12 @@ import { applyFilters, withDefaultPeriod } from '@/lib/query/filters';
 import { aggregateByDim } from '@/lib/query/aggregate';
 import { hasPrimarySheets, restrictToPrimary } from '@/lib/query/primary';
 import { formatDateBR, pct } from '@/lib/kpi/format';
+import { withApiErrorHandling } from '@/lib/api/handler';
 
 export const dynamic = 'force-dynamic';
 
 /** Loja (top N por venda) x Dia — célula = atingimento % quando há orçamento diário, senão venda. */
-export async function GET(req: NextRequest) {
+export const GET = withApiErrorHandling(async (req: NextRequest) => {
   const { facts } = await getActiveContext();
   const filters = withDefaultPeriod(facts, parseFilters(req.nextUrl.searchParams));
   const limit = Number(req.nextUrl.searchParams.get('limit') ?? 12);
@@ -41,4 +42,4 @@ export async function GET(req: NextRequest) {
   );
 
   return NextResponse.json({ linhas, colunas, cells, mode: temOrcamentoDiario ? 'pct' : 'raw' });
-}
+});

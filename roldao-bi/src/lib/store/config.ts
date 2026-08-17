@@ -27,7 +27,11 @@ export async function getConfig(): Promise<BiConfig> {
   try {
     const cfg = await store.get(CONFIG_KEY, { type: 'json' });
     return { ...DEFAULT_CONFIG, ...((cfg as Partial<BiConfig>) ?? {}) };
-  } catch {
+  } catch (err) {
+    // Config não é crítica para exibir dados — cai para os padrões, mas
+    // loga para não mascarar silenciosamente um problema de conectividade
+    // com o Blob Store (ver mesmo raciocínio em registry.ts).
+    console.error('[config] falha ao ler config.json do Blob Store, usando padrões:', err);
     return DEFAULT_CONFIG;
   }
 }

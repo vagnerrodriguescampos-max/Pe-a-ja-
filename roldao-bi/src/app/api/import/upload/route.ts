@@ -39,6 +39,7 @@ export async function POST(req: NextRequest) {
     });
     return NextResponse.json({ record });
   } catch (err) {
+    console.error(`[import/upload] falha inesperada ao importar "${file.name}":`, err);
     return NextResponse.json({ error: err instanceof Error ? err.message : 'Erro ao processar a planilha.' }, { status: 500 });
   }
 }

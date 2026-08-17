@@ -8,8 +8,14 @@ async function readRaw(): Promise<Registry> {
   try {
     const reg = await store.get(REGISTRY_KEY, { type: 'json' });
     return (reg as Registry) ?? { imports: [], activeImportId: null };
-  } catch {
-    return { imports: [], activeImportId: null };
+  } catch (err) {
+    // Importante: NÃO tratar uma falha de leitura do Blob Store (auth,
+    // rede, site/token errados) como "ainda não há importações" — isso
+    // mascararia um problema real de conectividade como se o BI estivesse
+    // genuinamente vazio. Loga e propaga para a rota retornar um erro
+    // explícito em vez de uma tela "Nenhuma base importada ainda".
+    console.error('[registry] falha ao ler registry.json do Blob Store:', err);
+    throw new Error('Falha ao acessar o armazenamento (Blob Store). Verifique NETLIFY_BLOBS_SITE_ID/NETLIFY_BLOBS_TOKEN.');
   }
 }
 

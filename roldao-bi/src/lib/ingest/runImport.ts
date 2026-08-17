@@ -31,6 +31,7 @@ export async function runImport(opts: RunImportOptions): Promise<ImportRecord> {
   } catch (err) {
     status = 'erro';
     errorMessage = err instanceof Error ? err.message : String(err);
+    console.error(`[runImport] falha ao processar planilha "${opts.fileName}" (importId=${importId}):`, err);
   }
 
   const lojas = new Set<string>();
@@ -93,6 +94,13 @@ export async function runImport(opts: RunImportOptions): Promise<ImportRecord> {
     await setActiveImport(importId);
     record.isActive = true;
   }
+
+  console.log(
+    `[runImport] importId=${importId} arquivo="${opts.fileName}" status=${status} ` +
+    `abas=${sheets.length} registros=${record.totalRecords} validos=${record.validRecords} ` +
+    `lojas=${record.lojasIdentificadas} periodo=${periodoInicio ?? '—'}..${periodoFim ?? '—'} ` +
+    `ativada=${record.isActive}${errorMessage ? ` erro="${errorMessage}"` : ''}`
+  );
 
   return record;
 }
