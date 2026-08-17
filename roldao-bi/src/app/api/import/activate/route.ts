@@ -10,6 +10,7 @@ export async function POST(req: NextRequest) {
     await setActiveImport(id);
     return NextResponse.json({ ok: true });
   } catch (err) {
+    console.error(`[import/activate] falha ao ativar importId=${id}:`, err);
     return NextResponse.json({ error: err instanceof Error ? err.message : 'Erro' }, { status: 400 });
   }
 }
