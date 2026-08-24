@@ -138,6 +138,8 @@ export interface ImportRecord {
   segmentosIdentificados: number;
   subcategoriasIdentificadas: number;
   errorMessage?: string;
+  /** Avisos de consistência entre dimensões (ex.: "regional" colidindo com nomes de loja) — nunca corrige dados sozinho, só sinaliza. */
+  warnings?: string[];
   isActive: boolean;
 }
 

@@ -77,6 +77,16 @@ export default function ImportarPage() {
             <Badge variant={STATUS_META[result.status].variant}>{STATUS_META[result.status].icon} {STATUS_META[result.status].label}</Badge>
           </CardHeader>
           <CardBody>
+            {result.warnings && result.warnings.length > 0 && (
+              <div className="mb-4 rounded-lg border border-warn/40 bg-warn/10 px-4 py-3">
+                <p className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-warn">
+                  <AlertTriangle size={13} /> Avisos de consistência — confira antes de usar esta base
+                </p>
+                <ul className="list-disc space-y-1 pl-5 text-xs text-base-text">
+                  {result.warnings.map((w, i) => <li key={i}>{w}</li>)}
+                </ul>
+              </div>
+            )}
             <div className="mb-4 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
               <Info label="Arquivo importado" value={result.fileName} />
               <Info label="Data da importação" value={new Date(result.importedAt).toLocaleString('pt-BR')} />

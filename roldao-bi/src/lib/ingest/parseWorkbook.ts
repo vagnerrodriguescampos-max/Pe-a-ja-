@@ -145,6 +145,7 @@ function forwardFill(row: unknown[], width: number): string[] {
 export interface ParseResult {
   sheets: SheetImportReport[];
   facts: FactRow[];
+  warnings: string[];
 }
 
 export function parseWorkbook(buffer: Buffer, importId: string): ParseResult {
@@ -443,35 +444,47 @@ export function parseWorkbook(buffer: Buffer, importId: string): ParseResult {
     });
   }
 
-  enrichFacts(allFacts);
-  return { sheets: reports, facts: allFacts };
+  const warnings = enrichFacts(allFacts);
+  return { sheets: reports, facts: allFacts, warnings };
 }
 
 /**
- * Camada de enriquecimento (seção 31): várias abas guardam só o código da
- * loja (sem regional/nome) ou só a subcategoria (sem segmento/categoria).
- * Aqui construímos os relacionamentos loja→regional/nome/empresa e
- * subcategoria→segmento→categoria a partir de QUALQUER aba que já traga
- * essa relação (ex.: "Base nova regional", "Base loja", "Base Segmento",
- * "Procv categoria") e preenchemos as linhas que não têm essa dimensão.
- * Nunca sobrescreve um valor já existente — só completa o que falta.
+ * Abas de referência/cadastro (não transacionais) que são a fonte
+ * autoritativa de cada relação — usadas com prioridade antes de qualquer
+ * outra aba, para uma aba transacional nunca "vencer" por acaso um valor
+ * incidental que colida com outra dimensão (ver bug: "regional" preenchido
+ * com nome de loja quando a aba transacional processada primeiro trazia um
+ * valor equivocado). "Base nova regional" e "Base loja" são o cadastro
+ * loja→regional/nome/empresa; "Procv categoria" é a tabela de correspondência
+ * subcategoria→segmento→categoria.
  */
-function enrichFacts(facts: FactRow[]): void {
-  const lojaInfo = new Map<string, { nome?: string; regional?: string; empresa?: string }>();
-  const nomeToCodigo = new Map<string, string>();
+const LOJA_LOOKUP_ROLES: SheetRole[] = ['BASE_NOVA_REGIONAL', 'BASE_LOJA'];
+const CATEGORIA_LOOKUP_ROLES: SheetRole[] = ['PROCV_CATEGORIA'];
+
+function collectLojaInfo(
+  facts: FactRow[],
+  roles: SheetRole[] | null,
+  into: Map<string, { nome?: string; regional?: string; empresa?: string }>
+) {
   for (const f of facts) {
     if (!f.loja_codigo) continue;
-    const cur = lojaInfo.get(f.loja_codigo) ?? {};
+    if (roles && !roles.includes(f.sheetRole)) continue;
+    const cur = into.get(f.loja_codigo) ?? {};
     if (f.loja_nome && !cur.nome) cur.nome = f.loja_nome;
     if (f.regional && !cur.regional) cur.regional = f.regional;
     if (f.empresa && !cur.empresa) cur.empresa = f.empresa;
-    lojaInfo.set(f.loja_codigo, cur);
-    if (f.loja_nome && !nomeToCodigo.has(normalize(f.loja_nome))) nomeToCodigo.set(normalize(f.loja_nome), f.loja_codigo);
+    into.set(f.loja_codigo, cur);
   }
+}
 
-  const subInfo = new Map<string, { segmento?: string; categoria?: string }>();
-  const segInfo = new Map<string, { categoria?: string }>();
+function collectCategoriaInfo(
+  facts: FactRow[],
+  roles: SheetRole[] | null,
+  subInfo: Map<string, { segmento?: string; categoria?: string }>,
+  segInfo: Map<string, { categoria?: string }>
+) {
   for (const f of facts) {
+    if (roles && !roles.includes(f.sheetRole)) continue;
     if (f.subcategoria) {
       const cur = subInfo.get(f.subcategoria) ?? {};
       if (f.segmento && !cur.segmento) cur.segmento = f.segmento;
@@ -482,6 +495,58 @@ function enrichFacts(facts: FactRow[]): void {
       segInfo.set(f.segmento, { categoria: f.categoria });
     }
   }
+}
+
+/**
+ * Sinaliza (sem corrigir sozinho — os dados nunca são inventados/alterados
+ * às cegas) quando os valores finais de um campo colidem fortemente com os
+ * de outro campo de granularidade diferente — ex.: "regional" preenchido com
+ * nomes de loja. Isso teria passado despercebido silenciosamente antes; agora
+ * vira aviso visível na importação para investigação imediata.
+ */
+function detectDimensionCollision(
+  facts: FactRow[], fieldA: 'regional' | 'categoria' | 'segmento', labelA: string,
+  fieldB: 'loja_nome' | 'subcategoria', labelB: string
+): string | null {
+  const valuesA = new Set<string>();
+  for (const f of facts) { const v = f[fieldA]; if (v) valuesA.add(normalize(v)); }
+  const valuesB = new Set<string>();
+  for (const f of facts) { const v = f[fieldB]; if (v) valuesB.add(normalize(v)); }
+  if (valuesA.size === 0) return null;
+  let overlap = 0;
+  for (const v of valuesA) if (valuesB.has(v)) overlap++;
+  if (overlap / valuesA.size > 0.5) {
+    return `"${labelA}" tem ${overlap} de ${valuesA.size} valores distintos idênticos a valores de "${labelB}" — possível mapeamento incorreto (${labelA} pode estar recebendo ${labelB} por engano). Verifique a aba de referência correspondente.`;
+  }
+  return null;
+}
+
+/**
+ * Camada de enriquecimento (seção 31): várias abas guardam só o código da
+ * loja (sem regional/nome) ou só a subcategoria (sem segmento/categoria).
+ * Aqui construímos os relacionamentos loja→regional/nome/empresa e
+ * subcategoria→segmento→categoria, priorizando as abas de referência
+ * dedicadas (ver LOJA_LOOKUP_ROLES/CATEGORIA_LOOKUP_ROLES) e só usando
+ * qualquer outra aba como fallback para o que ainda faltar. Nunca sobrescreve
+ * um valor já existente — só completa o que falta. Retorna avisos quando os
+ * valores finais parecem contaminados entre dimensões distintas.
+ */
+function enrichFacts(facts: FactRow[]): string[] {
+  const lojaInfo = new Map<string, { nome?: string; regional?: string; empresa?: string }>();
+  collectLojaInfo(facts, LOJA_LOOKUP_ROLES, lojaInfo); // 1) fonte autoritativa primeiro
+  collectLojaInfo(facts, null, lojaInfo); // 2) preenche lacunas com qualquer outra aba
+
+  const nomeToCodigo = new Map<string, string>();
+  for (const f of facts) {
+    if (f.loja_codigo && f.loja_nome && !nomeToCodigo.has(normalize(f.loja_nome))) {
+      nomeToCodigo.set(normalize(f.loja_nome), f.loja_codigo);
+    }
+  }
+
+  const subInfo = new Map<string, { segmento?: string; categoria?: string }>();
+  const segInfo = new Map<string, { categoria?: string }>();
+  collectCategoriaInfo(facts, CATEGORIA_LOOKUP_ROLES, subInfo, segInfo); // 1) fonte autoritativa
+  collectCategoriaInfo(facts, null, subInfo, segInfo); // 2) fallback
 
   for (const f of facts) {
     if (!f.loja_codigo && f.loja_nome) {
@@ -508,4 +573,13 @@ function enrichFacts(facts: FactRow[]): void {
       if (info?.categoria) f.categoria = info.categoria;
     }
   }
+
+  const warnings: string[] = [];
+  const regionalVsLoja = detectDimensionCollision(facts, 'regional', 'Regional', 'loja_nome', 'Loja');
+  if (regionalVsLoja) warnings.push(regionalVsLoja);
+  const categoriaVsSub = detectDimensionCollision(facts, 'categoria', 'Categoria', 'subcategoria', 'Subcategoria');
+  if (categoriaVsSub) warnings.push(categoriaVsSub);
+  const segmentoVsSub = detectDimensionCollision(facts, 'segmento', 'Segmento', 'subcategoria', 'Subcategoria');
+  if (segmentoVsSub) warnings.push(segmentoVsSub);
+  return warnings;
 }
