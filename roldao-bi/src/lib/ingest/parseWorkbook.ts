@@ -461,17 +461,26 @@ export function parseWorkbook(buffer: Buffer, importId: string): ParseResult {
 const LOJA_LOOKUP_ROLES: SheetRole[] = ['BASE_NOVA_REGIONAL', 'BASE_LOJA'];
 const CATEGORIA_LOOKUP_ROLES: SheetRole[] = ['PROCV_CATEGORIA'];
 
+function buildNormalizedValueSet(facts: FactRow[], field: 'loja_nome' | 'subcategoria'): Set<string> {
+  const s = new Set<string>();
+  for (const f of facts) { const v = f[field]; if (v) s.add(normalize(v)); }
+  return s;
+}
+
 function collectLojaInfo(
   facts: FactRow[],
   roles: SheetRole[] | null,
-  into: Map<string, { nome?: string; regional?: string; empresa?: string }>
+  into: Map<string, { nome?: string; regional?: string; empresa?: string }>,
+  lojaNomeSet: Set<string>
 ) {
   for (const f of facts) {
     if (!f.loja_codigo) continue;
     if (roles && !roles.includes(f.sheetRole)) continue;
     const cur = into.get(f.loja_codigo) ?? {};
     if (f.loja_nome && !cur.nome) cur.nome = f.loja_nome;
-    if (f.regional && !cur.regional) cur.regional = f.regional;
+    // Nunca aceita como "regional" um valor que na verdade é nome de loja —
+    // mesmo vindo da aba de referência, para não propagar a contaminação.
+    if (f.regional && !cur.regional && !lojaNomeSet.has(normalize(f.regional))) cur.regional = f.regional;
     if (f.empresa && !cur.empresa) cur.empresa = f.empresa;
     into.set(f.loja_codigo, cur);
   }
@@ -481,17 +490,18 @@ function collectCategoriaInfo(
   facts: FactRow[],
   roles: SheetRole[] | null,
   subInfo: Map<string, { segmento?: string; categoria?: string }>,
-  segInfo: Map<string, { categoria?: string }>
+  segInfo: Map<string, { categoria?: string }>,
+  subcategoriaSet: Set<string>
 ) {
   for (const f of facts) {
     if (roles && !roles.includes(f.sheetRole)) continue;
     if (f.subcategoria) {
       const cur = subInfo.get(f.subcategoria) ?? {};
-      if (f.segmento && !cur.segmento) cur.segmento = f.segmento;
-      if (f.categoria && !cur.categoria) cur.categoria = f.categoria;
+      if (f.segmento && !cur.segmento && !subcategoriaSet.has(normalize(f.segmento))) cur.segmento = f.segmento;
+      if (f.categoria && !cur.categoria && !subcategoriaSet.has(normalize(f.categoria))) cur.categoria = f.categoria;
       subInfo.set(f.subcategoria, cur);
     }
-    if (f.segmento && f.categoria && !segInfo.get(f.segmento)?.categoria) {
+    if (f.segmento && f.categoria && !segInfo.get(f.segmento)?.categoria && !subcategoriaSet.has(normalize(f.categoria))) {
       segInfo.set(f.segmento, { categoria: f.categoria });
     }
   }
@@ -527,14 +537,26 @@ function detectDimensionCollision(
  * Aqui construímos os relacionamentos loja→regional/nome/empresa e
  * subcategoria→segmento→categoria, priorizando as abas de referência
  * dedicadas (ver LOJA_LOOKUP_ROLES/CATEGORIA_LOOKUP_ROLES) e só usando
- * qualquer outra aba como fallback para o que ainda faltar. Nunca sobrescreve
- * um valor já existente — só completa o que falta. Retorna avisos quando os
- * valores finais parecem contaminados entre dimensões distintas.
+ * qualquer outra aba como fallback para o que ainda faltar. Além de
+ * completar o que falta, também CORRIGE ativamente uma linha que já trouxe
+ * da própria aba um valor de "regional"/"categoria"/"segmento" que na
+ * verdade é nome de loja/subcategoria (contaminação por coluna mal
+ * classificada em alguma aba) — usando o cadastro de referência como
+ * verdade, ou limpando para "indisponível" quando não há correspondência
+ * confiável. O BI nunca inventa um valor novo, só descarta um errado.
+ * Retorna avisos quando essa correção precisou ser aplicada.
  */
 function enrichFacts(facts: FactRow[]): string[] {
+  // Conjuntos de valores conhecidos de "loja" e "subcategoria" — servem de
+  // guarda contra contaminação entre dimensões de granularidades diferentes,
+  // seja na hora de montar o cadastro de referência, seja para corrigir uma
+  // linha que já veio com o valor errado direto da própria aba de origem.
+  const lojaNomeSet = buildNormalizedValueSet(facts, 'loja_nome');
+  const subcategoriaSet = buildNormalizedValueSet(facts, 'subcategoria');
+
   const lojaInfo = new Map<string, { nome?: string; regional?: string; empresa?: string }>();
-  collectLojaInfo(facts, LOJA_LOOKUP_ROLES, lojaInfo); // 1) fonte autoritativa primeiro
-  collectLojaInfo(facts, null, lojaInfo); // 2) preenche lacunas com qualquer outra aba
+  collectLojaInfo(facts, LOJA_LOOKUP_ROLES, lojaInfo, lojaNomeSet); // 1) fonte autoritativa primeiro
+  collectLojaInfo(facts, null, lojaInfo, lojaNomeSet); // 2) preenche lacunas com qualquer outra aba
 
   const nomeToCodigo = new Map<string, string>();
   for (const f of facts) {
@@ -545,13 +567,22 @@ function enrichFacts(facts: FactRow[]): string[] {
 
   const subInfo = new Map<string, { segmento?: string; categoria?: string }>();
   const segInfo = new Map<string, { categoria?: string }>();
-  collectCategoriaInfo(facts, CATEGORIA_LOOKUP_ROLES, subInfo, segInfo); // 1) fonte autoritativa
-  collectCategoriaInfo(facts, null, subInfo, segInfo); // 2) fallback
+  collectCategoriaInfo(facts, CATEGORIA_LOOKUP_ROLES, subInfo, segInfo, subcategoriaSet); // 1) fonte autoritativa
+  collectCategoriaInfo(facts, null, subInfo, segInfo, subcategoriaSet); // 2) fallback
 
+  let regionalCorrigidos = 0;
+  let categoriaSegmentoCorrigidos = 0;
   for (const f of facts) {
     if (!f.loja_codigo && f.loja_nome) {
       const codigo = nomeToCodigo.get(normalize(f.loja_nome));
       if (codigo) f.loja_codigo = codigo;
+    }
+    // Corrige uma linha que já trouxe "regional" contaminado com nome de
+    // loja direto da própria aba (o preenchimento abaixo só cobre linhas
+    // que ainda não tinham nenhum valor).
+    if (f.regional && lojaNomeSet.has(normalize(f.regional))) {
+      f.regional = undefined;
+      regionalCorrigidos++;
     }
     if (f.loja_codigo) {
       const info = lojaInfo.get(f.loja_codigo);
@@ -561,6 +592,8 @@ function enrichFacts(facts: FactRow[]): string[] {
         if (!f.empresa && info.empresa) f.empresa = info.empresa;
       }
     }
+    if (f.categoria && subcategoriaSet.has(normalize(f.categoria))) { f.categoria = undefined; categoriaSegmentoCorrigidos++; }
+    if (f.segmento && subcategoriaSet.has(normalize(f.segmento))) { f.segmento = undefined; categoriaSegmentoCorrigidos++; }
     if (f.subcategoria) {
       const info = subInfo.get(f.subcategoria);
       if (info) {
@@ -575,6 +608,16 @@ function enrichFacts(facts: FactRow[]): string[] {
   }
 
   const warnings: string[] = [];
+  if (regionalCorrigidos > 0) {
+    warnings.push(
+      `"Regional" veio preenchido com nome de loja em ${regionalCorrigidos} registro(s) de origem — corrigido usando o cadastro de referência ("Base nova regional"/"Base loja") ou marcado como indisponível quando não havia correspondência confiável. Verifique a aba de referência de regional na planilha de origem.`
+    );
+  }
+  if (categoriaSegmentoCorrigidos > 0) {
+    warnings.push(
+      `"Categoria"/"Segmento" vieram preenchidos com nome de subcategoria em ${categoriaSegmentoCorrigidos} registro(s) de origem — corrigido usando "Procv categoria" ou marcado como indisponível.`
+    );
+  }
   const regionalVsLoja = detectDimensionCollision(facts, 'regional', 'Regional', 'loja_nome', 'Loja');
   if (regionalVsLoja) warnings.push(regionalVsLoja);
   const categoriaVsSub = detectDimensionCollision(facts, 'categoria', 'Categoria', 'subcategoria', 'Subcategoria');
