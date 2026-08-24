@@ -18,6 +18,7 @@ export async function runImport(opts: RunImportOptions): Promise<ImportRecord> {
 
   let facts: FactRow[] = [];
   let sheets: ImportRecord['sheets'] = [];
+  let warnings: string[] = [];
   let status: ImportRecord['status'] = 'concluida';
   let errorMessage: string | undefined;
 
@@ -25,9 +26,13 @@ export async function runImport(opts: RunImportOptions): Promise<ImportRecord> {
     const result = parseWorkbook(opts.buffer, importId);
     facts = result.facts;
     sheets = result.sheets;
+    warnings = result.warnings;
     const anyUnmapped = sheets.some((s) => s.unmappedColumns.length > 0);
     const anyErrors = sheets.some((s) => s.errorRows > 0);
-    status = anyUnmapped || anyErrors ? 'concluida_com_avisos' : 'concluida';
+    status = anyUnmapped || anyErrors || warnings.length > 0 ? 'concluida_com_avisos' : 'concluida';
+    if (warnings.length > 0) {
+      console.warn(`[runImport] avisos de consistência (importId=${importId}): ${warnings.join(' | ')}`);
+    }
   } catch (err) {
     status = 'erro';
     errorMessage = err instanceof Error ? err.message : String(err);
@@ -77,6 +82,7 @@ export async function runImport(opts: RunImportOptions): Promise<ImportRecord> {
     segmentosIdentificados: segmentos.size,
     subcategoriasIdentificadas: subcategorias.size,
     errorMessage,
+    warnings: warnings.length > 0 ? warnings : undefined,
     isActive: false,
   };
 
