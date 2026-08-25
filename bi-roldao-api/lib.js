@@ -9,6 +9,42 @@ function ymd(d){
   return null;
 }
 
+/* --- resolucao das colunas da aba "Base nova regional" --------------------
+   O layout era assumido como fixo: A=nome, B=numero, C=regional. Basta uma
+   coluna a mais na planilha de origem para deslocar tudo e fazer "regional"
+   receber nome de loja -- exatamente o sintoma visto no seletor Regional.
+   Agora as colunas sao localizadas pelo cabecalho e validadas pelo conteudo,
+   caindo para os indices antigos quando nada for reconhecido. */
+const normTxt = s => String(s==null?'':s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/\s+/g,' ').trim();
+function colValues(rows,c){ const out=[]; if(c<0)return out; for(let i=1;i<rows.length;i++){ const r=rows[i]; if(!r)continue; const v=S(r[c]); if(v)out.push(v); } return out; }
+function distinctCount(vals){ return new Set(vals.map(normTxt)).size; }
+function isNumericCol(rows,c){ let seen=0,nums=0; for(let i=1;i<rows.length&&seen<30;i++){ const r=rows[i]; if(!r)continue; const v=r[c]; if(v==null||v==='')continue; seen++; if(typeof v==='number'||/^\d+$/.test(String(v).trim()))nums++; } return seen>0 && nums/seen>=0.8; }
+function resolveStoreColumns(rows){
+  const width=rows.reduce((w,r)=>Math.max(w,r?r.length:0),0);
+  const hdr=(rows[0]||[]).map(normTxt);
+  const find=re=>{ for(let c=0;c<width;c++){ if(hdr[c]&&re.test(hdr[c]))return c; } return -1; };
+  let num=find(/^n[.oº°]?$|codigo|^cod\b|numero|loja n/);
+  let regional=find(/regional|regiao/);
+  let nome=find(/^loja$|nome|filial|unidade/);
+  if(num<0||!isNumericCol(rows,num)){ num=-1; for(let c=0;c<width;c++){ if(isNumericCol(rows,c)){num=c;break;} } }
+  if(num<0) num=1;
+  if(nome<0||nome===num) nome=(num===0?1:0);
+  if(regional===num||regional===nome) regional=-1;
+  const nomes=new Set(colValues(rows,nome).map(normTxt));
+  const pareceRegional=c=>{
+    if(c<0||c===num||c===nome) return false;
+    const vals=colValues(rows,c); if(!vals.length) return false;
+    const d=distinctCount(vals); if(d===0||d>15) return false;
+    return vals.filter(v=>nomes.has(normTxt(v))).length/vals.length < 0.5;
+  };
+  if(!pareceRegional(regional)){
+    let melhor=-1,melhorD=Infinity;
+    for(let c=0;c<width;c++){ if(!pareceRegional(c))continue; const d=distinctCount(colValues(rows,c)); if(d<melhorD){melhorD=d;melhor=c;} }
+    regional=melhor;
+  }
+  return {nome,num,regional};
+}
+
 /* Recebe um workbook SheetJS já lido e retorna o seed (mesma estrutura do aggregate.js). */
 function buildSeedFromWorkbook(wb, fileName){
   const aoa = n => wb.Sheets[n] ? XLSX.utils.sheet_to_json(wb.Sheets[n], {header:1, raw:true, defval:null}) : [];
@@ -16,7 +52,11 @@ function buildSeedFromWorkbook(wb, fileName){
   // ---- lojas canônicas ----
   const bnr = aoa('Base nova regional');
   const stores = {};
-  for(let i=1;i<bnr.length;i++){ const r=bnr[i]; if(!r||r[1]==null)continue; stores[r[1]]={num:r[1], name:S(r[0]), regional:S(r[2])}; }
+  const bnrCols = resolveStoreColumns(bnr);
+  if(bnrCols.regional<0) console.warn('Base nova regional: coluna de regional nao identificada — o filtro Regional ficara vazio.');
+  else if(bnrCols.nome!==0||bnrCols.num!==1||bnrCols.regional!==2) console.log('Base nova regional: layout diferente do padrao, colunas detectadas ->', JSON.stringify(bnrCols));
+  for(let i=1;i<bnr.length;i++){ const r=bnr[i]; if(!r||r[bnrCols.num]==null)continue;
+    stores[r[bnrCols.num]]={num:r[bnrCols.num], name:S(r[bnrCols.nome]), regional:bnrCols.regional>=0?S(r[bnrCols.regional]):''}; }
   const bl = aoa('Base loja'); const nameByNum = {};
   for(const r of bl){ if(!r)continue; if(r[0]!=null&&r[1])nameByNum[r[0]]=S(r[1]); if(r[5]!=null&&r[4])nameByNum[r[5]]=S(r[4]); }
   for(const k in stores){ if(nameByNum[k]) stores[k].name = nameByNum[k]; }
@@ -111,7 +151,15 @@ function mergeSeed(base, inc){
   if(!base) return {seed:inc, stats:null};
   const out={};
   const storeMap={}; (base.stores||[]).forEach(s=>storeMap[s.num]=s);
-  const newStores=[]; (inc.stores||[]).forEach(s=>{ if(!storeMap[s.num])newStores.push(s.num); storeMap[s.num]=Object.assign({},storeMap[s.num],s); });
+  // Um 'regional' que na verdade e nome de loja nunca pode sobrescrever um valor bom ja conhecido.
+  const nomesInc=new Set((inc.stores||[]).map(s=>normTxt(s.name)));
+  const newStores=[]; (inc.stores||[]).forEach(s=>{
+    if(!storeMap[s.num])newStores.push(s.num);
+    const anterior=storeMap[s.num]; const novo=Object.assign({},anterior,s);
+    const incRuim = !novo.regional || nomesInc.has(normTxt(novo.regional));
+    if(anterior && anterior.regional && incRuim && !nomesInc.has(normTxt(anterior.regional))) novo.regional=anterior.regional;
+    storeMap[s.num]=novo;
+  });
   out.stores=Object.values(storeMap);
   out.regionals=[...new Set(out.stores.map(s=>s.regional))];
   out.segments=[...new Set([...(base.segments||[]),...(inc.segments||[])])].sort();
