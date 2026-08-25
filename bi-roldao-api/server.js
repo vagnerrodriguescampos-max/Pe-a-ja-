@@ -253,6 +253,8 @@ app.get('/api/dre/consolidada', exigeSenha, (req, res) => {
   res.json({ ...dre.dreConsolidada(c.base, meses, filtro), lojas: c.base.lojas });
 });
 
+app.get('/favicon.ico', (req, res) => res.status(204).end());
+
 app.use((err, req, res, next) => { res.status(400).json({ error: String((err && err.message) || err) }); });
 
 const PORT = process.env.PORT || 3000;

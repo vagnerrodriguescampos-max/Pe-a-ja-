@@ -95,6 +95,9 @@ function entrar(){
   api('/api/dre/status').then(function(s){
     ST=s; try{sessionStorage.setItem('bir_pw',PW)}catch(e){}
     $('#gate').style.display='none'; $('#app').style.display='block';
+    /* sem base contabil nao ha o que consolidar: a unica acao possivel e importar,
+       entao a tela abre ja nessa aba em vez de num painel vazio. */
+    if(!ST.base) irPara('imp');
     linhaStatus(); render();
   }).catch(function(e){ $('#gateErr').textContent = e.message==='senha'?'Senha incorreta.':('Falha: '+e.message) });
 }
@@ -107,10 +110,14 @@ function linhaStatus(){
     (ST.justificativas?('   |   De-para: '+ST.justificativas.contas+' contas'):'');
 }
 
+function irPara(v){
+  VIEW=v;
+  document.querySelectorAll('nav button').forEach(function(x){x.classList.toggle('on', x.dataset.v===v)});
+  render();
+}
 document.addEventListener('click',function(e){
   var b=e.target.closest('nav button'); if(!b)return;
-  document.querySelectorAll('nav button').forEach(function(x){x.classList.remove('on')});
-  b.classList.add('on'); VIEW=b.dataset.v; render();
+  irPara(b.dataset.v);
 });
 
 function selMeses(id,sel){ if(!ST.base)return'';
@@ -119,7 +126,9 @@ function selMeses(id,sel){ if(!ST.base)return'';
 
 function render(){
   if(!ST.base && VIEW!=='imp'){ $('#filtros').innerHTML=''; 
-    $('#conteudo').innerHTML='<div class="empty">Importe a Base Contábil para começar.</div>'; return }
+    $('#conteudo').innerHTML='<div class="empty">Nenhuma Base Contábil importada ainda.<br><br>'+
+      '<button onclick="irPara(\'imp\')" style="padding:10px 18px;border:0;border-radius:8px;background:var(--brand);color:#1a1206;font-weight:700;cursor:pointer">Importar Base Contábil</button>'+
+      '</div>'; return }
   if(VIEW==='dre') viewDre(); else if(VIEW==='rec') viewRec(); else if(VIEW==='var') viewVar(); else viewImp();
 }
 
