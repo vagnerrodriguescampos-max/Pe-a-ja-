@@ -4,6 +4,8 @@ const fs = require('fs');
 const path = require('path');
 const XLSX = require('xlsx');
 const { buildSeedFromWorkbook, mergeSeed, parseDreWorkbook } = require('./lib');
+const dre = require('./dre');
+const { PAGINA_DRE } = require('./paginaDre');
 
 // abas realmente usadas — ler só elas reduz drasticamente a memória (pula "Procv categoria" 275k linhas etc.)
 const NEEDED_SHEETS = ['Base nova regional','Base loja','Base Segmento','Base de Subcategoria','ORÇADO','Orçado de categoria ','BASE VENDA DIA ','BESE VENDA ACUMULADO ','BASE TELE E ECOMM','Piso'];
@@ -27,6 +29,16 @@ try {
     if (!s.dre) { s.dre = JSON.parse(fs.readFileSync(path.join(__dirname, 'dre-initial.json'), 'utf8')); fs.writeFileSync(SEED_FILE, JSON.stringify(s)); console.log('DRE inicial injetada no seed'); }
   }
 } catch (e) { console.error('falha ao injetar DRE inicial:', e.message); }
+
+/* A base contábil vive em arquivo próprio, fora do seed.json: são ~35 mil
+   linhas que o front de vendas não consome, e misturá-las encareceria todo
+   GET /api/seed sem necessidade. */
+const CONTABIL_FILE = path.join(DATA_DIR, 'contabil.json');
+function lerContabil() {
+  try { if (fs.existsSync(CONTABIL_FILE)) return JSON.parse(fs.readFileSync(CONTABIL_FILE, 'utf8')); } catch (e) { console.error('contabil.json ilegivel:', e.message); }
+  return { base: null, despesas: {}, justificativas: null, atualizado: null };
+}
+function gravarContabil(c) { c.atualizado = new Date().toISOString(); fs.writeFileSync(CONTABIL_FILE, JSON.stringify(c)); }
 
 const app = express();
 app.use((req, res, next) => {
@@ -150,6 +162,96 @@ document.getElementById('b1').onclick=function(){enviar('/api/upload','Informati
 document.getElementById('b2').onclick=function(){enviar('/api/upload-dre','DRE')};
 </script></body></html>`;
 app.get('/restaurar', (req, res) => res.type('html').send(PAGINA_RESTAURAR));
+
+/* ----------------------------- MÓDULO CONTÁBIL / DRE ----------------------------- */
+app.get('/dre', (req, res) => res.type('html').send(PAGINA_DRE));
+
+const exigeSenha = (req, res, next) => { if (!authed(req)) return res.status(401).json({ error: 'senha' }); next(); };
+
+app.post('/api/upload-contabil', exigeSenha, upload.single('file'), (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'sem arquivo' });
+  try {
+    const t0 = Date.now();
+    console.log('upload BASE CONTABIL:', req.file.originalname, (req.file.size/1048576).toFixed(1)+'MB');
+    const wb = XLSX.read(req.file.buffer, { type: 'buffer', cellDates: true, dense: true });
+    const base = dre.parseBaseContabil(wb);
+    const c = lerContabil();
+    c.base = { ...base, arquivo: req.file.originalname, importadoEm: new Date().toISOString() };
+    gravarContabil(c);
+    console.log('base contabil ->', base.stats.linhas, 'linhas,', base.lojas.length, 'lojas,', base.meses.join('/'), 'em', ((Date.now()-t0)/1000).toFixed(1)+'s');
+    res.json({ ok: true, meses: base.meses, lojas: base.lojas.length, contas: base.contas.length, stats: base.stats });
+  } catch (e) { console.error('erro upload-contabil:', e); res.status(500).json({ error: String(e.message || e) }); }
+});
+
+app.post('/api/upload-despesas', exigeSenha, upload.single('file'), (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'sem arquivo' });
+  try {
+    console.log('upload DESPESAS:', req.file.originalname);
+    const wb = XLSX.read(req.file.buffer, { type: 'buffer', cellDates: true });
+    const d = dre.parseDespesas(wb);
+    const c = lerContabil();
+    const chave = `${d.loja}|${d.periodo.mes}`;
+    c.despesas[chave] = { ...d, arquivo: req.file.originalname, importadoEm: new Date().toISOString() };
+    gravarContabil(c);
+    console.log('despesas -> loja', d.loja, d.periodo.mes, d.lancamentos.length, 'lancamentos');
+    res.json({ ok: true, loja: d.loja, periodo: d.periodo, lancamentos: d.lancamentos.length, total: d.total });
+  } catch (e) { console.error('erro upload-despesas:', e); res.status(500).json({ error: String(e.message || e) }); }
+});
+
+app.post('/api/upload-justificativas', exigeSenha, upload.single('file'), (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'sem arquivo' });
+  try {
+    const wb = XLSX.read(req.file.buffer, { type: 'buffer', cellDates: true });
+    const j = dre.parseJustificativas(wb);
+    const c = lerContabil();
+    c.justificativas = { ...j, arquivo: req.file.originalname, importadoEm: new Date().toISOString() };
+    gravarContabil(c);
+    console.log('justificativas ->', j.stats.contas, 'contas mapeadas');
+    res.json({ ok: true, contas: j.stats.contas });
+  } catch (e) { console.error('erro upload-justificativas:', e); res.status(500).json({ error: String(e.message || e) }); }
+});
+
+app.get('/api/dre/status', exigeSenha, (req, res) => {
+  const c = lerContabil();
+  res.json({
+    base: c.base ? { meses: c.base.meses, lojas: c.base.lojas.length, contas: c.base.contas.length, arquivo: c.base.arquivo, importadoEm: c.base.importadoEm } : null,
+    despesas: Object.keys(c.despesas || {}).map(k => { const [l, m] = k.split('|'); return { loja: Number(l), mes: m, lancamentos: c.despesas[k].lancamentos.length }; }),
+    justificativas: c.justificativas ? { contas: c.justificativas.stats.contas } : null,
+    atualizado: c.atualizado,
+  });
+});
+
+app.get('/api/dre/reconciliacao', exigeSenha, (req, res) => {
+  const c = lerContabil();
+  if (!c.base) return res.status(404).json({ error: 'Base Contábil não importada.' });
+  const loja = Number(req.query.loja);
+  const mes = String(req.query.mes || c.base.meses[c.base.meses.length-1]);
+  if (!Number.isFinite(loja)) return res.status(400).json({ error: 'informe ?loja=' });
+  const d = c.despesas[`${loja}|${mes}`] || null;
+  res.json(dre.reconciliar(c.base, d, loja, mes));
+});
+
+app.get('/api/dre/variacao', exigeSenha, (req, res) => {
+  const c = lerContabil();
+  if (!c.base) return res.status(404).json({ error: 'Base Contábil não importada.' });
+  const ms = c.base.meses;
+  const mesB = String(req.query.mesB || ms[ms.length-1]);
+  const mesA = String(req.query.mesA || dre.mesAnterior(mesB));
+  const filtro = {};
+  if (req.query.loja) filtro.loja = Number(req.query.loja);
+  if (req.query.regional) filtro.regional = String(req.query.regional);
+  res.json(dre.variacao(c.base, mesA, mesB, filtro, c.justificativas));
+});
+
+app.get('/api/dre/consolidada', exigeSenha, (req, res) => {
+  const c = lerContabil();
+  if (!c.base) return res.status(404).json({ error: 'Base Contábil não importada.' });
+  const meses = req.query.meses ? String(req.query.meses).split(',') : c.base.meses;
+  const filtro = {};
+  if (req.query.loja) filtro.loja = Number(req.query.loja);
+  if (req.query.regional) filtro.regional = String(req.query.regional);
+  res.json({ ...dre.dreConsolidada(c.base, meses, filtro), lojas: c.base.lojas });
+});
 
 app.use((err, req, res, next) => { res.status(400).json({ error: String((err && err.message) || err) }); });
 
