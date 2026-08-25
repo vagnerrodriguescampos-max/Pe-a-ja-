@@ -137,8 +137,8 @@ function enviar(rota,rotulo){
     document.getElementById('b1').disabled=false;document.getElementById('b2').disabled=false;
     var r;try{r=JSON.parse(x.responseText)}catch(_){r={}}
     if(x.status===200){
-      var m=r.meta?('\nPeriodo: '+r.meta.periodMin+' ate '+r.meta.periodMax):'';
-      msg(rotulo+' importado com sucesso.'+m+'\n\n'+JSON.stringify(r.stats||{},null,1),'ok');
+      var m=r.meta?('\\nPeriodo: '+r.meta.periodMin+' ate '+r.meta.periodMax):'';
+      msg(rotulo+' importado com sucesso.'+m+'\\n\\n'+JSON.stringify(r.stats||{},null,1),'ok');
     } else if(x.status===401){ msg('Senha incorreta.','err') }
     else { msg('Falhou ('+x.status+'): '+(r.error||x.responseText||''),'err') }
   };
