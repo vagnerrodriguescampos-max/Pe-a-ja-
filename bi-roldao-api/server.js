@@ -5,7 +5,9 @@ const path = require('path');
 const XLSX = require('xlsx');
 const { buildSeedFromWorkbook, mergeSeed, parseDreWorkbook } = require('./lib');
 const dre = require('./dre');
+const X = require('./dreExec');
 const { PAGINA_DRE } = require('./paginaDre');
+const { PAGINA_DRE_EXEC } = require('./paginaDreExec');
 
 // abas realmente usadas — ler só elas reduz drasticamente a memória (pula "Procv categoria" 275k linhas etc.)
 const NEEDED_SHEETS = ['Base nova regional','Base loja','Base Segmento','Base de Subcategoria','ORÇADO','Orçado de categoria ','BASE VENDA DIA ','BESE VENDA ACUMULADO ','BASE TELE E ECOMM','Piso'];
@@ -215,6 +217,8 @@ app.get('/api/dre/status', exigeSenha, (req, res) => {
   const c = lerContabil();
   res.json({
     base: c.base ? { meses: c.base.meses, lojas: c.base.lojas.length, contas: c.base.contas.length, arquivo: c.base.arquivo, importadoEm: c.base.importadoEm } : null,
+    lojas: c.base ? c.base.lojas : [],
+    regionais: c.base ? [...new Set(c.base.lojas.map(l => l.regional).filter(Boolean))].sort() : [],
     despesas: Object.keys(c.despesas || {}).map(k => { const [l, m] = k.split('|'); return { loja: Number(l), mes: m, lancamentos: c.despesas[k].lancamentos.length }; }),
     justificativas: c.justificativas ? { contas: c.justificativas.stats.contas } : null,
     atualizado: c.atualizado,
@@ -251,6 +255,85 @@ app.get('/api/dre/consolidada', exigeSenha, (req, res) => {
   if (req.query.loja) filtro.loja = Number(req.query.loja);
   if (req.query.regional) filtro.regional = String(req.query.regional);
   res.json({ ...dre.dreConsolidada(c.base, meses, filtro), lojas: c.base.lojas });
+});
+
+/* ------------------------- DRE CONSOLIDADA — VISÃO EXECUTIVA -------------------------
+   Servida numa rota própria para poder ser embutida por iframe dentro do BI que
+   já existe sem arrastar junto as telas de importação e reconciliação. */
+app.get('/dre-executiva', (req, res) => res.type('html').send(PAGINA_DRE_EXEC));
+
+/* Lê a base contábil ou responde 404 — evita repetir a checagem em cada rota. */
+function exigeBase(req, res) {
+  const c = lerContabil();
+  if (!c.base) { res.status(404).json({ error: 'Base Contábil não importada.' }); return null; }
+  return c.base;
+}
+function recorte(req) {
+  const f = {};
+  if (req.query.loja) f.loja = Number(req.query.loja);
+  if (req.query.regional) f.regional = String(req.query.regional);
+  return f;
+}
+/* CSV vai como anexo, com charset explícito: sem isso o Excel ignora o BOM. */
+function enviaCsv(res, nome, texto) {
+  res.set('Content-Type', 'text/csv; charset=utf-8');
+  res.set('Content-Disposition', `attachment; filename="${nome}.csv"`);
+  res.send(texto);
+}
+
+function serieDe(req, base) {
+  return X.serieCompleta(base, {
+    nivel: req.query.nivel === 'conta' ? 'conta' : 'subgrupo',
+    filtro: recorte(req),
+    meses: req.query.meses ? String(req.query.meses).split(',') : null,
+  });
+}
+function comparativoDe(req, base) {
+  const ms = base.meses;
+  const mesB = String(req.query.mesB || ms[ms.length - 1]);
+  const mesA = String(req.query.mesA || dre.mesAnterior(mesB));
+  return X.comparativo(base, mesA, mesB, {
+    nivel: req.query.nivel === 'conta' ? 'conta' : 'subgrupo',
+    filtro: recorte(req),
+  });
+}
+
+app.get('/api/dre/serie', exigeSenha, (req, res) => {
+  const base = exigeBase(req, res); if (!base) return;
+  res.json(serieDe(req, base));
+});
+app.get('/api/dre/serie.csv', exigeSenha, (req, res) => {
+  const base = exigeBase(req, res); if (!base) return;
+  enviaCsv(res, 'dre-mes-a-mes', X.csvSerie(serieDe(req, base)));
+});
+
+app.get('/api/dre/comparativo', exigeSenha, (req, res) => {
+  const base = exigeBase(req, res); if (!base) return;
+  res.json(comparativoDe(req, base));
+});
+app.get('/api/dre/comparativo.csv', exigeSenha, (req, res) => {
+  const base = exigeBase(req, res); if (!base) return;
+  enviaCsv(res, 'dre-comparativo', X.csvComparativo(comparativoDe(req, base)));
+});
+
+app.get('/api/dre/lojas', exigeSenha, (req, res) => {
+  const base = exigeBase(req, res); if (!base) return;
+  const mes = String(req.query.mes || base.meses[base.meses.length - 1]);
+  res.json(X.porLoja(base, mes, { regional: req.query.regional, mesComparacao: req.query.mesComparacao }));
+});
+app.get('/api/dre/lojas.csv', exigeSenha, (req, res) => {
+  const base = exigeBase(req, res); if (!base) return;
+  const mes = String(req.query.mes || base.meses[base.meses.length - 1]);
+  enviaCsv(res, 'dre-lojas', X.csvLojas(X.porLoja(base, mes, { regional: req.query.regional })));
+});
+
+app.get('/api/dre/regionais', exigeSenha, (req, res) => {
+  const base = exigeBase(req, res); if (!base) return;
+  res.json(X.porRegional(base, {}));
+});
+app.get('/api/dre/regionais.csv', exigeSenha, (req, res) => {
+  const base = exigeBase(req, res); if (!base) return;
+  enviaCsv(res, 'dre-regionais', X.csvRegionais(X.porRegional(base, {})));
 });
 
 app.get('/favicon.ico', (req, res) => res.status(204).end());
