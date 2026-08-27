@@ -72,11 +72,54 @@ try {
    linhas que o front de vendas não consome, e misturá-las encareceria todo
    GET /api/seed sem necessidade. */
 const CONTABIL_FILE = path.join(DATA_DIR, 'contabil.json');
+
+/* contabil.json passa de 7 MB. Ler e parsear isso a cada requisição custa
+   centenas de milissegundos e some com a sensação de instantâneo na tela.
+   O cache guarda o objeto já pronto e só reprocessa quando o arquivo muda —
+   comparar mtime+tamanho é suficiente e não exige invalidação manual. */
+let _contabilCache = null;
 function lerContabil() {
-  try { if (fs.existsSync(CONTABIL_FILE)) return JSON.parse(fs.readFileSync(CONTABIL_FILE, 'utf8')); } catch (e) { console.error('contabil.json ilegivel:', e.message); }
+  try {
+    if (!fs.existsSync(CONTABIL_FILE)) return { base: null, despesas: {}, justificativas: null, atualizado: null };
+    const st = fs.statSync(CONTABIL_FILE);
+    const assinatura = st.mtimeMs + ':' + st.size;
+    if (_contabilCache && _contabilCache.assinatura === assinatura) return _contabilCache.dados;
+    const t0 = Date.now();
+    const dados = JSON.parse(fs.readFileSync(CONTABIL_FILE, 'utf8'));
+    /* A Base Contábil traz a própria coluna Regional, e ela diverge do cadastro
+       oficial — Atibaia vem como "REGIONAL GRANDE SP" quando a operação a
+       classifica em INTERIOR, e o vocabulário também é outro. Sem esta camada a
+       DRE mostraria um recorte regional diferente do BI de vendas, com os
+       mesmos números aparecendo em regionais diferentes conforme a tela. */
+    aplicarRegionalOficial(dados);
+    _contabilCache = { assinatura, dados };
+    console.log('contabil.json carregado em', Date.now() - t0, 'ms (cache renovado)');
+    return dados;
+  } catch (e) { console.error('contabil.json ilegivel:', e.message); }
   return { base: null, despesas: {}, justificativas: null, atualizado: null };
 }
-function gravarContabil(c) { c.atualizado = new Date().toISOString(); fs.writeFileSync(CONTABIL_FILE, JSON.stringify(c)); }
+
+/** Sobrepõe o de-para oficial de regionais nos fatos contábeis e no cadastro. */
+function aplicarRegionalOficial(dados) {
+  if (!dados || !dados.base || !Array.isArray(dados.base.fatos)) return;
+  const mapa = REG.ler(DATA_DIR).mapa || {};
+  if (!Object.keys(mapa).length) return;
+  let trocados = 0;
+  for (const f of dados.base.fatos) {
+    const oficial = mapa[String(f.l)];
+    if (oficial && f.rg !== oficial) { f.rg = oficial; trocados++; }
+  }
+  for (const l of dados.base.lojas || []) {
+    const oficial = mapa[String(l.num)];
+    if (oficial) l.regional = oficial;
+  }
+  if (trocados) console.log('DRE: regional oficial aplicada em', trocados, 'lançamentos contábeis');
+}
+function gravarContabil(c) {
+  c.atualizado = new Date().toISOString();
+  fs.writeFileSync(CONTABIL_FILE, JSON.stringify(c));
+  _contabilCache = null;   // a próxima leitura reprocessa e reaplica o de-para
+}
 
 const app = express();
 app.use((req, res, next) => {
@@ -340,6 +383,12 @@ function comparativoDe(req, base) {
   });
 }
 
+/* Tudo o que o painel mostra vem desta rota, numa resposta só. */
+app.get('/api/dre/painel', exigeSenha, (req, res) => {
+  const base = exigeBase(req, res); if (!base) return;
+  res.json(X.painel(base, { mes: req.query.mes, filtro: recorte(req) }));
+});
+
 app.get('/api/dre/serie', exigeSenha, (req, res) => {
   const base = exigeBase(req, res); if (!base) return;
   res.json(serieDe(req, base));
@@ -406,6 +455,7 @@ app.post('/api/regionais', exigeSenha, express.json({ limit: '1mb' }), (req, res
   if (typeof mapa !== 'object') return res.status(400).json({ error: 'mapa inválido' });
   try {
     const salvo = REG.gravar(DATA_DIR, mapa);
+    _contabilCache = null;   // a DRE precisa reler com a regional nova
     const ajuste = REG.aplicar(seed, salvo.mapa);
     fs.writeFileSync(SEED_FILE, JSON.stringify(seed));
     console.log('de-para de regionais salvo:', Object.keys(salvo.mapa).length, 'lojas |', ajuste.corrigidas, 'corrigidas na base');

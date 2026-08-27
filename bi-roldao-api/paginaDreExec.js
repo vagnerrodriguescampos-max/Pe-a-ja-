@@ -61,7 +61,7 @@ nav button.on{color:var(--brand);border-bottom-color:var(--brand)}
 
 /* ---- kpis ---- */
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:1px;
-  background:var(--line);border:1px solid var(--line);border-radius:12px;overflow:hidden;margin:18px 0}
+  background:var(--line);border:1px solid var(--line);border-radius:12px;overflow:hidden;margin:14px 0}
 .kpis:empty{display:none}
 .kpi{background:var(--surf);padding:13px 15px}
 .kpi .k{font-size:10.5px;text-transform:uppercase;letter-spacing:.6px;color:var(--mut);margin-bottom:5px}
@@ -97,10 +97,51 @@ tr.tot td:first-child{background:#0d1424}
 .card h3{font-size:12px;text-transform:uppercase;letter-spacing:.6px;padding:12px 15px;
   border-bottom:1px solid var(--line);color:var(--mut);font-weight:600}
 .card h3 b{color:var(--txt);font-weight:650}
-main{padding:0 0 60px}
+main{padding:0 0 24px}
 .empty{padding:70px 20px;text-align:center;color:var(--mut)}
 .hint{color:var(--mut);font-size:11.5px;margin:10px 2px 0;line-height:1.6}
 .bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:16px 0 12px}
+
+/* ---- painel executivo ---- */
+.pgrid{display:grid;grid-template-columns:1.05fr 1.15fr .95fr;gap:14px;align-items:start}
+@media(max-width:1280px){.pgrid{grid-template-columns:1fr 1fr}}
+@media(max-width:820px){.pgrid{grid-template-columns:1fr}}
+.pgrid2{display:grid;grid-template-columns:1.6fr 1fr;gap:14px;margin-top:10px;align-items:start}
+@media(max-width:1100px){.pgrid2{grid-template-columns:1fr}}
+/* Altura travada é o que faz o painel caber numa tela: sem isso a coluna mais
+   longa empurra lojas e regionais para baixo da dobra, e um painel que exige
+   rolagem deixa de ser um painel. O excesso rola dentro do próprio cartão. */
+.card .body{padding:12px 15px;max-height:330px;overflow:auto}
+.pgrid .dupla > div{max-height:330px;overflow:auto}
+.pgrid2 .card .body{max-height:220px}
+.pgrid2 .dupla > div{max-height:220px;overflow:auto}
+.card .body::-webkit-scrollbar,.dupla > div::-webkit-scrollbar{width:6px}
+.card .body::-webkit-scrollbar-thumb,.dupla > div::-webkit-scrollbar-thumb{
+  background:var(--line);border-radius:3px}
+.linha{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:baseline;padding:7px 0;
+  border-bottom:1px solid var(--line)}
+.linha:last-child{border-bottom:0}
+.linha .nm{font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.linha .vl{font-size:12.5px;font-variant-numeric:tabular-nums;font-weight:600;white-space:nowrap}
+.linha .dt{font-size:11px;color:var(--mut);grid-column:1/-1;margin-top:-4px}
+.trilho{grid-column:1/-1;height:4px;background:var(--surf2);border-radius:3px;overflow:hidden;margin-top:5px}
+.trilho i{display:block;height:100%;background:var(--brand);border-radius:3px}
+.alerta{display:grid;grid-template-columns:3px 1fr;gap:11px;padding:9px 0;border-bottom:1px solid var(--line)}
+.alerta:last-child{border-bottom:0}
+.alerta .risco{border-radius:3px;background:var(--mut)}
+.alerta.alto .risco{background:var(--neg)}
+.alerta.medio .risco{background:var(--brand)}
+.alerta .tt{font-size:12.5px;font-weight:600;margin-bottom:2px}
+.alerta .tx{font-size:11.5px;color:var(--mut);line-height:1.5}
+.spark{display:block;width:100%;height:34px;margin-top:6px}
+.kpi .spark{margin-top:8px}
+.dupla{display:grid;grid-template-columns:1fr 1fr;gap:0}
+.dupla > div{padding:0 15px 12px}
+.dupla > div:first-child{border-right:1px solid var(--line)}
+.dupla h4{font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--mut);
+  font-weight:600;padding:11px 0 6px}
+.chip{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10.5px;font-weight:600;
+  background:var(--surf2);color:var(--mut)}
 .bar label{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--mut);margin-right:-4px}
 </style></head><body>
 
@@ -122,7 +163,8 @@ main{padding:0 0 60px}
     </div>
   </div>
   <nav>
-    <button class="on" data-v="mes">Mês a Mês</button>
+    <button class="on" data-v="painel">Painel</button>
+    <button data-v="mes">Mês a Mês</button>
     <button data-v="comp">Comparativo</button>
     <button data-v="lojas">Lojas</button>
     <button data-v="reg">Regionais</button>
@@ -137,7 +179,7 @@ main{padding:0 0 60px}
 </div>
 
 <script>
-var PW='', ST=null, VIEW='mes', DADOS={};
+var PW='', ST=null, VIEW='painel', DADOS={};
 
 var $=function(s){return document.querySelector(s)};
 var el=function(s){return document.getElementById(s)};
@@ -242,8 +284,153 @@ document.addEventListener('change',function(e){
 function render(){
   if(!ST||!ST.base) return;
   el('conteudo').innerHTML='<div class="empty">Calculando…</div>';
-  if(VIEW==='mes') viewMes(); else if(VIEW==='comp') viewComp();
+  if(VIEW==='painel') viewPainel();
+  else if(VIEW==='mes') viewMes(); else if(VIEW==='comp') viewComp();
   else if(VIEW==='lojas') viewLojas(); else viewReg();
+}
+
+/* ================= PAINEL EXECUTIVO ================= */
+/* Minificha de tendência: doze pontos numa faixa de 34px dizem mais sobre o
+   rumo do que qualquer número isolado, e cabem dentro do próprio cartão. */
+function sparkline(vals, cor){
+  var v=vals.filter(function(x){return x!=null});
+  if(v.length<2) return '';
+  var mn=Math.min.apply(null,v), mx=Math.max.apply(null,v), amp=(mx-mn)||1;
+  var w=100, h=30, n=vals.length;
+  var pts=[], area=[];
+  vals.forEach(function(x,i){
+    if(x==null) return;
+    var px=(i/(n-1))*w, py=h-((x-mn)/amp)*(h-4)-2;
+    pts.push(px.toFixed(1)+','+py.toFixed(1));
+  });
+  if(pts.length<2) return '';
+  area=pts.slice(); area.unshift('0,'+h); area.push(w+','+h);
+  var id='g'+Math.random().toString(36).slice(2,8);
+  return '<svg class="spark" viewBox="0 0 '+w+' '+h+'" preserveAspectRatio="none">'+
+    '<defs><linearGradient id="'+id+'" x1="0" y1="0" x2="0" y2="1">'+
+      '<stop offset="0%" stop-color="'+cor+'" stop-opacity=".28"/>'+
+      '<stop offset="100%" stop-color="'+cor+'" stop-opacity="0"/></linearGradient></defs>'+
+    '<polygon points="'+area.join(' ')+'" fill="url(#'+id+')"/>'+
+    '<polyline points="'+pts.join(' ')+'" fill="none" stroke="'+cor+'" stroke-width="1.6" '+
+      'stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/></svg>';
+}
+
+function kpiSpark(k,v,s,cls,vals,cor){
+  return '<div class="kpi"><div class="k">'+k+'</div><div class="v '+(cls||'')+'">'+(v==null?'N/D':v)+
+    '</div><div class="s">'+(s||'')+'</div>'+(vals?sparkline(vals,cor):'')+'</div>';
+}
+
+function viewPainel(){
+  var ms=ST.base.meses, mes=DADOS.mesP||ms[ms.length-1];
+  el('bar').innerHTML='<label>Competência</label>'+selMes2('mesP',mes,ms);
+  DADOS.mesP=el('mesP').value;
+
+  api('/api/dre/painel?mes='+DADOS.mesP+filtroAtual()).then(function(p){
+    DADOS.painel=p;
+    var k=p.kpis;
+
+    /* --- faixa de KPIs --- */
+    var deltaRes = k.resultadoImpacto==null ? '' :
+      (k.resultadoImpacto>=0?'+':'')+brl(k.resultadoImpacto,true)+' vs '+k.rotuloAnterior;
+    el('kpis').innerHTML =
+      kpiSpark('Receita Bruta', brl(k.receita,true),
+        k.receitaVar==null?rotuloRecorte():pctTxt(k.receitaVar)+' vs '+k.rotuloAnterior,
+        k.receitaVar==null?'':(k.receitaVar>=0?'pos':'neg'), p.tendencia.receita, '#60a5fa') +
+      kpiSpark('Resultado '+k.rotulo, brl(k.resultado,true), deltaRes,
+        k.resultadoImpacto==null?'':(k.resultadoImpacto>=0?'pos':'neg'), p.tendencia.resultado, '#f5a623') +
+      kpiSpark('Total de Despesas', brl(k.despesa,true),
+        k.despesaVar==null?'':pctTxt(k.despesaVar)+' vs '+k.rotuloAnterior,
+        k.despesaVar==null?'':(k.despesaVar>0?'neg':'pos')) +
+      kpiSpark('Margem s/ Receita', k.margem==null?'N/D':k.margem.toFixed(1)+'%',
+        k.margemPontos==null?'':(k.margemPontos>=0?'+':'')+k.margemPontos.toFixed(1)+' p.p. vs '+k.rotuloAnterior,
+        k.margemPontos==null?'':(k.margemPontos>=0?'pos':'neg')) +
+      kpiSpark('Lojas na competência', p.lojas?String(p.lojas.total):'—',
+        p.lojas&&p.lojas.semBase?p.lojas.semBase+' aguardando base':'todas com lançamento',
+        p.lojas&&p.lojas.semBase?'neg':'') +
+      kpiSpark('Recorte', rotuloRecorte().replace('Empresa — todas as lojas','Empresa'),
+        p.rotulos[0]+' a '+p.rotulos[p.rotulos.length-1]);
+
+    /* --- coluna 1: para onde foi o dinheiro --- */
+    var maxComp = p.composicao.length ? p.composicao[0].valor : 1;
+    var h1='<div class="card"><h3>Para onde foi o dinheiro — <b>'+k.rotulo+'</b></h3><div class="body">';
+    if(!p.composicao.length) h1+='<div class="tx" style="color:var(--mut);font-size:12px">Sem despesas na competência.</div>';
+    p.composicao.forEach(function(c){
+      h1+='<div class="linha"><div class="nm">'+esc(c.subGrupo)+'</div>'+
+          '<div class="vl">'+brl(-c.valor,true)+'</div>'+
+          '<div class="trilho"><i style="width:'+Math.max(2,(c.valor/maxComp)*100).toFixed(1)+'%"></i></div>'+
+          '<div class="dt">'+(c.av==null?'':c.av.toFixed(1)+'% da receita')+
+            (c.ah==null?'':'  ·  '+pctTxt(c.ah)+' vs mês anterior')+'</div></div>';
+    });
+    h1+='</div></div>';
+
+    /* --- coluna 2: o que mudou --- */
+    var h2='<div class="card"><h3>O que mudou vs <b>'+(k.rotuloAnterior||'—')+'</b></h3><div class="dupla">'+
+      '<div><h4>Pesou contra</h4>'+ listaImpacto(p.pioras,'neg') +'</div>'+
+      '<div><h4>Ajudou</h4>'+ listaImpacto(p.melhoras,'pos') +'</div></div></div>';
+
+    /* --- coluna 3: exige atenção --- */
+    var h3='<div class="card"><h3>Exige atenção <span class="chip">'+p.alertas.length+'</span></h3><div class="body">';
+    if(!p.alertas.length) h3+='<div class="tx" style="color:var(--mut);font-size:12px">Nenhum desvio material nesta competência.</div>';
+    p.alertas.forEach(function(a){
+      h3+='<div class="alerta '+a.nivel+'"><div class="risco"></div><div>'+
+          '<div class="tt">'+esc(a.titulo)+'</div><div class="tx">'+esc(a.texto)+'</div></div></div>';
+    });
+    h3+='</div></div>';
+
+    /* --- faixa inferior: lojas e regionais --- */
+    var h4='';
+    if(p.lojas){
+      h4+='<div class="card"><h3>Lojas — variação vs '+(k.rotuloAnterior||'—')+'</h3><div class="dupla">'+
+        '<div><h4>Maiores quedas</h4>'+listaLoja(p.lojas.pioras,'neg')+'</div>'+
+        '<div><h4>Maiores altas</h4>'+listaLoja(p.lojas.melhoras,'pos')+'</div></div>';
+      if(p.lojas.semBase) h4+='<div class="body" style="border-top:1px solid var(--line)">'+
+        '<div class="tx" style="font-size:11.5px;color:var(--mut)">Fora do ranking por não terem lançamento em '+k.rotulo+': '+
+        p.lojas.semBaseNomes.map(function(l){return esc(String(l.loja)+' '+(l.unidade||''))}).join(', ')+'</div></div>';
+      h4+='</div>';
+    }
+    var h5='';
+    if(p.regionais){
+      h5='<div class="card"><h3>Regionais</h3><div class="body">';
+      var mx=Math.max.apply(null,p.regionais.map(function(r){return Math.abs(r.valor||0)}))||1;
+      p.regionais.forEach(function(r){
+        h5+='<div class="linha"><div class="nm">'+esc(r.regional)+' <span class="sub">'+r.lojas+' lojas</span></div>'+
+            '<div class="vl">'+brl(r.valor,true)+'</div>'+
+            '<div class="trilho"><i style="width:'+Math.max(2,(Math.abs(r.valor||0)/mx)*100).toFixed(1)+'%"></i></div>'+
+            '<div class="dt">'+(r.ah==null?'':pctTxt(r.ah)+' vs mês anterior')+'</div></div>';
+      });
+      h5+='</div></div>';
+    }
+
+    el('conteudo').innerHTML='<div class="pgrid">'+h1+h2+h3+'</div>'+
+      ((h4||h5)?'<div class="pgrid2">'+h4+h5+'</div>':'');
+    /* Uma linha só: o painel precisa caber na tela, e a explicação longa das
+       fórmulas vive nas abas de detalhe, onde há espaço para ela. */
+    el('rodape').innerHTML='<b>Resultado</b> = receita menos despesas na competência  ·  '+
+      '<b>Margem</b> = resultado sobre a Receita Bruta (<b>p.p.</b> = diferença em pontos, não variação relativa)  ·  '+
+      'alertas ignoram valores abaixo do limiar de materialidade';
+  }).catch(erro);
+}
+
+function listaImpacto(lista,cls){
+  if(!lista.length) return '<div class="tx" style="color:var(--mut);font-size:12px;padding:6px 0">Nada nesta direção.</div>';
+  var h='';
+  lista.forEach(function(l){
+    h+='<div class="linha"><div class="nm">'+esc(l.descricao)+'</div>'+
+       '<div class="vl '+cls+'">'+brl(l.impacto,true)+'</div>'+
+       '<div class="dt">'+brl(l.valorA,true)+' -> '+brl(l.valorB,true)+
+         (l.variacaoPct==null?'':'  ·  '+pctTxt(l.variacaoPct))+'</div></div>';
+  });
+  return h;
+}
+function listaLoja(lista,cls){
+  if(!lista.length) return '<div class="tx" style="color:var(--mut);font-size:12px;padding:6px 0">Sem lojas comparáveis.</div>';
+  var h='';
+  lista.forEach(function(l){
+    h+='<div class="linha"><div class="nm">'+l.loja+' '+esc(l.unidade||'')+'</div>'+
+       '<div class="vl '+cls+'">'+brl(l.impacto,true)+'</div>'+
+       '<div class="dt">'+esc(l.regional||'')+(l.variacaoPct==null?'':'  ·  '+pctTxt(l.variacaoPct))+'</div></div>';
+  });
+  return h;
 }
 
 /* ================= MÊS A MÊS ================= */
@@ -468,7 +655,7 @@ function erro(e){
 /* Exportação: o navegador baixa direto da API, com a senha no cabeçalho. */
 el('btExp').addEventListener('click',function(){
   var rota, nome;
-  if(VIEW==='mes'){ rota='/api/dre/serie.csv?nivel='+(DADOS.nivel||'subgrupo')+filtroAtual(); nome='dre-mes-a-mes'; }
+  if(VIEW==='painel'||VIEW==='mes'){ rota='/api/dre/serie.csv?nivel='+(DADOS.nivel||'subgrupo')+filtroAtual(); nome='dre-mes-a-mes'; }
   else if(VIEW==='comp'){ rota='/api/dre/comparativo.csv?mesA='+DADOS.mesA+'&mesB='+DADOS.mesB+
       '&nivel='+(DADOS.nivelC||'subgrupo')+filtroAtual(); nome='dre-comparativo'; }
   else if(VIEW==='lojas'){ rota='/api/dre/lojas.csv?mes='+DADOS.mesL; nome='dre-lojas'; }
