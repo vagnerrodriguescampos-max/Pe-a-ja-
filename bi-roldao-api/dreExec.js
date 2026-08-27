@@ -398,3 +398,180 @@ module.exports = {
   csvSerie, csvComparativo, csvLojas, csvRegionais, paraCsv,
   pct, pctMovimento, naturezaDe, rotuloMes,
 };
+
+/* ============================================================== PAINEL EXECUTIVO
+ *
+ * Um dashboard que exige seis requisições não é um dashboard — é um relatório
+ * lento. Aqui tudo o que a tela mostra é montado numa passada só e devolvido
+ * numa resposta só, porque a decisão de quem abre isso acontece nos primeiros
+ * segundos e cada round-trip a atrasa.
+ *
+ * As quatro perguntas que a tela responde, nesta ordem:
+ *   o que aconteceu   -> KPIs do mês fechado
+ *   o que mudou       -> impacto por linha contra o mês anterior
+ *   o que exige ação  -> alertas derivados dos dados, nunca inventados
+ *   onde agir         -> ranking de lojas e regionais
+ */
+
+/** Série do resultado e da receita por mês — alimenta as minifichas de tendência. */
+function serieResumo(base, filtro) {
+  const meses = base.meses.slice().sort();
+  const res = [], rec = [];
+  for (const m of meses) {
+    let r = 0, rb = null;
+    for (const f of base.fatos) {
+      if (f.m !== m || !aplicaFiltro(f, filtro)) continue;
+      r += f.v;
+      if (norm(f.sg) === 'receita bruta') rb = (rb || 0) + f.v;
+    }
+    res.push(r); rec.push(rb);
+  }
+  return { meses, rotulos: meses.map(rotuloMes), resultado: res, receita: rec };
+}
+
+/**
+ * Alertas. Cada um sai de uma comparação explícita nos dados — nada aqui é
+ * heurística de "parece estranho". O limiar de materialidade evita o vício
+ * clássico do painel que grita por uma conta de mil reais que dobrou.
+ */
+function alertasDe(comp, porLojaRes, kpis) {
+  const out = [];
+  const material = Math.max(50000, Math.abs(kpis.receita || 0) * 0.001);
+
+  for (const l of comp.pioras.slice(0, 6)) {
+    if (Math.abs(l.impacto) < material) continue;
+    /* O verbo vem do movimento da linha, não do sinal do impacto. Uma receita
+       que piora o resultado CAIU; uma despesa que piora o resultado SUBIU.
+       Escrever "subiu -1,7%" para uma receita em queda destrói a credibilidade
+       do relatório na primeira leitura em voz alta. */
+    let mov;
+    if (l.variacaoPct == null) mov = 'mudou sem base de comparação';
+    else if (Math.abs(l.variacaoPct) < 0.05) mov = 'ficou estável';
+    else mov = (l.variacaoPct > 0 ? 'subiu ' : 'caiu ') + Math.abs(l.variacaoPct).toFixed(1) + '%';
+    out.push({
+      nivel: 'alto', tema: l.natureza === 'receita' ? 'receita' : 'despesa',
+      titulo: l.descricao,
+      texto: mov + ' e tirou ' + moedaCurta(Math.abs(l.impacto)) + ' do resultado',
+      valor: l.impacto,
+    });
+  }
+  for (const l of comp.linhas) {
+    if (l.novaConta && Math.abs(l.valorB || 0) >= material) {
+      out.push({ nivel: 'medio', tema: 'nova', titulo: l.descricao,
+        texto: 'conta sem movimento em ' + comp.rotuloA + ' e com ' + moedaCurta(Math.abs(l.valorB)) + ' em ' + comp.rotuloB,
+        valor: l.valorB });
+    }
+    if (l.contaZerada && Math.abs(l.valorA || 0) >= material) {
+      out.push({ nivel: 'medio', tema: 'zerada', titulo: l.descricao,
+        texto: 'tinha ' + moedaCurta(Math.abs(l.valorA)) + ' em ' + comp.rotuloA + ' e zerou em ' + comp.rotuloB +
+               ' — verificar se é provisão em falta',
+        valor: l.valorA });
+    }
+  }
+  if (porLojaRes && porLojaRes.semMovimento.length) {
+    out.push({ nivel: 'alto', tema: 'base',
+      titulo: porLojaRes.semMovimento.length + ' loja(s) sem lançamento na competência',
+      texto: porLojaRes.semMovimento.slice(0, 6).map(l => l.loja + (l.unidade ? ' ' + l.unidade : '')).join(', ') +
+             (porLojaRes.semMovimento.length > 6 ? ' e outras' : '') + ' — os totais abaixo estão incompletos',
+      valor: null });
+  }
+  if (kpis.margem != null && kpis.margemAnterior != null && kpis.margem < kpis.margemAnterior) {
+    out.push({ nivel: 'medio', tema: 'margem', titulo: 'Margem sobre a Receita Bruta caiu',
+      texto: kpis.margemAnterior.toFixed(1) + '% para ' + kpis.margem.toFixed(1) + '% em um mês',
+      valor: null });
+  }
+  const ordem = { alto: 0, medio: 1, baixo: 2 };
+  return out.sort((a, b) => ordem[a.nivel] - ordem[b.nivel] || Math.abs(b.valor || 0) - Math.abs(a.valor || 0)).slice(0, 8);
+}
+
+const pctTexto = p => (p >= 0 ? '+' : '') + p.toFixed(1) + '%';
+function moedaCurta(v) {
+  const a = Math.abs(v);
+  if (a >= 1e9) return 'R$ ' + (v / 1e9).toFixed(2).replace('.', ',') + ' bi';
+  if (a >= 1e6) return 'R$ ' + (v / 1e6).toFixed(1).replace('.', ',') + ' Mi';
+  if (a >= 1e3) return 'R$ ' + Math.round(v / 1e3) + ' mil';
+  return 'R$ ' + Math.round(v);
+}
+
+function painel(base, opts = {}) {
+  const meses = base.meses.slice().sort();
+  const mes = String(opts.mes || meses[meses.length - 1]);
+  const anterior = mesAnterior(mes);
+  const temAnterior = meses.includes(anterior);
+  const filtro = opts.filtro || {};
+
+  const serie = serieResumo(base, filtro);
+  const i = serie.meses.indexOf(mes);
+  const iAnt = serie.meses.indexOf(anterior);
+
+  const resultado = i >= 0 ? serie.resultado[i] : null;
+  const resultadoAnt = iAnt >= 0 ? serie.resultado[iAnt] : null;
+  const receita = i >= 0 ? serie.receita[i] : null;
+  const receitaAnt = iAnt >= 0 ? serie.receita[iAnt] : null;
+
+  /* Despesa é a soma das linhas de natureza despesa, publicada em módulo:
+     "gastamos 43,7 Mi" é como a diretoria fala, não "-43,7 Mi". */
+  const s = serieCompleta(base, { meses: temAnterior ? [anterior, mes] : [mes], filtro });
+  const iS = s.meses.indexOf(mes), iSA = s.meses.indexOf(anterior);
+  const despesa = s.linhas.filter(l => l.natureza === 'despesa')
+    .reduce((a, l) => a + (l.valores[iS] || 0), 0);
+  const despesaAnt = iSA >= 0 ? s.linhas.filter(l => l.natureza === 'despesa')
+    .reduce((a, l) => a + (l.valores[iSA] || 0), 0) : null;
+
+  const margem = receita ? (resultado / receita) * 100 : null;
+  const margemAnterior = receitaAnt ? (resultadoAnt / receitaAnt) * 100 : null;
+
+  const kpis = {
+    mes, rotulo: rotuloMes(mes), rotuloAnterior: temAnterior ? rotuloMes(anterior) : null,
+    receita, receitaVar: pct(receitaAnt, receita),
+    resultado, resultadoVar: pct(resultadoAnt, resultado), resultadoImpacto:
+      resultadoAnt == null || resultado == null ? null : resultado - resultadoAnt,
+    despesa: despesa == null ? null : Math.abs(despesa),
+    despesaVar: despesaAnt == null ? null : pctMovimento(despesaAnt, despesa, 'despesa'),
+    margem, margemAnterior,
+    margemPontos: margem == null || margemAnterior == null ? null : margem - margemAnterior,
+  };
+
+  const comp = temAnterior ? comparativo(base, anterior, mes, { filtro, limite: 6 })
+    : { linhas: [], pioras: [], melhoras: [], rotuloA: '—', rotuloB: rotuloMes(mes),
+        resumo: { totalA: null, totalB: resultado, impactoTotal: null, variacaoPct: null, linhasNovas: 0, linhasZeradas: 0 } };
+
+  /* Composição: o que pesa sobre a receita, do maior para o menor. É a leitura
+     que responde "para onde foi o dinheiro" antes de qualquer detalhamento. */
+  const composicao = s.linhas
+    .filter(l => l.natureza === 'despesa' && l.valores[iS] != null)
+    .map(l => ({ subGrupo: l.subGrupo, valor: Math.abs(l.valores[iS]),
+                 av: l.av[iS], ah: l.ah[iS] }))
+    .sort((a, b) => b.valor - a.valor).slice(0, 8);
+
+  const lojas = filtro.loja != null ? null : porLoja(base, mes, { regional: filtro.regional });
+  const regionais = filtro.loja != null || filtro.regional ? null : porRegional(base, { meses });
+
+  return {
+    mes, mesAnterior: temAnterior ? anterior : null, filtro,
+    meses, rotulos: serie.rotulos,
+    kpis,
+    tendencia: { rotulos: serie.rotulos, resultado: serie.resultado, receita: serie.receita },
+    composicao,
+    pioras: comp.pioras.slice(0, 5),
+    melhoras: comp.melhoras.slice(0, 5),
+    lojas: lojas ? {
+      /* mesmos nomes de porLoja — duas grafias para a mesma ideia no mesmo
+         módulo é a origem exata do erro que isto corrige. */
+      melhoras: lojas.melhoras.slice(0, 5),
+      pioras: lojas.pioras.slice(0, 5),
+      total: lojas.lojas.length,
+      semBase: lojas.semMovimento.length,
+      semBaseNomes: lojas.semMovimento.slice(0, 8),
+    } : null,
+    regionais: regionais ? regionais.linhas.map(l => ({
+      regional: l.regional, lojas: l.lojas,
+      valor: l.valores[regionais.meses.indexOf(mes)],
+      ah: l.ah[regionais.meses.indexOf(mes)],
+    })).sort((a, b) => (b.valor || 0) - (a.valor || 0)) : null,
+    alertas: alertasDe(comp, lojas, kpis),
+  };
+}
+
+module.exports.painel = painel;
+module.exports.serieResumo = serieResumo;
