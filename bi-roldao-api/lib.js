@@ -19,6 +19,11 @@ const normTxt = s => String(s==null?'':s).toLowerCase().normalize('NFD').replace
 function colValues(rows,c){ const out=[]; if(c<0)return out; for(let i=1;i<rows.length;i++){ const r=rows[i]; if(!r)continue; const v=S(r[c]); if(v)out.push(v); } return out; }
 function distinctCount(vals){ return new Set(vals.map(normTxt)).size; }
 function isNumericCol(rows,c){ let seen=0,nums=0; for(let i=1;i<rows.length&&seen<30;i++){ const r=rows[i]; if(!r)continue; const v=r[c]; if(v==null||v==='')continue; seen++; if(typeof v==='number'||/^\d+$/.test(String(v).trim()))nums++; } return seen>0 && nums/seen>=0.8; }
+function linhasDeLoja(rows,cNum){ const out=[]; for(let i=1;i<rows.length;i++){ const r=rows[i]; if(r&&r[cNum]!=null&&S(r[cNum])!=='')out.push(i); } return out; }
+/* Cobertura = em quantas das linhas que TEM loja a coluna tambem tem valor.
+   E o teste que separa um atributo da loja de uma lista avulsa parada ao lado
+   da tabela: o atributo acompanha todas as linhas, a lista acaba nas primeiras. */
+function cobertura(rows,c,linhas){ if(c<0||!linhas.length)return 0; let n=0; for(const i of linhas){ const r=rows[i]; if(r&&S(r[c])!=='')n++; } return n/linhas.length; }
 function resolveStoreColumns(rows){
   const width=rows.reduce((w,r)=>Math.max(w,r?r.length:0),0);
   const hdr=(rows[0]||[]).map(normTxt);
@@ -30,19 +35,50 @@ function resolveStoreColumns(rows){
   if(num<0) num=1;
   if(nome<0||nome===num) nome=(num===0?1:0);
   if(regional===num||regional===nome) regional=-1;
+
+  const linhas=linhasDeLoja(rows,num);
   const nomes=new Set(colValues(rows,nome).map(normTxt));
-  const pareceRegional=c=>{
-    if(c<0||c===num||c===nome) return false;
-    const vals=colValues(rows,c); if(!vals.length) return false;
-    const d=distinctCount(vals); if(d===0||d>15) return false;
-    return vals.filter(v=>nomes.has(normTxt(v))).length/vals.length < 0.5;
+  const diagnostico=[];
+
+  /* Uma coluna so e o regional da loja se ela existir em praticamente TODA linha
+     que tem loja. Ja aconteceu de a planilha trazer, a direita da tabela, uma
+     legenda com os nomes das regionais: ela passa em qualquer teste de conteudo
+     (poucos valores distintos, texto de regional) e mesmo assim nao pertence a
+     loja daquela linha -- as primeiras lojas saem trocadas e as demais vazias.
+     A cobertura e o que derruba esse caso. */
+  const COBERTURA_MINIMA=0.9;
+  const avalia=c=>{
+    if(c<0||c===num||c===nome) return null;
+    const vals=colValues(rows,c); if(!vals.length) return null;
+    const d=distinctCount(vals);
+    const cob=cobertura(rows,c,linhas);
+    const propNomeLoja=vals.filter(v=>nomes.has(normTxt(v))).length/vals.length;
+    const numerica=isNumericCol(rows,c);
+    const ok = d>=2 && d<=15 && propNomeLoja<0.5 && cob>=COBERTURA_MINIMA && !numerica;
+    return {col:c, distintos:d, cobertura:Number(cob.toFixed(3)), propNomeLoja:Number(propNomeLoja.toFixed(3)), numerica, ok,
+            cabecalho:S((rows[0]||[])[c]), exemplos:[...new Set(vals)].slice(0,4)};
   };
-  if(!pareceRegional(regional)){
-    let melhor=-1,melhorD=Infinity;
-    for(let c=0;c<width;c++){ if(!pareceRegional(c))continue; const d=distinctCount(colValues(rows,c)); if(d<melhorD){melhorD=d;melhor=c;} }
-    regional=melhor;
+  for(let c=0;c<width;c++){ const a=avalia(c); if(a)diagnostico.push(a); }
+
+  const candidatos=diagnostico.filter(a=>a.ok);
+  const escolhida=regional>=0 ? diagnostico.find(a=>a.col===regional&&a.ok) : null;
+  if(escolhida){
+    regional=escolhida.col;
+  } else {
+    /* Sem cabecalho confiavel, vale a coluna que melhor se comporta como
+       atributo: primeiro cobertura, depois a que menos parece nome de loja.
+       O criterio antigo era "menos valores distintos", que elegia qualquer
+       coluna de Status ou de SIM/NAO por ter so dois valores. */
+    const ordenados=candidatos.slice().sort((a,b)=>
+      b.cobertura-a.cobertura || a.propNomeLoja-b.propNomeLoja || a.col-b.col);
+    if(regional>=0 && !ordenados.some(a=>a.col===regional))
+      console.warn('Base nova regional: a coluna com cabecalho de regional (indice '+regional+
+        ') nao acompanha todas as lojas (cobertura '+
+        (diagnostico.find(a=>a.col===regional)||{cobertura:0}).cobertura+
+        ') — parece uma lista avulsa ao lado da tabela e foi descartada.');
+    regional = ordenados.length ? ordenados[0].col : -1;
   }
-  return {nome,num,regional};
+  return {nome,num,regional,diagnostico,lojasNaAba:linhas.length};
 }
 
 /* Recebe um workbook SheetJS já lido e retorna o seed (mesma estrutura do aggregate.js). */
