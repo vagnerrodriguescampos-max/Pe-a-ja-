@@ -30,13 +30,13 @@ function ler(dataDir) {
     const p = arquivo(dataDir);
     if (fs.existsSync(p)) {
       const j = JSON.parse(fs.readFileSync(p, 'utf8'));
-      if (j && typeof j.mapa === 'object' && j.mapa) return { mapa: j.mapa, atualizado: j.atualizado || null };
+      if (j && typeof j.mapa === 'object' && j.mapa) return { mapa: j.mapa, atualizado: j.atualizado || null, sementeVersao: j.sementeVersao == null ? 1 : j.sementeVersao };
     }
   } catch (e) { console.error('regionais.json ilegivel:', e.message); }
-  return { mapa: {}, atualizado: null };
+  return { mapa: {}, atualizado: null, sementeVersao: 0 };
 }
 
-function gravar(dataDir, mapa) {
+function gravar(dataDir, mapa, sementeVersao) {
   const limpo = {};
   for (const k of Object.keys(mapa || {})) {
     const n = String(k).trim();
@@ -45,6 +45,8 @@ function gravar(dataDir, mapa) {
     if (v) limpo[n] = v;      // string vazia remove a loja do mapa
   }
   const conteudo = { mapa: limpo, atualizado: new Date().toISOString() };
+  if (sementeVersao != null) conteudo.sementeVersao = sementeVersao;
+  else { const atual = ler(dataDir); if (atual.sementeVersao != null) conteudo.sementeVersao = atual.sementeVersao; }
   fs.writeFileSync(arquivo(dataDir), JSON.stringify(conteudo, null, 1));
   return conteudo;
 }

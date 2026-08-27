@@ -10,7 +10,6 @@
   "39": "C. OESTE",
   "18": "C. OESTE",
   "26": "C. OESTE",
-
   "36": "GRANDE SP",
   "16": "GRANDE SP",
   "2": "GRANDE SP",
@@ -21,7 +20,6 @@
   "43": "GRANDE SP",
   "27": "GRANDE SP",
   "37": "GRANDE SP",
-
   "52": "BAIXADA/ABC",
   "28": "BAIXADA/ABC",
   "22": "BAIXADA/ABC",
@@ -30,7 +28,6 @@
   "13": "BAIXADA/ABC",
   "51": "BAIXADA/ABC",
   "53": "BAIXADA/ABC",
-
   "19": "INTERIOR",
   "35": "INTERIOR",
   "17": "INTERIOR",
@@ -39,7 +36,10 @@
   "8": "INTERIOR",
   "50": "INTERIOR",
   "46": "INTERIOR",
-  "40": "INTERIOR"
+  "40": "INTERIOR",
+  "42": "BAIXADA/ABC",
+  "29": "BAIXADA/ABC"
  },
- "_pendentes": "Três lojas ficaram de fora de propósito, porque a lista não permite decidir sem adivinhar: 7 (SANTO ANDRÉ) e 42 (SANTO ANDRÉ I) disputam a entrada 'SANTO ANDRÉ II', e 29 (SANTOS) provavelmente é 'VILA MATHIAS', mas o nome não confere. Enquanto não forem definidas em /regionais, essas lojas usam o valor lido da planilha."
+ "_pendentes": "Resolvido em 27/08/2026 pela operacao: 42 = SANTO ANDRE II e 29 = VILA MATHIAS (mesma loja que SANTOS), ambas BAIXADA/ABC. Segue de fora a loja 7 (SANTO ANDRE), que nao consta na lista de regionais enviada — ate ser definida em /regionais ela usa o valor lido da planilha.",
+ "versao": 2
 }
