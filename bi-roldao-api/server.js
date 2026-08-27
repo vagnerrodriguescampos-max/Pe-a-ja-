@@ -7,6 +7,8 @@ const { buildSeedFromWorkbook, mergeSeed, parseDreWorkbook } = require('./lib');
 const dre = require('./dre');
 const X = require('./dreExec');
 const { PAGINA_DRE } = require('./paginaDre');
+const REG = require('./regionais');
+const { PAGINA_REGIONAIS } = require('./paginaRegionais');
 const { PAGINA_DRE_EXEC } = require('./paginaDreExec');
 
 // abas realmente usadas — ler só elas reduz drasticamente a memória (pula "Procv categoria" 275k linhas etc.)
@@ -80,9 +82,15 @@ app.post('/api/upload',
       const inc = buildSeedFromWorkbook(wb, req.file.originalname);
       let base = null; try { if (fs.existsSync(SEED_FILE)) base = JSON.parse(fs.readFileSync(SEED_FILE, 'utf8')); } catch (e) {}
       const { seed, stats } = mergeSeed(base, inc);
+      /* O de-para oficial vale mais que a planilha: a aba de regionais já mudou
+         de layout duas vezes de um jeito que enganou a detecção automática, e
+         quem conferiu loja a loja é a fonte confiável. */
+      const oficial = REG.ler(DATA_DIR);
+      const ajuste = REG.aplicar(seed, oficial.mapa);
       fs.writeFileSync(SEED_FILE, JSON.stringify(seed));
       console.log('base atualizada ->', seed.meta.maxDate, JSON.stringify(stats), 'em', ((Date.now() - t0) / 1000).toFixed(1) + 's');
-      res.json({ ok: true, stats, meta: seed.meta });
+      if (ajuste.corrigidas) console.log('de-para de regionais corrigiu', ajuste.corrigidas, 'loja(s):', JSON.stringify(ajuste.divergentes.slice(0, 10)));
+      res.json({ ok: true, stats, meta: seed.meta, regionaisCorrigidas: ajuste.corrigidas, regionais: seed.regionals });
     } catch (e) { console.error('erro no upload:', e); res.status(500).json({ error: String(e.message || e) }); }
   }
 );
@@ -334,6 +342,44 @@ app.get('/api/dre/regionais', exigeSenha, (req, res) => {
 app.get('/api/dre/regionais.csv', exigeSenha, (req, res) => {
   const base = exigeBase(req, res); if (!base) return;
   enviaCsv(res, 'dre-regionais', X.csvRegionais(X.porRegional(base, {})));
+});
+
+/* -------------------------- DE-PARA LOJA -> REGIONAL -------------------------- */
+app.get('/regionais', (req, res) => res.type('html').send(PAGINA_REGIONAIS));
+
+function lerSeed() {
+  try { if (fs.existsSync(SEED_FILE)) return JSON.parse(fs.readFileSync(SEED_FILE, 'utf8')); } catch (e) { console.error('seed ilegivel:', e.message); }
+  return null;
+}
+
+app.get('/api/regionais', exigeSenha, (req, res) => {
+  const seed = lerSeed();
+  if (!seed) return res.status(404).json({ error: 'Nenhuma base importada ainda.' });
+  const oficial = REG.ler(DATA_DIR);
+  res.json({
+    mapa: oficial.mapa,
+    atualizado: oficial.atualizado,
+    lojas: (seed.stores || []).map(s => ({ num: s.num, name: s.name, regional: s.regional || '' }))
+      .sort((a, b) => a.num - b.num),
+    regionais: REG.conhecidas(seed, oficial.mapa),
+  });
+});
+
+app.post('/api/regionais', exigeSenha, express.json({ limit: '1mb' }), (req, res) => {
+  const seed = lerSeed();
+  if (!seed) return res.status(404).json({ error: 'Nenhuma base importada ainda.' });
+  const mapa = (req.body && req.body.mapa) || {};
+  if (typeof mapa !== 'object') return res.status(400).json({ error: 'mapa inválido' });
+  try {
+    const salvo = REG.gravar(DATA_DIR, mapa);
+    const ajuste = REG.aplicar(seed, salvo.mapa);
+    fs.writeFileSync(SEED_FILE, JSON.stringify(seed));
+    console.log('de-para de regionais salvo:', Object.keys(salvo.mapa).length, 'lojas |', ajuste.corrigidas, 'corrigidas na base');
+    res.json({
+      ok: true, lojasNoMapa: Object.keys(salvo.mapa).length, atualizado: salvo.atualizado,
+      corrigidas: ajuste.corrigidas, divergentes: ajuste.divergentes, regionais: seed.regionals,
+    });
+  } catch (e) { console.error('erro ao salvar de-para:', e); res.status(500).json({ error: String(e.message || e) }); }
 });
 
 app.get('/favicon.ico', (req, res) => res.status(204).end());
