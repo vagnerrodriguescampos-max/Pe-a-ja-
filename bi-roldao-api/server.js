@@ -40,17 +40,30 @@ try {
    loja removida de propósito voltaria sozinha no próximo deploy. */
 try {
   const REG0 = require('./regionais');
-  const alvo = path.join(DATA_DIR, 'regionais.json');
   const semente = path.join(__dirname, 'regionais-inicial.json');
-  if (!fs.existsSync(alvo) && fs.existsSync(semente)) {
+  if (fs.existsSync(semente)) {
     const inicial = JSON.parse(fs.readFileSync(semente, 'utf8'));
-    const salvo = REG0.gravar(DATA_DIR, inicial.mapa || {});
-    console.log('de-para inicial de regionais gravado:', Object.keys(salvo.mapa).length, 'lojas');
-    if (fs.existsSync(SEED_FILE)) {
-      const s = JSON.parse(fs.readFileSync(SEED_FILE, 'utf8'));
-      const ajuste = REG0.aplicar(s, salvo.mapa);
-      fs.writeFileSync(SEED_FILE, JSON.stringify(s));
-      console.log('de-para inicial corrigiu', ajuste.corrigidas, 'loja(s) na base atual | regionais ->', JSON.stringify(s.regionals));
+    const versao = Number(inicial.versao || 1);
+    const atual = REG0.ler(DATA_DIR);
+    /* A semente é versionada porque ela precisa poder ser COMPLEMENTADA depois:
+       lojas que ficaram pendentes por falta de informação entram numa versão
+       seguinte. Cada versão entra uma vez só, e apenas para loja que ainda não
+       está no mapa — assim uma correção feita na tela nunca é sobrescrita pelo
+       deploy. O preço é que uma loja apagada de propósito pode voltar se ela
+       aparecer numa semente futura; nesse caso basta apagar de novo. */
+    if (versao > (atual.sementeVersao || 0)) {
+      const mesclado = Object.assign({}, inicial.mapa || {}, atual.mapa || {});
+      const novas = Object.keys(inicial.mapa || {}).filter(k => !(k in (atual.mapa || {})));
+      const salvo = REG0.gravar(DATA_DIR, mesclado, versao);
+      console.log('de-para de regionais: semente v' + versao + ' aplicada |',
+        Object.keys(salvo.mapa).length, 'lojas no mapa |', novas.length, 'nova(s):', JSON.stringify(novas));
+      if (fs.existsSync(SEED_FILE)) {
+        const s = JSON.parse(fs.readFileSync(SEED_FILE, 'utf8'));
+        const ajuste = REG0.aplicar(s, salvo.mapa);
+        fs.writeFileSync(SEED_FILE, JSON.stringify(s));
+        console.log('de-para corrigiu', ajuste.corrigidas, 'loja(s) na base atual | regionais ->', JSON.stringify(s.regionals));
+        if (ajuste.divergentes.length) console.log('   ', JSON.stringify(ajuste.divergentes.slice(0, 8)));
+      }
     }
   }
 } catch (e) { console.error('falha ao aplicar de-para inicial de regionais:', e.message); }
