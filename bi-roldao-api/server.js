@@ -34,6 +34,27 @@ try {
   }
 } catch (e) { console.error('falha ao injetar DRE inicial:', e.message); }
 
+/* De-para de regionais: grava a lista oficial UMA VEZ, quando o volume ainda
+   não tem a dele, e já corrige a base que estiver importada. Uma vez criado o
+   arquivo, quem manda é a tela /regionais — o boot nunca mais mexe, senão uma
+   loja removida de propósito voltaria sozinha no próximo deploy. */
+try {
+  const REG0 = require('./regionais');
+  const alvo = path.join(DATA_DIR, 'regionais.json');
+  const semente = path.join(__dirname, 'regionais-inicial.json');
+  if (!fs.existsSync(alvo) && fs.existsSync(semente)) {
+    const inicial = JSON.parse(fs.readFileSync(semente, 'utf8'));
+    const salvo = REG0.gravar(DATA_DIR, inicial.mapa || {});
+    console.log('de-para inicial de regionais gravado:', Object.keys(salvo.mapa).length, 'lojas');
+    if (fs.existsSync(SEED_FILE)) {
+      const s = JSON.parse(fs.readFileSync(SEED_FILE, 'utf8'));
+      const ajuste = REG0.aplicar(s, salvo.mapa);
+      fs.writeFileSync(SEED_FILE, JSON.stringify(s));
+      console.log('de-para inicial corrigiu', ajuste.corrigidas, 'loja(s) na base atual | regionais ->', JSON.stringify(s.regionals));
+    }
+  }
+} catch (e) { console.error('falha ao aplicar de-para inicial de regionais:', e.message); }
+
 /* A base contábil vive em arquivo próprio, fora do seed.json: são ~35 mil
    linhas que o front de vendas não consome, e misturá-las encareceria todo
    GET /api/seed sem necessidade. */

@@ -81,6 +81,32 @@ function resolveStoreColumns(rows){
   return {nome,num,regional,diagnostico,lojasNaAba:linhas.length};
 }
 
+/* Acha a coluna de NUMERO DE LOJA que pertence ao mesmo bloco da coluna de
+   regional. A aba "Base nova regional" traz mais de uma tabela lado a lado, e
+   cada uma em sua propria ordem — a da esquerda em ordem alfabetica, a da
+   direita nao. Usar o numero de loja da tabela principal para ler a regional da
+   tabela vizinha casa lojas diferentes na mesma linha: os valores saem todos
+   validos, a cobertura fica cheia, e mesmo assim cada loja recebe a regional de
+   outra. Por isso a busca anda da coluna de regional para a esquerda ate achar o
+   numero dela, e so entao o mapa e montado por chave, nao por posicao. */
+function colunaChaveDoRegional(rows, cols){
+  if(cols.regional<0) return {colNum:cols.num, mesmoBloco:true};
+  const width=rows.reduce((w,r)=>Math.max(w,r?r.length:0),0);
+  const numerosValidos=new Set();
+  for(let i=1;i<rows.length;i++){ const r=rows[i]; if(r&&r[cols.num]!=null) numerosValidos.add(String(r[cols.num]).trim()); }
+  const ehColunaDeNumeroDeLoja=c=>{
+    if(c<0||c>=width) return false;
+    if(!isNumericCol(rows,c)) return false;
+    const vals=colValues(rows,c); if(!vals.length) return false;
+    /* Tem de ser a MESMA populacao de lojas, senao e outra coluna numerica
+       qualquer (metragem, ranking, ano) que por acaso e numerica. */
+    return vals.filter(v=>numerosValidos.has(String(v).trim())).length/vals.length >= 0.9;
+  };
+  for(let c=cols.regional-1;c>=0;c--){ if(ehColunaDeNumeroDeLoja(c)) return {colNum:c, mesmoBloco:c!==cols.num}; }
+  for(let c=cols.regional+1;c<width;c++){ if(ehColunaDeNumeroDeLoja(c)) return {colNum:c, mesmoBloco:c!==cols.num}; }
+  return {colNum:cols.num, mesmoBloco:true};
+}
+
 /* Recebe um workbook SheetJS já lido e retorna o seed (mesma estrutura do aggregate.js). */
 function buildSeedFromWorkbook(wb, fileName){
   const aoa = n => wb.Sheets[n] ? XLSX.utils.sheet_to_json(wb.Sheets[n], {header:1, raw:true, defval:null}) : [];
@@ -89,13 +115,16 @@ function buildSeedFromWorkbook(wb, fileName){
   const bnr = aoa('Base nova regional');
   const stores = {};
   const bnrCols = resolveStoreColumns(bnr);
+  const parRegional = colunaChaveDoRegional(bnr, bnrCols);
   /* O log da escolha de coluna sai SEMPRE, com as concorrentes ao lado. Quando
      esse campo saiu errado, a unica pista disponivel era uma linha dizendo qual
      indice foi escolhido — sem as alternativas nao dava para saber se a decisao
      tinha sido boa nem por que. Com a tabela abaixo, uma importacao errada se
      explica sozinha na primeira leitura do log. */
   console.log('Base nova regional: ' + bnrCols.lojasNaAba + ' lojas na aba | colunas -> nome=' +
-    bnrCols.nome + ' num=' + bnrCols.num + ' regional=' + bnrCols.regional);
+    bnrCols.nome + ' num=' + bnrCols.num + ' regional=' + bnrCols.regional +
+    ' | regional casada pela coluna de numero ' + parRegional.colNum +
+    (parRegional.colNum!==bnrCols.num ? ' (bloco vizinho — join por numero de loja)' : ' (mesma tabela)'));
   for(const d of bnrCols.diagnostico){
     console.log('   coluna ' + String(d.col).padStart(2) + (d.col===bnrCols.regional ? ' <=ESCOLHIDA' : '           ') +
       ' cabecalho="' + d.cabecalho + '" cobertura=' + d.cobertura + ' distintos=' + d.distintos +
@@ -103,8 +132,21 @@ function buildSeedFromWorkbook(wb, fileName){
       ' ex: ' + JSON.stringify(d.exemplos));
   }
   if(bnrCols.regional<0) console.warn('Base nova regional: coluna de regional nao identificada — o filtro Regional ficara vazio.');
+  /* A regional vem de um mapa loja->regional montado com a coluna de numero que
+     fica JUNTO da coluna de regional, e nao com a da tabela principal. A aba tem
+     dois blocos lado a lado em ordens diferentes: ler a regional pela posicao da
+     linha casa a loja de um bloco com a regional de outro. Casar por numero de
+     loja e imune a ordem. */
+  const regionalPorLoja = {};
+  if(bnrCols.regional>=0 && parRegional.colNum>=0){
+    for(let i=1;i<bnr.length;i++){ const r=bnr[i]; if(!r)continue;
+      const n=r[parRegional.colNum], v=S(r[bnrCols.regional]);
+      if(n==null||S(n)===''||!v)continue;
+      regionalPorLoja[n]=v; }
+  }
   for(let i=1;i<bnr.length;i++){ const r=bnr[i]; if(!r||r[bnrCols.num]==null)continue;
-    stores[r[bnrCols.num]]={num:r[bnrCols.num], name:S(r[bnrCols.nome]), regional:bnrCols.regional>=0?S(r[bnrCols.regional]):''}; }
+    const n=r[bnrCols.num];
+    stores[n]={num:n, name:S(r[bnrCols.nome]), regional:regionalPorLoja[n]||''}; }
   const bl = aoa('Base loja'); const nameByNum = {};
   for(const r of bl){ if(!r)continue; if(r[0]!=null&&r[1])nameByNum[r[0]]=S(r[1]); if(r[5]!=null&&r[4])nameByNum[r[5]]=S(r[4]); }
   for(const k in stores){ if(nameByNum[k]) stores[k].name = nameByNum[k]; }
