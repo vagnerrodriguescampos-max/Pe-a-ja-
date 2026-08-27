@@ -3,7 +3,8 @@ const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
 const XLSX = require('xlsx');
-const { buildSeedFromWorkbook, mergeSeed, parseDreWorkbook, mergeDre } = require('./lib');
+const { buildSeedFromWorkbook, mergeSeed, parseDreWorkbook, mergeDre, derivarFechamento } = require('./lib');
+const { parseBaseContabilDre } = require('./dreContabil');
 const dre = require('./dre');
 const X = require('./dreExec');
 const { PAGINA_DRE } = require('./paginaDre');
@@ -183,11 +184,26 @@ app.post('/api/upload-dre',
       console.log('upload DRE:', req.file.originalname, (req.file.size / 1048576).toFixed(1) + 'MB');
       const wb = XLSX.read(req.file.buffer, { type: 'buffer', cellDates: true });
       const today = new Date().toISOString().slice(0, 10);
-      const { dre: recebida, stats } = parseDreWorkbook(wb, req.file.originalname, today);
+      /* Duas planilhas diferentes chegam pelo mesmo botão, e obrigar quem sobe a
+         escolher o tipo certo é transferir para a pessoa um problema que o
+         servidor resolve olhando o arquivo. A Base Contábil se identifica pela
+         aba de lançamentos (colunas Unidade, Sub Grupo e Valor); qualquer outra
+         coisa é tratada como a DRE gerencial. */
+      const ehBaseContabil = wb.SheetNames.some(n => {
+        const c = (XLSX.utils.sheet_to_json(wb.Sheets[n], { header: 1, raw: true, defval: null })[0] || [])
+          .map(x => String(x == null ? '' : x).toLowerCase().trim());
+        return c.includes('sub grupo') && c.includes('unidade') && c.includes('valor');
+      });
+      const oficial = REG.ler(DATA_DIR).mapa;
+      const { dre: recebida, stats } = ehBaseContabil
+        ? parseBaseContabilDre(wb, req.file.originalname, today, oficial)
+        : parseDreWorkbook(wb, req.file.originalname, today);
+      console.log('upload DRE reconhecido como:', ehBaseContabil ? 'Base Contábil (rede inteira)' : 'DRE gerencial (por regional)');
       let seed = {}; try { if (fs.existsSync(SEED_FILE)) seed = JSON.parse(fs.readFileSync(SEED_FILE, 'utf8')); } catch (e) {}
       // Soma com o que já existe: cada arquivo traz números de uma regional só,
       // e substituir apagaria as regionais importadas antes.
       const { dre, novasLojas, novosMeses } = mergeDre(seed.dre, recebida);
+      const lairDerivados = derivarFechamento(dre);
       seed.dre = dre;
       fs.writeFileSync(SEED_FILE, JSON.stringify(seed));
       const comPnL = dre.stores.filter(x => dre.data[x.name] && dre.data[x.name].receita_bruta);
@@ -198,12 +214,16 @@ app.post('/api/upload-dre',
         '| por regional:', JSON.stringify(porRegional),
         '| meses:', JSON.stringify(dre.months),
         '| este arquivo trouxe', novasLojas.length, 'loja(s) nova(s)',
+        '| LAIR derivado em', lairDerivados, 'escopo(s)',
         'em', ((Date.now() - t0) / 1000).toFixed(1) + 's');
       res.json({
         ok: true,
         stats: { ...stats, storesComPnL: comPnL.length, storesTotal: dre.stores.length, months: dre.months },
         acumulado: { porRegional, semPnL, fontes: dre.fontes || [dre.source] },
-        esteArquivo: { novasLojas, novosMeses, arquivo: req.file.originalname }
+        esteArquivo: { novasLojas, novosMeses, arquivo: req.file.originalname,
+                       tipo: ehBaseContabil ? 'base-contabil' : 'dre-gerencial',
+                       subGruposNaoMapeados: stats.subGruposDesconhecidos || [],
+                       grafiasMultiplas: stats.grafiasMultiplas || [] }
       });
     } catch (e) { console.error('erro no upload-dre:', e); res.status(500).json({ error: String(e.message || e) }); }
   }

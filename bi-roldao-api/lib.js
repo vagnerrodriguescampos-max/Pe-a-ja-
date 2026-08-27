@@ -442,13 +442,37 @@ function parseDreWorkbook(wb, fileName, today){
  * O parser só grava um número quando ele existe de fato na célula, então basta
  * deixar o novo sobrescrever onde tem e preservar o resto.
  */
-function mergeDre(anterior, novo) {
-  if (!anterior || !anterior.data) return { dre: novo, novasLojas: (novo.stores || []).length, novosMeses: (novo.months || []).length };
+function unirLinhas(a, b) {
+  const A = a || [], B = b || [];
+  const base = A.length >= B.length ? A : B;
+  const outra = base === A ? B : A;
+  const vistos = new Set(base.map(l => l.key));
+  return [...base, ...outra.filter(l => !vistos.has(l.key))];
+}
 
+function mergeDre(anterior, novo) {
+  /* Sempre listas, nunca contagens: quem chama faz `.length` e um número aqui
+     vira "undefined loja(s) nova(s)" no log da importação. */
+  if (!anterior || !anterior.data) {
+    const comDados = (novo.stores || [])
+      .filter(s => novo.data && novo.data[s.name] && novo.data[s.name].receita_bruta)
+      .map(s => s.name);
+    return { dre: novo, novasLojas: comDados, novosMeses: [...(novo.months || [])] };
+  }
+
+  const contabil = o => (o && o.origem) === 'base-contabil';
+  const mandaOAnterior = contabil(anterior) && !contabil(novo);
   const dre = {
     ...novo,
     months: [...new Set([...(anterior.months || []), ...(novo.months || [])])].sort(),
     fontes: [...new Set([...(anterior.fontes || (anterior.source ? [anterior.source] : [])), novo.source].filter(Boolean))],
+    /* A lista de linhas é o que a tabela da DRE renderiza. Herdar só a do último
+       arquivo apagaria linhas da tela: a Base Contábil não descreve Rateio nem
+       LAIR, e subi-la depois da gerencial faria os dois sumirem do relatório
+       mesmo com o dado guardado. Vale a lista mais completa, com o que só a
+       outra tiver anexado ao fim. */
+    lines: unirLinhas(anterior.lines, novo.lines),
+    origem: contabil(anterior) || contabil(novo) ? 'base-contabil' : novo.origem,
   };
 
   // lojas: união pelo nome; a regional vem de quem souber informá-la
@@ -461,11 +485,26 @@ function mergeDre(anterior, novo) {
   }
   dre.stores = [...porNome.values()];
 
-  // valores: novo ganha onde tem número; o que ele não traz continua valendo
+  /* Quem ganha quando as duas fontes têm a MESMA linha, loja e mês?
+   *
+   * Não pode ser "a última que subiu". As duas divergem em junho na linha
+   * Deduções, e deixar a ordem do upload decidir move o EBITDA da rede de
+   * -8,01 Mi para -2,96 Mi — cinco milhões de diferença num indicador de
+   * diretoria, dependendo de qual arquivo a pessoa arrastou primeiro. Um número
+   * que muda por isso não é um número.
+   *
+   * A regra: a Base Contábil manda nas linhas contábeis, porque é o registro
+   * oficial e cobre a rede inteira. A gerencial entra onde a contábil não
+   * alcança — Rateio, LAIR, Qtd de Tickets, Quadro de Pessoal, Metragem, e
+   * lojas ou meses que só ela tem. Assim o resultado é o mesmo em qualquer
+   * ordem, e a divergência de junho fica visível na reconciliação em vez de
+   * silenciosamente decidida por um arrastar de arquivo. */
   const juntarSerie = (a, b) => {
+    const forte = mandaOAnterior ? (a || {}) : (b || {});
+    const fraco = mandaOAnterior ? (b || {}) : (a || {});
     const out = {};
-    for (const linha of new Set([...Object.keys(a || {}), ...Object.keys(b || {})])) {
-      out[linha] = { ...((a || {})[linha] || {}), ...((b || {})[linha] || {}) };
+    for (const linha of new Set([...Object.keys(fraco), ...Object.keys(forte)])) {
+      out[linha] = { ...(fraco[linha] || {}), ...(forte[linha] || {}) };
     }
     return out;
   };
@@ -482,4 +521,47 @@ function mergeDre(anterior, novo) {
   return { dre, novasLojas, novosMeses };
 }
 
-module.exports = { buildSeedFromWorkbook, mergeSeed, parseDreWorkbook, mergeDre };
+/**
+ * Fecha as linhas que nenhuma das fontes entrega prontas.
+ *
+ * A planilha gerencial calcula LAIR e "Ebitda c/ rateio" por loja, mas deixa as
+ * duas células VAZIAS na coluna Total — a fórmula não foi estendida até lá. A
+ * Base Contábil não tem Rateio, então também não fecha LAIR. Resultado: o
+ * indicador mais olhado pela diretoria ficava "N/D" na rede inteira, embora
+ * todas as parcelas estivessem à mão.
+ *
+ * Derivar aqui não é inventar número: é a própria definição da DRE, conferida
+ * ao centavo contra a planilha (Atibaia/jul: -13,422 -156,225 -32,000 -8,909
+ * -9,964 = -220,520, exatamente o LAIR que a empresa publica).
+ *
+ * A regra que evita o abuso: só deriva quando TODAS as parcelas existem, e
+ * nunca sobrescreve um valor que veio da fonte. Uma loja sem Rateio continua
+ * sem LAIR — melhor um campo vazio do que um resultado bom demais porque
+ * faltou o custo corporativo.
+ */
+function derivarFechamento(dre) {
+  if (!dre || !dre.months) return 0;
+  const PARCELAS = ['mrg_ebitda', 'rateio', 'depreciacao', 'resultado_financeiro', 'resultado_nao_op'];
+  let derivados = 0;
+  const fechar = o => {
+    if (!o) return;
+    for (const ym of dre.months) {
+      const eb = o.mrg_ebitda && o.mrg_ebitda[ym];
+      const rt = o.rateio && o.rateio[ym];
+      if (typeof eb === 'number' && typeof rt === 'number' &&
+          !(o.mrg_ebitda_rateio && o.mrg_ebitda_rateio[ym] != null)) {
+        (o.mrg_ebitda_rateio = o.mrg_ebitda_rateio || {})[ym] = eb + rt;
+      }
+      if (o.lair && o.lair[ym] != null) continue;
+      const vals = PARCELAS.map(k => o[k] && o[k][ym]);
+      if (vals.some(v => typeof v !== 'number')) continue;
+      (o.lair = o.lair || {})[ym] = vals.reduce((a, b) => a + b, 0);
+      derivados++;
+    }
+  };
+  Object.values(dre.data || {}).forEach(fechar);
+  fechar(dre.total);
+  return derivados;
+}
+
+module.exports = { buildSeedFromWorkbook, mergeSeed, parseDreWorkbook, mergeDre, derivarFechamento };

@@ -2523,8 +2523,12 @@ function dreCoverageBanner(){
       (faltando.length ? `<b>${faltando.join(', ')}</b> está zerada por falta do arquivo, não por falta de resultado.`
                        : `as regionais parciais ainda esperam o arquivo completo.`);
 
+  /* Duas fontes definem "rede" de formas diferentes — somando só as lojas, ou
+     incluindo Matriz e CD Barueri. A diferença é da ordem de R$ 5 Mi no EBITDA.
+     Dizer qual está em tela custa uma linha e evita uma reunião inteira. */
+  const escopo = DRE.totalNota ? ` · <b>Rede</b> = ${DRE.totalNota}` : '';
   return h(`<div class="insight ${completo?'good':'crit'}"><div class="ic">${icon(completo?'check':'alert')}</div><div class="tx">
-    <b>DRE gerencial · ${nP} de ${nT} lojas detalhadas</b> · ${per} · mês fechado · atualizado em ${fmtDateBR(DRE.updated)}${aviso}
+    <b>DRE gerencial · ${nP} de ${nT} lojas detalhadas</b> · ${per} · mês fechado · atualizado em ${fmtDateBR(DRE.updated)}${escopo}${aviso}
     &nbsp;${chips}
   </div></div>`);
 }
