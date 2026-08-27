@@ -1,0 +1,45 @@
+{
+ "_origem": "Lista oficial enviada pela operação em 27/08/2026. Serve apenas como ponto de partida: é gravada uma única vez, quando ainda não existe regionais.json no volume, e a partir daí quem manda é a tela /regionais.",
+ "mapa": {
+  "30": "C. OESTE",
+  "4": "C. OESTE",
+  "6": "C. OESTE",
+  "24": "C. OESTE",
+  "20": "C. OESTE",
+  "5": "C. OESTE",
+  "39": "C. OESTE",
+  "18": "C. OESTE",
+  "26": "C. OESTE",
+
+  "36": "GRANDE SP",
+  "16": "GRANDE SP",
+  "2": "GRANDE SP",
+  "9": "GRANDE SP",
+  "10": "GRANDE SP",
+  "11": "GRANDE SP",
+  "3": "GRANDE SP",
+  "43": "GRANDE SP",
+  "27": "GRANDE SP",
+  "37": "GRANDE SP",
+
+  "52": "BAIXADA/ABC",
+  "28": "BAIXADA/ABC",
+  "22": "BAIXADA/ABC",
+  "15": "BAIXADA/ABC",
+  "41": "BAIXADA/ABC",
+  "13": "BAIXADA/ABC",
+  "51": "BAIXADA/ABC",
+  "53": "BAIXADA/ABC",
+
+  "19": "INTERIOR",
+  "35": "INTERIOR",
+  "17": "INTERIOR",
+  "48": "INTERIOR",
+  "47": "INTERIOR",
+  "8": "INTERIOR",
+  "50": "INTERIOR",
+  "46": "INTERIOR",
+  "40": "INTERIOR"
+ },
+ "_pendentes": "Três lojas ficaram de fora de propósito, porque a lista não permite decidir sem adivinhar: 7 (SANTO ANDRÉ) e 42 (SANTO ANDRÉ I) disputam a entrada 'SANTO ANDRÉ II', e 29 (SANTOS) provavelmente é 'VILA MATHIAS', mas o nome não confere. Enquanto não forem definidas em /regionais, essas lojas usam o valor lido da planilha."
+}
