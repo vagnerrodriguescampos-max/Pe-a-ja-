@@ -3,7 +3,7 @@ const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
 const XLSX = require('xlsx');
-const { buildSeedFromWorkbook, mergeSeed, parseDreWorkbook } = require('./lib');
+const { buildSeedFromWorkbook, mergeSeed, parseDreWorkbook, mergeDre } = require('./lib');
 const dre = require('./dre');
 const X = require('./dreExec');
 const { PAGINA_DRE } = require('./paginaDre');
@@ -183,12 +183,28 @@ app.post('/api/upload-dre',
       console.log('upload DRE:', req.file.originalname, (req.file.size / 1048576).toFixed(1) + 'MB');
       const wb = XLSX.read(req.file.buffer, { type: 'buffer', cellDates: true });
       const today = new Date().toISOString().slice(0, 10);
-      const { dre, stats } = parseDreWorkbook(wb, req.file.originalname, today);
+      const { dre: recebida, stats } = parseDreWorkbook(wb, req.file.originalname, today);
       let seed = {}; try { if (fs.existsSync(SEED_FILE)) seed = JSON.parse(fs.readFileSync(SEED_FILE, 'utf8')); } catch (e) {}
+      // Soma com o que já existe: cada arquivo traz números de uma regional só,
+      // e substituir apagaria as regionais importadas antes.
+      const { dre, novasLojas, novosMeses } = mergeDre(seed.dre, recebida);
       seed.dre = dre;
       fs.writeFileSync(SEED_FILE, JSON.stringify(seed));
-      console.log('DRE atualizada ->', stats.storesComPnL + '/' + stats.storesTotal, 'lojas,', JSON.stringify(stats.months), 'em', ((Date.now() - t0) / 1000).toFixed(1) + 's');
-      res.json({ ok: true, stats });
+      const comPnL = dre.stores.filter(x => dre.data[x.name] && dre.data[x.name].receita_bruta);
+      const porRegional = {};
+      comPnL.forEach(x => { porRegional[x.regional] = (porRegional[x.regional] || 0) + 1; });
+      const semPnL = dre.stores.filter(x => !(dre.data[x.name] && dre.data[x.name].receita_bruta)).map(x => x.name);
+      console.log('DRE atualizada ->', comPnL.length + '/' + dre.stores.length, 'lojas com P&L',
+        '| por regional:', JSON.stringify(porRegional),
+        '| meses:', JSON.stringify(dre.months),
+        '| este arquivo trouxe', novasLojas.length, 'loja(s) nova(s)',
+        'em', ((Date.now() - t0) / 1000).toFixed(1) + 's');
+      res.json({
+        ok: true,
+        stats: { ...stats, storesComPnL: comPnL.length, storesTotal: dre.stores.length, months: dre.months },
+        acumulado: { porRegional, semPnL, fontes: dre.fontes || [dre.source] },
+        esteArquivo: { novasLojas, novosMeses, arquivo: req.file.originalname }
+      });
     } catch (e) { console.error('erro no upload-dre:', e); res.status(500).json({ error: String(e.message || e) }); }
   }
 );

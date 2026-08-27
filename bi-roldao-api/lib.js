@@ -336,17 +336,73 @@ function parseDreWorkbook(wb, fileName, today){
   const MONTHTABS=[['Fev','02'],['Mar','03'],['Abr','04'],['Mai','05'],['Jun','06'],['Jul','07'],['Ago','08'],['Set','09'],['Out','10'],['Nov','11'],['Dez','12']];
   const YEAR='2026';
   const REGMAP={'regional interior':'Interior','regional grande sp':'Grande SP','regional oeste':'Oeste','regional baixada abc':'Baixada/ABC'};
-  const rowIndex=(R,line)=>{ for(let i=0;i<R.length;i++){ const lab=norm(R[i]&&R[i][0]); if(!lab)continue;
+  /* A planilha é de terceiros e já mudou de forma duas vezes. Da última, os
+     rótulos das contas saíram da coluna A para a B — e como o parser lia a
+     coluna A fixa, ele não achou "Receita Bruta" em nenhum mês e devolveu uma
+     DRE vazia. Não dá para continuar assumindo posição: agora as três âncoras
+     (coluna dos rótulos, linha das regionais, linha dos nomes) são PROCURADAS
+     pelo conteúdo, e o que foi encontrado é registrado no log. Se a planilha
+     mudar de novo, a importação diz onde achou cada coisa em vez de falhar
+     em silêncio. */
+
+  /* Coluna dos rótulos: a que mais casa com os nomes de conta conhecidos. */
+  const acharColunaRotulos=R=>{
+    let melhor={col:0,acertos:-1};
+    for(let c=0;c<8;c++){
+      let acertos=0;
+      for(const l of LINES){
+        for(let i=0;i<R.length;i++){
+          const lab=norm(R[i]&&R[i][c]); if(!lab) continue;
+          if((l.m&&lab===l.m)||(l.mp&&lab.startsWith(l.mp))){ acertos++; break; }
+        }
+      }
+      if(acertos>melhor.acertos) melhor={col:c,acertos};
+    }
+    return melhor;
+  };
+
+  /* Cabeçalho. A primeira tentativa aqui foi procurar a linha que contém
+     "Total" — e estava errada: em Fev e Mar a planilha repete "Total" na linha
+     das regionais E na dos nomes, então o teste escolhia a de cima e o parser
+     passava a ler "REGIONAL INTERIOR" como se fosse o nome de uma loja.
+     A âncora que de fato distingue é semântica: a linha das regionais é a que
+     tem regionais reconhecíveis. Os nomes ficam na linha seguinte. */
+  const acharCabecalho=R=>{
+    let melhor={linha:-1,acertos:0};
+    for(let i=0;i<Math.min(15,R.length);i++){
+      const acertos=(R[i]||[]).filter(v=>REGMAP[norm(v)]).length;
+      if(acertos>melhor.acertos) melhor={linha:i,acertos};
+    }
+    if(melhor.linha>=0&&melhor.acertos>=3) return {linhaNomes:melhor.linha+1, linhaRegional:melhor.linha};
+    return {linhaNomes:4, linhaRegional:3};   // layout histórico
+  };
+
+  const rotulos=acharColunaRotulos(g(wb.SheetNames.find(n=>MONTHTABS.some(([t])=>t===n))||wb.SheetNames[0]));
+  const COLROT=rotulos.col;
+
+  const rowIndex=(R,line)=>{ for(let i=0;i<R.length;i++){ const lab=norm(R[i]&&R[i][COLROT]); if(!lab)continue;
     if(line.m&&lab===line.m)return i; if(line.mp&&lab.startsWith(line.mp))return i; } return -1; };
-  const colMap=R=>{ const reg=R[3]||[],nm=R[4]||[]; const cols=[]; let totalCol=-1;
-    for(let c=1;c<nm.length;c++){ const name=String(nm[c]==null?'':nm[c]).trim(); if(!name)continue;
+  const colMap=R=>{ const {linhaNomes,linhaRegional}=acharCabecalho(R);
+    const reg=R[linhaRegional]||[],nm=R[linhaNomes]||[]; const cols=[]; let totalCol=-1; const semRegional=[];
+    for(let c=0;c<nm.length;c++){ if(c===COLROT) continue;
+      const name=String(nm[c]==null?'':nm[c]).trim(); if(!name)continue;
       if(norm(name)==='total'){totalCol=c;continue;} if(['matriz','cd barueri'].includes(norm(name)))continue;
-      const rg=REGMAP[norm(reg[c])]; if(!rg)continue; cols.push({name,regional:rg,col:c}); } return {cols,totalCol}; };
+      const rg=REGMAP[norm(reg[c])]; if(!rg){ semRegional.push(name); continue; }
+      cols.push({name,regional:rg,col:c}); } return {cols,totalCol,semRegional,linhaNomes,linhaRegional}; };
   // estrutura base a partir de uma aba populada (procura a primeira com Receita Bruta Total numérica)
   let baseTab=null; for(const [tab,mm] of MONTHTABS){ if(!wb.SheetNames.includes(tab))continue; const R=g(tab); const {totalCol}=colMap(R);
     const rbLine=LINES.find(l=>l.key==='receita_bruta'); const ri=rowIndex(R,rbLine); if(ri>=0&&totalCol>=0&&typeof R[ri][totalCol]==='number'&&R[ri][totalCol]!==0){ baseTab=R; break; } }
-  if(!baseTab){ throw new Error('DRE: nenhuma aba de mês com dados encontrada'); }
-  const {cols:STORECOLS}=colMap(baseTab);
+  if(!baseTab){
+    throw new Error('DRE: nenhuma aba de mês com dados encontrada. Rótulos das contas '+
+      (rotulos.acertos>0 ? ('foram achados na coluna '+COLROT+' ('+rotulos.acertos+' de '+LINES.length+' contas)')
+                         : 'NÃO foram achados em nenhuma das 8 primeiras colunas')+
+      '. Abas no arquivo: '+wb.SheetNames.join(', '));
+  }
+  const {cols:STORECOLS,semRegional,linhaNomes,linhaRegional}=colMap(baseTab);
+  console.log('[DRE] rótulos na coluna '+COLROT+' ('+rotulos.acertos+'/'+LINES.length+' contas reconhecidas)'+
+    ' · regionais na linha '+(linhaRegional+1)+' · nomes na linha '+(linhaNomes+1));
+  console.log('[DRE] '+STORECOLS.length+' lojas com regional');
+  if(semRegional.length) console.log('[DRE] sem regional (ficaram de fora): '+semRegional.join(', '));
   const stores=STORECOLS.map(s=>({name:s.name,regional:s.regional}));
   const regionais=['Interior','Grande SP','Oeste','Baixada/ABC'];
   const data={}, total={}; const monthsSet=new Set(); stores.forEach(s=>data[s.name]={});
@@ -363,8 +419,67 @@ function parseDreWorkbook(wb, fileName, today){
   }
   const months=[...monthsSet].sort();
   const nP=stores.filter(s=>data[s.name].receita_bruta).length;
+  const porRegional={};
+  stores.forEach(s=>{ if(data[s.name].receita_bruta) porRegional[s.regional]=(porRegional[s.regional]||0)+1; });
+  console.log('[DRE] meses: '+months.join(', '));
+  console.log('[DRE] com P&L por regional: '+
+    (Object.keys(porRegional).length ? Object.entries(porRegional).map(([r,n])=>r+'='+n).join(' · ') : 'NENHUMA'));
   const dre={ updated:today||null, source:fileName||'DRE.xlsx', unit:'R$', months, lines:LINES.map(({m,mp,...r})=>r), regionais, stores, data, total };
   return { dre, stats:{ months, storesTotal:stores.length, storesComPnL:nP } };
 }
 
-module.exports = { buildSeedFromWorkbook, mergeSeed, parseDreWorkbook };
+/**
+ * Junta uma DRE recém-importada com a que já estava no seed.
+ *
+ * A operação mantém um arquivo por regional ("04 - INTERIOR.xlsm" e irmãos).
+ * Cada arquivo traz a estrutura das 39 lojas, mas números só das lojas da sua
+ * regional — as outras colunas vêm vazias. Substituir o seed a cada upload,
+ * como era feito antes, significava que subir a segunda regional apagava a
+ * primeira: no fim sobrava sempre a última planilha enviada, e a DRE parecia
+ * ter só uma regional.
+ *
+ * A regra é simples e conservadora: valor ausente nunca apaga valor presente.
+ * O parser só grava um número quando ele existe de fato na célula, então basta
+ * deixar o novo sobrescrever onde tem e preservar o resto.
+ */
+function mergeDre(anterior, novo) {
+  if (!anterior || !anterior.data) return { dre: novo, novasLojas: (novo.stores || []).length, novosMeses: (novo.months || []).length };
+
+  const dre = {
+    ...novo,
+    months: [...new Set([...(anterior.months || []), ...(novo.months || [])])].sort(),
+    fontes: [...new Set([...(anterior.fontes || (anterior.source ? [anterior.source] : [])), novo.source].filter(Boolean))],
+  };
+
+  // lojas: união pelo nome; a regional vem de quem souber informá-la
+  const porNome = new Map();
+  for (const s of anterior.stores || []) porNome.set(s.name, { ...s });
+  for (const s of novo.stores || []) {
+    const j = porNome.get(s.name);
+    if (j) { if (s.regional) j.regional = s.regional; }
+    else porNome.set(s.name, { ...s });
+  }
+  dre.stores = [...porNome.values()];
+
+  // valores: novo ganha onde tem número; o que ele não traz continua valendo
+  const juntarSerie = (a, b) => {
+    const out = {};
+    for (const linha of new Set([...Object.keys(a || {}), ...Object.keys(b || {})])) {
+      out[linha] = { ...((a || {})[linha] || {}), ...((b || {})[linha] || {}) };
+    }
+    return out;
+  };
+  dre.data = {};
+  for (const nome of porNome.keys()) {
+    dre.data[nome] = juntarSerie((anterior.data || {})[nome], (novo.data || {})[nome]);
+  }
+  dre.total = juntarSerie(anterior.total, novo.total);
+
+  const tinha = n => { const d = (anterior.data || {})[n]; return !!(d && d.receita_bruta); };
+  const tem = n => { const d = dre.data[n]; return !!(d && d.receita_bruta); };
+  const novasLojas = [...porNome.keys()].filter(n => tem(n) && !tinha(n));
+  const novosMeses = dre.months.filter(m => !(anterior.months || []).includes(m));
+  return { dre, novasLojas, novosMeses };
+}
+
+module.exports = { buildSeedFromWorkbook, mergeSeed, parseDreWorkbook, mergeDre };
