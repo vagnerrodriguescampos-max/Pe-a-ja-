@@ -125,7 +125,7 @@ function drePainel(){
   const spark=k=>sparkline(DRE.months.map(m=>dreVal(scope,k,m)),'--s1',84,26);
 
   /* ---------- 1. o que aconteceu ---------- */
-  const kg=h('<div class="kpi-grid dre-kpi6" style="margin-bottom:14px"></div>');
+  const kg=h('<div class="kpi-grid dre-kpi6" style="margin-bottom:10px"></div>');
   kg.innerHTML=[
     kpiCard({title:'Receita Bruta',icon:'money',accent:'--brand',value:fmtMoney(V('receita_bruta'),true),
       delta:dPct('receita_bruta'),cmp:'vs '+ymLabel(cmp),src:'fonte',spark:spark('receita_bruta')}),

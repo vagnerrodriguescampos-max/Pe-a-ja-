@@ -602,7 +602,7 @@ table.data .rank.top{color:var(--warn-ink)}
    O sparkline fica no canto e o cabeçalho reserva o espaço dele, senão o
    traçado passa por cima do título nas telas mais estreitas. */
 .dre-kpi6{grid-template-columns:repeat(3,minmax(0,1fr))}
-.dre-kpi6 .kpi{padding:12px 14px}
+.dre-kpi6 .kpi{padding:11px 14px}
 .dre-kpi6 .kpi .kpi-top{padding-right:96px;margin-bottom:7px}
 .dre-kpi6 .kpi .kpi-val{font-size:25px}
 .dre-kpi6 .kpi .kpi-spark{top:11px;right:12px;bottom:auto}
@@ -2496,12 +2496,36 @@ function curScope(){ if(dreState.scope==='loja'&&dreState.loja) return {type:'lo
   return {type:'rede',label:'Rede Roldão'}; }
 
 /* ---------- banner de cobertura ---------- */
+/* A cobertura tem de aparecer POR REGIONAL, não só como um total.
+   A planilha da empresa é dividida em um arquivo por regional, e cada um traz
+   números apenas das suas lojas — mas a coluna Total de qualquer um deles é a
+   da rede inteira. O resultado é uma armadilha de leitura: a Rede fecha certa
+   enquanto uma regional cujo arquivo ainda não foi importado aparece zerada.
+   Quem olha rápido conclui que a regional não vendeu. Por isso o aviso diz,
+   loja a loja, o que chegou e o que falta — e o que a ausência significa. */
 function dreCoverageBanner(){
   const nP=DRE.stores.filter(s=>dreHasPnL(s.name)).length, nT=DRE.stores.length;
   const per=`${ymLabel(DRE.months[0])} → ${ymLabel(DRE.months[DRE.months.length-1])}`;
-  return h(`<div class="insight ${nP<nT?'info':'good'}"><div class="ic">${icon('info')}</div><div class="tx">
-    <b>DRE gerencial · ${nP} de ${nT} lojas com resultado detalhado</b> (as demais já aparecem na estrutura, aguardando a fonte completa da empresa).
-    Consolidado da <b>rede</b> completo. Período: <b>${per}</b> · mês fechado (a DRE fecha com defasagem em relação à venda diária). Atualizado em ${fmtDateBR(DRE.updated)}.
+  const porReg={};
+  DRE.stores.forEach(s=>{ const r=s.regional||'sem regional';
+    const o=porReg[r]||(porReg[r]={com:0,tot:0}); o.tot++; if(dreHasPnL(s.name)) o.com++; });
+  const nomes=Object.keys(porReg).sort();
+  const faltando=nomes.filter(r=>porReg[r].com===0);
+  const parciais=nomes.filter(r=>porReg[r].com>0&&porReg[r].com<porReg[r].tot);
+  const completo=nP===nT;
+
+  const chips=nomes.map(r=>{ const o=porReg[r];
+    const cls=o.com===0?'crit':(o.com<o.tot?'aten':'ok');
+    return `<span class="pill ${cls}" style="margin:0 2px;font-size:10.5px">${r}: ${o.com}/${o.tot}</span>`; }).join(' ');
+
+  const aviso = completo ? ''
+    : ` <b>A rede está completa</b> (vem da coluna Total da planilha), mas <b>por regional e por loja</b> só aparece o que foi importado — ` +
+      (faltando.length ? `<b>${faltando.join(', ')}</b> está zerada por falta do arquivo, não por falta de resultado.`
+                       : `as regionais parciais ainda esperam o arquivo completo.`);
+
+  return h(`<div class="insight ${completo?'good':'crit'}"><div class="ic">${icon(completo?'check':'alert')}</div><div class="tx">
+    <b>DRE gerencial · ${nP} de ${nT} lojas detalhadas</b> · ${per} · mês fechado · atualizado em ${fmtDateBR(DRE.updated)}${aviso}
+    &nbsp;${chips}
   </div></div>`);
 }
 
@@ -2742,7 +2766,7 @@ function drePainel(){
   const spark=k=>sparkline(DRE.months.map(m=>dreVal(scope,k,m)),'--s1',84,26);
 
   /* ---------- 1. o que aconteceu ---------- */
-  const kg=h('<div class="kpi-grid dre-kpi6" style="margin-bottom:14px"></div>');
+  const kg=h('<div class="kpi-grid dre-kpi6" style="margin-bottom:10px"></div>');
   kg.innerHTML=[
     kpiCard({title:'Receita Bruta',icon:'money',accent:'--brand',value:fmtMoney(V('receita_bruta'),true),
       delta:dPct('receita_bruta'),cmp:'vs '+ymLabel(cmp),src:'fonte',spark:spark('receita_bruta')}),
