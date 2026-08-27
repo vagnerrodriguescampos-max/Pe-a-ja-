@@ -89,14 +89,32 @@ function buildSeedFromWorkbook(wb, fileName){
   const bnr = aoa('Base nova regional');
   const stores = {};
   const bnrCols = resolveStoreColumns(bnr);
+  /* O log da escolha de coluna sai SEMPRE, com as concorrentes ao lado. Quando
+     esse campo saiu errado, a unica pista disponivel era uma linha dizendo qual
+     indice foi escolhido — sem as alternativas nao dava para saber se a decisao
+     tinha sido boa nem por que. Com a tabela abaixo, uma importacao errada se
+     explica sozinha na primeira leitura do log. */
+  console.log('Base nova regional: ' + bnrCols.lojasNaAba + ' lojas na aba | colunas -> nome=' +
+    bnrCols.nome + ' num=' + bnrCols.num + ' regional=' + bnrCols.regional);
+  for(const d of bnrCols.diagnostico){
+    console.log('   coluna ' + String(d.col).padStart(2) + (d.col===bnrCols.regional ? ' <=ESCOLHIDA' : '           ') +
+      ' cabecalho="' + d.cabecalho + '" cobertura=' + d.cobertura + ' distintos=' + d.distintos +
+      ' pareceNomeDeLoja=' + d.propNomeLoja + ' ' + (d.ok ? 'apta' : 'descartada') +
+      ' ex: ' + JSON.stringify(d.exemplos));
+  }
   if(bnrCols.regional<0) console.warn('Base nova regional: coluna de regional nao identificada — o filtro Regional ficara vazio.');
-  else if(bnrCols.nome!==0||bnrCols.num!==1||bnrCols.regional!==2) console.log('Base nova regional: layout diferente do padrao, colunas detectadas ->', JSON.stringify(bnrCols));
   for(let i=1;i<bnr.length;i++){ const r=bnr[i]; if(!r||r[bnrCols.num]==null)continue;
     stores[r[bnrCols.num]]={num:r[bnrCols.num], name:S(r[bnrCols.nome]), regional:bnrCols.regional>=0?S(r[bnrCols.regional]):''}; }
   const bl = aoa('Base loja'); const nameByNum = {};
   for(const r of bl){ if(!r)continue; if(r[0]!=null&&r[1])nameByNum[r[0]]=S(r[1]); if(r[5]!=null&&r[4])nameByNum[r[5]]=S(r[4]); }
   for(const k in stores){ if(nameByNum[k]) stores[k].name = nameByNum[k]; }
   if(!Object.keys(stores).length) throw new Error('Nenhuma loja identificada (aba "Base nova regional").');
+  {
+    const porReg = {};
+    let semReg = 0;
+    for(const k in stores){ const rg = stores[k].regional || ''; if(!rg) semReg++; else porReg[rg] = (porReg[rg]||0)+1; }
+    console.log('Base nova regional: resultado ->', JSON.stringify(porReg), semReg ? ('| ' + semReg + ' loja(s) SEM regional') : '| todas com regional');
+  }
 
   // ---- Base Segmento ----
   const bs = aoa('Base Segmento');
