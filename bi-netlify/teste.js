@@ -13,7 +13,7 @@ const SEED = fs.readFileSync(path.join(DIR, 'seed-teste.json'), 'utf8');
 
 const srv = http.createServer((req, res) => {
   const p = req.url.split('?')[0];
-  const f = path.join(DIR, p === '/' ? 'index.html' : p);
+  const f = path.join(DIR, 'site', p === '/' ? 'index.html' : p);
   if (!fs.existsSync(f)) { res.writeHead(404); return res.end('nao encontrado'); }
   res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
   res.end(fs.readFileSync(f));

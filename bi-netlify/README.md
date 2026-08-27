@@ -52,7 +52,19 @@ não repetem conteúdo, que nada vaza da largura da tela e que o console fica li
 
 ## Publicação
 
-Este arquivo **não** é publicado por CI. O site do Netlify não está ligado a este
-repositório e não deve ser: ligá-lo faria o build sobrescrever o BI pelo app
-Next.js que vive na raiz. A publicação é o arrasta-e-solta de `index.html` em
-Netlify → Deploys.
+O único arquivo que vai para o ar é `site/index.html`. As ferramentas acima
+ficam **fora** de `site/` de propósito: o que está no diretório publicado é
+servido a quem abrir a URL.
+
+Existem dois caminhos:
+
+**Manual** — arrastar a pasta `site/` em Netlify → Deploys.
+
+**Automático** — ligar o site `bi-roldao-comercial` a este repositório com
+**base directory = `bi-netlify`**. Aí o Netlify lê o `netlify.toml` *desta pasta*
+(não o da raiz, que constrói o app Next.js do Peça Já) e publica `site/` sem
+rodar build. Cada push na branch de produção vira um deploy; qualquer outra
+branch vira só um preview.
+
+O `netlify.toml` da raiz e este aqui não brigam: cada site do Netlify lê o
+arquivo da sua própria base directory.
