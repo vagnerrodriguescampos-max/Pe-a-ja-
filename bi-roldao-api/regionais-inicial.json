@@ -38,8 +38,9 @@
   "46": "INTERIOR",
   "40": "INTERIOR",
   "42": "BAIXADA/ABC",
-  "29": "BAIXADA/ABC"
+  "29": "BAIXADA/ABC",
+  "7": "BAIXADA/ABC"
  },
- "_pendentes": "Resolvido em 27/08/2026 pela operacao: 42 = SANTO ANDRE II e 29 = VILA MATHIAS (mesma loja que SANTOS), ambas BAIXADA/ABC. Segue de fora a loja 7 (SANTO ANDRE), que nao consta na lista de regionais enviada — ate ser definida em /regionais ela usa o valor lido da planilha.",
- "versao": 2
+ "_pendentes": "Nenhuma pendencia: as 39 lojas da base tem regional definida. A loja 7 (SANTO ANDRE) esta fechada, e mesmo assim entra em BAIXADA/ABC porque o historico de vendas dela pertence a essa regional — tirar a regional so faria os totais passados de Baixada/ABC ficarem menores do que foram.",
+ "versao": 3
 }
