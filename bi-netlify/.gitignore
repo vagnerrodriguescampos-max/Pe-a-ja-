@@ -1,0 +1,5 @@
+# Saída do teste: screenshots e base sintética são geradas a cada execução.
+# Versionar isso engorda o repositório sem dar nada em troca — e, pior, um
+# arquivo desses dentro de site/ iria para o ar.
+out/
+seed-teste.json
