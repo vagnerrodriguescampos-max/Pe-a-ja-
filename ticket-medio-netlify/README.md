@@ -42,10 +42,27 @@ sozinho puxa o indicador para cima.
 Lido por loja, a distorção acompanha o peso do televendas: onde ele passa de 13%
 da venda, o ticket publicado está inflado em 15% ou mais.
 
+## Seleção de período
+
+A página carrega a base diária inteira (38 lojas x 27 dias) e recalcula tudo no
+navegador quando o período muda — indicadores, gráficos, ranking e tabela. Não
+há servidor nem chamada de rede: o filtro é aritmética sobre uma matriz
+embarcada.
+
+Os clientes únicos são o único número que não sai de soma: um cliente que compra
+em três dias é um só no mês, mas apareceria como três. Para resolver isso a
+página guarda, por loja e por dia, os ids dos clientes em base36 — só os ids, os
+nomes não vão para o ar — e faz a união do conjunto no período escolhido. Custa
+cerca de 240 KB e é o que permite responder "quantos clientes distintos" para
+qualquer recorte.
+
+O bloco de dia da semana some quando a seleção cobre menos de três dias
+diferentes da semana: comparar "melhor dia" com uma ou duas barras não diz nada.
+
 ## Publicação
 
 O site é servido da subpasta `site/`, então só o `index.html` vai para o ar.
-Período coberto: 01/08 a 27/08/2026.
+Base disponível: 01/08 a 27/08/2026.
 
 Para atualizar com um novo mês, gere o `index.html` novamente e substitua o
 arquivo — não há estado nem dependência externa além das fontes do Google.
