@@ -1,0 +1,29 @@
+# Publicação do BI Roldão.
+#
+# Este arquivo é lido pelo Netlify quando a "base directory" do site aponta para
+# bi-netlify/ — ele NÃO conflita com o netlify.toml da raiz, que constrói o app
+# Next.js do Peça Já. São dois sites diferentes no mesmo repositório, cada um
+# lendo a configuração da sua própria pasta.
+#
+# Não há build: o BI é um arquivo estático só. Publicar a subpasta site/ garante
+# que apenas o index.html vá para o ar — as ferramentas de desenvolvimento
+# (painel.js, teste.js, mock.js) ficam fora do diretório publicado e não são
+# servidas para quem abre o site.
+
+[build]
+  base = "bi-netlify"
+  publish = "site"
+  command = ""
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "SAMEORIGIN"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+# O BI é uma página só; qualquer caminho cai nela.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

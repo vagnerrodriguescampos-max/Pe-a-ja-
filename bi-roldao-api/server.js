@@ -3,7 +3,8 @@ const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
 const XLSX = require('xlsx');
-const { buildSeedFromWorkbook, mergeSeed, parseDreWorkbook } = require('./lib');
+const { buildSeedFromWorkbook, mergeSeed, parseDreWorkbook, mergeDre, derivarFechamento } = require('./lib');
+const { parseBaseContabilDre } = require('./dreContabil');
 const dre = require('./dre');
 const X = require('./dreExec');
 const { PAGINA_DRE } = require('./paginaDre');
@@ -26,13 +27,48 @@ if (!fs.existsSync(SEED_FILE) && fs.existsSync(path.join(__dirname, 'seed-initia
   try { fs.copyFileSync(path.join(__dirname, 'seed-initial.json'), SEED_FILE); console.log('base inicial copiada para o volume'); }
   catch (e) { console.error('falha ao inicializar seed:', e.message); }
 }
-// injeta a DRE inicial se o seed ainda não tiver `dre` (ex.: volume criado antes da DRE existir)
+/* Semente da DRE.
+ *
+ * O volume guarda o seed; um deploy troca o CÓDIGO e não reprocessa o DADO.
+ * Isso já custou caro: o parser foi corrigido, o deploy saiu, e o BI continuou
+ * mostrando o resultado do parser antigo porque ninguém tinha reenviado a
+ * planilha. Corrigir código e depender de alguém lembrar de reimportar não é
+ * uma correção — é uma pendência disfarçada.
+ *
+ * A semente sobe junto com o código e entra sozinha. É versionada, como a de
+ * regionais, com duas travas:
+ *   - só entra quando a versão embarcada é maior que a já aplicada;
+ *   - nunca entra por cima de uma base que a própria operação subiu.
+ * A segunda trava é a que importa: quem enviou a planilha pelo BI mandou mais
+ * que qualquer coisa que eu embarque aqui. */
 try {
-  if (fs.existsSync(SEED_FILE) && fs.existsSync(path.join(__dirname, 'dre-initial.json'))) {
-    const s = JSON.parse(fs.readFileSync(SEED_FILE, 'utf8'));
-    if (!s.dre) { s.dre = JSON.parse(fs.readFileSync(path.join(__dirname, 'dre-initial.json'), 'utf8')); fs.writeFileSync(SEED_FILE, JSON.stringify(s)); console.log('DRE inicial injetada no seed'); }
+  const arqSemente = path.join(__dirname, 'dre-inicial.json');
+  if (fs.existsSync(arqSemente)) {
+    /* Volume zerado não tem seed.json — a DRE não pode ficar de fora só por
+       isso, senão um volume novo sobe sem resultado nenhum. */
+    const s = fs.existsSync(SEED_FILE) ? JSON.parse(fs.readFileSync(SEED_FILE, 'utf8')) : {};
+    const semente = JSON.parse(fs.readFileSync(arqSemente, 'utf8'));
+    const versaoAplicada = s.dreSementeVersao || 0;
+    const daOperacao = !!s.dreDoUsuario;
+
+    if (!s.dre) {
+      s.dre = semente.dre; s.dreSementeVersao = semente.versao;
+      fs.writeFileSync(SEED_FILE, JSON.stringify(s));
+      console.log('DRE: semente v' + semente.versao + ' instalada (o volume não tinha DRE)');
+    } else if (daOperacao) {
+      console.log('DRE: semente v' + semente.versao + ' ignorada — a base atual foi enviada pela operação e manda mais');
+    } else if (versaoAplicada < semente.versao) {
+      const antes = (s.dre.stores || []).filter(x => s.dre.data && s.dre.data[x.name] && s.dre.data[x.name].receita_bruta).length;
+      s.dre = semente.dre; s.dreSementeVersao = semente.versao;
+      fs.writeFileSync(SEED_FILE, JSON.stringify(s));
+      const depois = (semente.dre.stores || []).filter(x => semente.dre.data[x.name] && semente.dre.data[x.name].receita_bruta).length;
+      console.log('DRE: semente v' + semente.versao + ' aplicada (v' + versaoAplicada + ' -> v' + semente.versao +
+        ') | lojas com P&L: ' + antes + ' -> ' + depois + ' | origem: ' + semente.origemArquivo);
+    } else {
+      console.log('DRE: semente v' + semente.versao + ' já aplicada');
+    }
   }
-} catch (e) { console.error('falha ao injetar DRE inicial:', e.message); }
+} catch (e) { console.error('falha ao aplicar semente da DRE:', e.message); }
 
 /* De-para de regionais: grava a lista oficial UMA VEZ, quando o volume ainda
    não tem a dele, e já corrige a base que estiver importada. Uma vez criado o
@@ -183,12 +219,49 @@ app.post('/api/upload-dre',
       console.log('upload DRE:', req.file.originalname, (req.file.size / 1048576).toFixed(1) + 'MB');
       const wb = XLSX.read(req.file.buffer, { type: 'buffer', cellDates: true });
       const today = new Date().toISOString().slice(0, 10);
-      const { dre, stats } = parseDreWorkbook(wb, req.file.originalname, today);
+      /* Duas planilhas diferentes chegam pelo mesmo botão, e obrigar quem sobe a
+         escolher o tipo certo é transferir para a pessoa um problema que o
+         servidor resolve olhando o arquivo. A Base Contábil se identifica pela
+         aba de lançamentos (colunas Unidade, Sub Grupo e Valor); qualquer outra
+         coisa é tratada como a DRE gerencial. */
+      const ehBaseContabil = wb.SheetNames.some(n => {
+        const c = (XLSX.utils.sheet_to_json(wb.Sheets[n], { header: 1, raw: true, defval: null })[0] || [])
+          .map(x => String(x == null ? '' : x).toLowerCase().trim());
+        return c.includes('sub grupo') && c.includes('unidade') && c.includes('valor');
+      });
+      const oficial = REG.ler(DATA_DIR).mapa;
+      const { dre: recebida, stats } = ehBaseContabil
+        ? parseBaseContabilDre(wb, req.file.originalname, today, oficial)
+        : parseDreWorkbook(wb, req.file.originalname, today);
+      console.log('upload DRE reconhecido como:', ehBaseContabil ? 'Base Contábil (rede inteira)' : 'DRE gerencial (por regional)');
       let seed = {}; try { if (fs.existsSync(SEED_FILE)) seed = JSON.parse(fs.readFileSync(SEED_FILE, 'utf8')); } catch (e) {}
+      // Soma com o que já existe: cada arquivo traz números de uma regional só,
+      // e substituir apagaria as regionais importadas antes.
+      const { dre, novasLojas, novosMeses } = mergeDre(seed.dre, recebida);
+      const lairDerivados = derivarFechamento(dre);
       seed.dre = dre;
+      // A partir daqui a base é da operação: nenhuma semente futura passa por cima.
+      seed.dreDoUsuario = true;
       fs.writeFileSync(SEED_FILE, JSON.stringify(seed));
-      console.log('DRE atualizada ->', stats.storesComPnL + '/' + stats.storesTotal, 'lojas,', JSON.stringify(stats.months), 'em', ((Date.now() - t0) / 1000).toFixed(1) + 's');
-      res.json({ ok: true, stats });
+      const comPnL = dre.stores.filter(x => dre.data[x.name] && dre.data[x.name].receita_bruta);
+      const porRegional = {};
+      comPnL.forEach(x => { porRegional[x.regional] = (porRegional[x.regional] || 0) + 1; });
+      const semPnL = dre.stores.filter(x => !(dre.data[x.name] && dre.data[x.name].receita_bruta)).map(x => x.name);
+      console.log('DRE atualizada ->', comPnL.length + '/' + dre.stores.length, 'lojas com P&L',
+        '| por regional:', JSON.stringify(porRegional),
+        '| meses:', JSON.stringify(dre.months),
+        '| este arquivo trouxe', novasLojas.length, 'loja(s) nova(s)',
+        '| LAIR derivado em', lairDerivados, 'escopo(s)',
+        'em', ((Date.now() - t0) / 1000).toFixed(1) + 's');
+      res.json({
+        ok: true,
+        stats: { ...stats, storesComPnL: comPnL.length, storesTotal: dre.stores.length, months: dre.months },
+        acumulado: { porRegional, semPnL, fontes: dre.fontes || [dre.source] },
+        esteArquivo: { novasLojas, novosMeses, arquivo: req.file.originalname,
+                       tipo: ehBaseContabil ? 'base-contabil' : 'dre-gerencial',
+                       subGruposNaoMapeados: stats.subGruposDesconhecidos || [],
+                       grafiasMultiplas: stats.grafiasMultiplas || [] }
+      });
     } catch (e) { console.error('erro no upload-dre:', e); res.status(500).json({ error: String(e.message || e) }); }
   }
 );
