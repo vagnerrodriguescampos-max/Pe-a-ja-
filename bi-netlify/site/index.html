@@ -1528,7 +1528,12 @@ function execAskPanel(){
 function kpiCard(o){
   const na=o.na;
   const val = na? `<span style="color:var(--ink-3);font-weight:700">N/D</span>` : o.value;
-  const sub = na? `<span class="kpi-cmp">Não disponível na base atual</span>`
+  /* Card sem o dado ainda pode ter contexto: um canal sem contagem de clientes
+     continua tendo venda e participação, e engolir isso junto com o número
+     ausente transforma "não temos essa métrica" em "não sabemos nada sobre este
+     canal". Quando quem chama passa `cmp`, ele aparece. */
+  const sub = na
+    ? `<div class="kpi-sub" style="flex-wrap:wrap"><span class="kpi-cmp">${o.cmp || 'Não disponível na base atual'}</span></div>`
     : `<div class="kpi-sub">${o.delta!==undefined?deltaBadge(o.delta,{pp:o.pp,ruimSubir:o.deltaRuim}):''}${o.cmp?`<span class="kpi-cmp">${o.cmp}</span>`:''}</div>`;
   const src = o.src? `<span class="src-tag ${o.src==='fonte'?'src-fonte':'src-calc'}" title="${o.src==='fonte'?'Dado direto da planilha':'Indicador calculado pelo BI'}">${o.src==='fonte'?'FONTE':'CALC'}</span>`:'';
   const spark = (!na && o.spark)? `<div class="kpi-spark">${o.spark}</div>`:'';
@@ -2293,8 +2298,32 @@ function pageCanais(){
   const fisica=Math.max(0,totalAcc-tele26-ecom26);
   const channels=[{name:'Loja física',value:fisica,color:'--brand',prev:null},{name:'Televendas',value:tele26,color:'--s1',prev:tele25},{name:'E-commerce',value:ecom26,color:'--s3',prev:ecom25}];
   const total=channels.reduce((a,b)=>a+b.value,0);
+
+  /* Os cards passam a liderar por CLIENTES, não por venda.
+     Só que a contagem de clientes existe apenas para a loja física (aba Piso);
+     Televendas e E-commerce vêm da planilha só em valor. Em vez de dividir a
+     venda por um ticket médio para fabricar um número de clientes, esses dois
+     cards assumem N/D — o card diz que o dado não está na base, e a venda
+     continua visível na linha de baixo. Um número inventado num painel de
+     diretoria é pior que um campo vazio: o vazio se explica, o inventado não. */
+  let cli26=0, cli25=0, temCli=false;
+  nums.forEach(n=>{ const p=DATA.piso[n]; if(p){ cli26+=p.cli26||0; cli25+=p.cli25||0; temCli=true; } });
+  const clientes=[{n:cli26,p:cli25},{n:null,p:null},{n:null,p:null}];
+
   const kg=h('<div class="kpi-grid" style="margin-bottom:16px"></div>');
-  kg.innerHTML=channels.map((c,i)=>kpiCard({title:c.name,value:fmtMoney(c.value),accent:c.color,icon:i===0?'store':i===1?'channel':'money',src:'fonte',delta:c.prev?c.value/c.prev-1:undefined,cmp:`part. ${fmtPct(c.value/total)}`,na:false})).join('');
+  kg.innerHTML=channels.map((c,i)=>{
+    const cl=clientes[i], tem=cl.n!=null&&(i!==0||temCli);
+    return kpiCard({
+      title:c.name, icon:i===0?'users':i===1?'channel':'money', accent:c.color, src:'fonte',
+      value: tem? fmtInt(cl.n)+' clientes' : '',
+      na: !tem,
+      delta: tem&&cl.p? cl.n/cl.p-1 : undefined,
+      cmp: tem? `${fmtMoney(c.value)} · part. ${fmtPct(c.value/total)}`
+               : `${fmtMoney(c.value)} · part. ${fmtPct(c.value/total)} · sem contagem de clientes na base`,
+      tip: tem? 'Clientes acumulados no ano na loja física (aba Piso). A venda do canal aparece abaixo.'
+              : 'A planilha traz Televendas e E-commerce apenas em valor — não há contagem de clientes para estes canais.'
+    });
+  }).join('');
   root.appendChild(kg);
   const row=h('<div class="grid" style="grid-template-columns:1fr 1fr"></div>');
   const dc=h('<div class="card"><div class="card-h"><h3>Participação por canal (acumulado ano)</h3></div><div class="card-b" style="text-align:center"></div></div>');
@@ -2306,6 +2335,57 @@ function pageCanais(){
   $('.card-b',bc).appendChild(legend([['2026','--brand'],['2025','--ink-3']]));
   row.appendChild(bc);
   root.appendChild(row);
+
+  /* ---- Melhor dia da semana ----
+     Pedido original era separar Televendas, E-commerce e Piso. A base não
+     permite: as abas desses três canais trazem um único dia e o acumulado do
+     ano, sem coluna de data — não existe série diária por canal para agrupar
+     por dia da semana. Série diária de verdade só existe na venda total
+     (Base Segmento), e é sobre ela que este gráfico é montado.
+     O rótulo diz "venda total" de propósito: como a loja física responde pela
+     maior parte do faturamento, o padrão que aparece aqui é praticamente o dela
+     — mas afirmar isso no título seria vender como recorte de canal uma coisa
+     que não é. */
+  const DIAS=['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+  const anoAtual=(DATA.meta.curYM||'').slice(0,4);
+  const soma=Array(7).fill(0), qtd=Array(7).fill(0);
+  nums.forEach(n2=>{ const dd=DATA.dailyStore[n2]; if(!dd) return;
+    for(const d in dd){ if(anoAtual && d.slice(0,4)!==anoAtual) continue;
+      const wd=new Date(d+'T12:00:00').getDay();
+      soma[wd]+=dd[d]||0; qtd[wd]++; } });
+  const diasComDado=qtd.filter(q=>q>0).length;
+  if(diasComDado>=5){
+    /* Média por dia-da-semana da REDE: soma do dia ÷ nº de DATAS distintas
+       daquele dia da semana. Dividir pelo número de lançamentos daria a média
+       por loja, não por dia — e o gráfico ficaria com valores 30× menores sem
+       que o título mudasse. */
+    const ocorr=Array(7).fill(0);
+    const vistos={}; nums.forEach(n2=>{ const dd=DATA.dailyStore[n2]; if(!dd)return;
+      for(const d in dd){ if(anoAtual && d.slice(0,4)!==anoAtual) continue; vistos[d]=1; } });
+    Object.keys(vistos).forEach(d=>{ ocorr[new Date(d+'T12:00:00').getDay()]++; });
+    const medias=soma.map((v2,i)=>ocorr[i]? v2/ocorr[i] : 0);
+    const ordem=[1,2,3,4,5,6,0];                       // segunda a domingo
+    const cats=ordem.map(i=>DIAS[i].slice(0,3));
+    const vals=ordem.map(i=>medias[i]);
+    const melhor=ordem.reduce((a,b)=>medias[b]>medias[a]?b:a, ordem[0]);
+    const pior=ordem.reduce((a,b)=>medias[b]<medias[a]&&medias[b]>0?b:a, melhor);
+    const mediaGeral=vals.reduce((a,b)=>a+b,0)/vals.filter(v2=>v2>0).length;
+    const acima=medias[melhor]/mediaGeral-1;
+
+    const wd=h(`<div class="card" style="margin-top:16px"><div class="card-h">
+      <h3>Melhor dia da semana — venda total</h3><span class="src-tag src-calc">CALC</span>
+      <span class="hint">média por dia da semana · ${anoAtual} · ${Object.keys(vistos).length} dias na base</span>
+      </div><div class="card-b"></div></div>`);
+    $('.card-b',wd).appendChild(barChart({cats,series:[{name:'Média por dia',color:'--brand',data:vals}],height:230}));
+    $('.card-b',wd).appendChild(h(`<div style="margin-top:10px;font-size:12px;color:var(--ink-2);line-height:1.6">
+      <b>${DIAS[melhor]}</b> é o dia mais forte: <b>${fmtMoney(medias[melhor])}</b> em média,
+      ${fmtPct(Math.abs(acima))} ${acima>=0?'acima':'abaixo'} da média dos demais dias.
+      O mais fraco é <b>${DIAS[pior]}</b>, com ${fmtMoney(medias[pior])}.
+      <br><span style="color:var(--ink-3)">Televendas, E-commerce e Piso não entram separados porque a planilha
+      traz esses canais apenas em acumulado do ano, sem data — não há série diária por canal para agrupar.</span>
+    </div>`));
+    root.appendChild(wd);
+  }
 
   // ---- Destaques por canal: quem mais cresceu e quem mais caiu ----
   root.appendChild(h('<div class="section-title">Destaques por canal digital</div>'));

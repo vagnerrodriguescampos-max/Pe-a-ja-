@@ -88,7 +88,12 @@ nums.forEach((n,idx)=>{
   mesesVenda.forEach(ym=>{
     const fator = ym==='2025-07' ? 0.95 : (ym==='2026-07' ? 1.06 : 1.0);
     diasDoMes(ym).forEach((d,di)=>{
-      const v = base*fator*(1 + Math.sin(di/3)*0.12);
+      /* Padrão semanal real: sábado é o pico do varejo, domingo cai.
+         Sem isso o gráfico de melhor dia da semana daria sete barras iguais e
+         não provaria nada. */
+      const dow = new Date(d + 'T12:00:00').getDay();
+      const peso = [0.72, 0.95, 0.93, 0.97, 1.02, 1.18, 1.35][dow];
+      const v = base*fator*peso*(1 + Math.sin(di/3)*0.06);
       dailyStore[n][d]=Math.round(v);
       if(ym!=='2026-07') budgetStore[n].daily[d]=Math.round(v*1.05);
     });
