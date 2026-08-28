@@ -190,15 +190,6 @@ tfoot td:first-child{background:var(--card-2);}
 .btn-export svg{width:17px; height:17px; flex:none}
 .exporthint{text-align:center; font-size:12.5px; color:var(--ink-3); margin:9px 0 0; line-height:1.5;}
 
-/* ---- método ---- */
-.method{padding:18px 20px 20px;}
-.steps{display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:14px; margin-top:14px;}
-.step{border-left:2px solid var(--line); padding-left:13px;}
-.step .t{font-weight:600; font-size:13.5px; margin-bottom:3px;}
-.step .d{font-size:13px; color:var(--ink-2); line-height:1.5;}
-.formula{font-family:"IBM Plex Mono",monospace; font-size:13px; background:var(--card-2); border:1px solid var(--line-2);
-  border-radius:8px; padding:12px 14px; margin-top:14px; color:var(--ink-2); overflow-x:auto;}
-.formula b{color:var(--ink);}
 .note{font-size:12.5px; color:var(--ink-3); margin-top:12px; line-height:1.55;}
 /* tooltip */
 #tip{position:fixed; pointer-events:none; opacity:0; transition:opacity .1s; z-index:50;
@@ -238,7 +229,7 @@ tfoot td:first-child{background:var(--card-2);}
   tbody tr{ break-inside:avoid; }
   th{ position:static !important; }
   tbody td:first-child, tfoot td:first-child, tr.grp th:first-child{ position:static !important; box-shadow:none; }
-  #detail, .method{ break-before:page; }
+  #detail{ break-before:page; }
   svg{ max-width:100%; }
   #tip{ display:none !important; }
 }
@@ -375,39 +366,6 @@ tfoot td:first-child{background:var(--card-2);}
   </section>
   <p class="exporthint no-print">Abre a caixa de impressão do navegador — escolha <b>Salvar como PDF</b>.
     Marque <b>Gráficos de fundo</b> para o PDF sair colorido; paisagem e margens já vêm definidas.</p>
-
-  <section class="card method">
-    <span class="eyebrow">Como os números foram apurados</span>
-    <h2 style="font-size:17px; margin-top:6px">Método</h2>
-    <div class="formula">
-      Piso = <b>PISO+E-COMMERCE+TELEVENDAS</b> − <b>televendas</b> − <b>e-commerce</b>, aplicado dia a dia e loja a loja,
-      tanto no valor quanto na quantidade de clientes.<br>
-      Ticket médio = valor do canal ÷ clientes do canal.
-    </div>
-    <div class="steps">
-      <div class="step"><div class="t">Televendas: cliente + dia = 1 cliente</div>
-        <div class="d">Compras do mesmo cliente, na mesma loja e no mesmo dia contam como um único cliente atendido.
-          Dias diferentes contam separado. No período, televendas atendeu
-          <span class="num" id="mVen"></span> clientes.</div></div>
-      <div class="step"><div class="t">E-commerce: 1 pedido = 1 cliente</div>
-        <div class="d">Valor de mercadoria dos pedidos iFood (App e Shop), sem o frete —
-          <span class="num" id="mFrete"></span> de frete no período ficaram fora do ticket.</div></div>
-      <div class="step"><div class="t">Piso por subtração</div>
-        <div class="d">A aba consolidada já traz piso + e-commerce + televendas juntos. Retirando os dois canais,
-          o que sobra é o piso puro — inclusive na contagem de clientes, que é o denominador do ticket.</div></div>
-      <div class="step"><div class="t">Cliente atendido ≠ cliente único</div>
-        <div class="d">A contagem de clientes de cada canal é a de <em>atendimentos</em> — o que divide o faturamento.
-          Pessoas distintas no período: <span class="num" id="mTvU"></span> em televendas e
-          <span class="num" id="mEcU"></span> no e-commerce. O piso não identifica o cliente na base, então não há
-          contagem de únicos para ele.</div></div>
-      <div class="step"><div class="t">Base considerada</div>
-        <div class="d">Todos os registros das duas abas estão com status <em>Faturado por cupom</em>; nenhum foi descartado.
-          As lojas 1, 7 e 205 aparecem na consolidada sem movimento relevante e ficaram fora do ranking.</div></div>
-    </div>
-    <p class="note">Ponto de atenção: a de-duplicação de televendas usa o nome do cliente. Nomes curtos e repetidos
-      (“ANTONIO”, “CARLA”) podem juntar clientes distintos da mesma loja no mesmo dia — o efeito é pequeno, mas se
-      houver código de cliente na base ele daria um corte mais exato.</p>
-  </section>
 </div>
 <div id="tip"></div>
 <script>
@@ -741,10 +699,6 @@ function selectLoja(n){
     r.addEventListener('mouseleave',()=>{r.setAttribute('fill','transparent'); hideTip();});});
 }
 
-/* método numbers */
-$('#mVen').textContent=int(T.tv_vendas);
-$('#mFrete').textContent='R$ '+brl(T.ec_frete,0);
-$('#mTvU').textContent=int(T.tv_unicos); $('#mEcU').textContent=int(T.ec_unicos);
 $('#btnPdf').addEventListener('click',()=>{
   const hint=$('#scrollHint'); if(hint) hint.textContent='';
   window.print();
