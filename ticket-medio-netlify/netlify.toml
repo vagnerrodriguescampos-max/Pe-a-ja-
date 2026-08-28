@@ -1,0 +1,29 @@
+# Publicação do dashboard "Ticket médio por canal".
+#
+# Lido pelo Netlify quando a "base directory" do site aponta para
+# ticket-medio-netlify/. Não conflita com o netlify.toml da raiz (app Next.js do
+# Peça Já) nem com bi-netlify/ — são sites diferentes no mesmo repositório, cada
+# um lendo a configuração da sua própria pasta.
+#
+# Não há build: o dashboard é um arquivo estático único, com os dados do período
+# embutidos. Publicar a subpasta site/ garante que só o index.html vá para o ar.
+
+[build]
+  base = "ticket-medio-netlify"
+  publish = "site"
+  command = ""
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "SAMEORIGIN"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    # A página traz faturamento por loja: fora dos buscadores.
+    X-Robots-Tag = "noindex, nofollow, noarchive, nosnippet"
+
+# Página única; qualquer caminho cai nela.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
