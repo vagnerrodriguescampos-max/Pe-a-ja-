@@ -9,6 +9,7 @@ const dre = require('./dre');
 const X = require('./dreExec');
 const { PAGINA_DRE } = require('./paginaDre');
 const REG = require('./regionais');
+const LOJAS = require('./lojas');
 const { PAGINA_REGIONAIS } = require('./paginaRegionais');
 const { PAGINA_DRE_EXEC } = require('./paginaDreExec');
 
@@ -69,6 +70,41 @@ try {
     }
   }
 } catch (e) { console.error('falha ao aplicar semente da DRE:', e.message); }
+
+/* De-para de NOMES de loja: mesma mecânica do de-para de regionais.
+   A planilha de vendas, a Base Contábil e o cadastro da operação chamam a mesma
+   loja de três jeitos ("F. Da Rocha" / "FRANCO DA ROCHA"). Sem isto, duas telas
+   do mesmo BI parecem falar de lojas diferentes. */
+try {
+  const arqNomes = path.join(__dirname, 'lojas-inicial.json');
+  if (fs.existsSync(arqNomes)) {
+    const semente = JSON.parse(fs.readFileSync(arqNomes, 'utf8'));
+    const atual = LOJAS.ler(DATA_DIR);
+    if ((atual.sementeVersao || 0) < semente.versao) {
+      const mapa = { ...semente.mapa, ...atual.mapa };   // ajuste manual sempre ganha
+      const novas = Object.keys(semente.mapa).filter(n => !(n in atual.mapa));
+      const salvo = LOJAS.gravar(DATA_DIR, mapa, semente.versao);
+      console.log('nomes de loja: semente v' + semente.versao + ' aplicada | ' +
+        Object.keys(salvo.mapa).length + ' no mapa | ' + novas.length + ' nova(s)');
+
+      /* Aplicar na base já gravada, não só nas próximas importações: senão o
+         de-para entra e nada muda na tela até alguém reimportar. */
+      if (fs.existsSync(SEED_FILE)) {
+        const sd = JSON.parse(fs.readFileSync(SEED_FILE, 'utf8'));
+        const rv = LOJAS.aplicar(sd.stores || [], salvo.mapa);
+        const rd = sd.dre ? LOJAS.aplicarNaDre(sd.dre, salvo.mapa) : { renomeadas: 0, trocas: [] };
+        if (rv.renomeadas || rd.renomeadas) {
+          fs.writeFileSync(SEED_FILE, JSON.stringify(sd));
+          console.log('nomes de loja: ' + rv.renomeadas + ' na base de vendas, ' +
+            rd.renomeadas + ' na DRE | ex.: ' +
+            JSON.stringify([...rv.trocas, ...rd.trocas].slice(0, 4).map(t => t.de + ' -> ' + t.para)));
+        } else {
+          console.log('nomes de loja: a base já estava com os nomes oficiais');
+        }
+      }
+    }
+  }
+} catch (e) { console.error('falha ao semear nomes de loja:', e.message); }
 
 /* De-para de regionais: grava a lista oficial UMA VEZ, quando o volume ainda
    não tem a dele, e já corrige a base que estiver importada. Uma vez criado o
