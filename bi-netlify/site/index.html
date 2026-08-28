@@ -197,6 +197,17 @@ a{color:var(--s1);text-decoration:none}
 .nav{padding:10px 10px 20px;flex:1}
 .nav-sec{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.9px;color:rgba(255,255,255,.38);padding:14px 12px 6px}
 .nav-item{display:flex;align-items:center;gap:11px;padding:8.5px 12px;border-radius:10px;color:rgba(255,255,255,.72);font-weight:600;font-size:13.3px;border:none;background:none;width:100%;text-align:left;transition:background .12s,color .12s;position:relative}
+/* Piso de tamanho para ícones soltos.
+   icon() devolve um <svg> sem width/height: quem dá tamanho é sempre uma regra
+   do container (.btn svg, .kpi-icon svg, .nav-item svg...). Quando o ícone cai
+   num container que ninguém previu — foi o caso de um chevron dentro do <h3> do
+   cartão — o SVG não tem limite e estica até preencher o bloco inteiro, virando
+   uma seta gigante no meio do relatório.
+   :where() tem especificidade ZERO de propósito: isto é um piso, não uma
+   decisão. Qualquer regra existente continua ganhando; só o ícone que nenhuma
+   regra alcançou cai aqui em vez de explodir. Gráficos ficam de fora — eles são
+   .chart ou trazem width explícito. */
+:where(svg:not(.chart):not([width])){width:15px;height:15px;flex:none;vertical-align:-2px}
 .nav-item svg{width:18px;height:18px;flex:none;opacity:.8}
 .nav-item:hover{background:rgba(255,255,255,.08);color:#fff}
 .nav-item.active{background:linear-gradient(90deg,color-mix(in srgb,var(--gold) 20%,transparent),transparent);color:var(--gold)}

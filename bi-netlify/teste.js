@@ -127,6 +127,24 @@ function ok(cond, oque, detalhe) {
   ok(m.dobra != null && m.dobra <= 1000, 'KPIs + decisao cabem na primeira tela', m.dobra + 'px ate o fim de .dre-two');
   console.log('  info    altura total do painel: ' + m.alturaPagina + 'px (o restante e aprofundamento)');
 
+  // --- nenhum icone pode escapar do tamanho ---
+  // Um chevron dentro do <h3> de um cartao chegou a renderizar com ~300px de
+  // altura em producao: icon() nao traz width, e ali nao havia regra de CSS
+  // para segura-lo. O teste passa a olhar TODA a pagina da DRE, aba por aba.
+  const gigantes = [];
+  for (const aba of ['painel', 'variacao', 'dre', 'lojas', 'regionais']) {
+    await page.click(`[data-t="${aba}"]`);
+    await page.waitForTimeout(400);
+    const achados = await page.evaluate(a => [...document.querySelectorAll('#dreBody svg')]
+      .filter(e => !e.classList.contains('chart') && !e.hasAttribute('width'))
+      .map(e => ({ w: Math.round(e.getBoundingClientRect().width), h: Math.round(e.getBoundingClientRect().height) }))
+      .filter(r => r.w > 40 || r.h > 40)
+      .map(r => a + ': ' + r.w + 'x' + r.h), aba);
+    gigantes.push(...achados);
+  }
+  ok(gigantes.length === 0, 'nenhum icone solto passa de 40px',
+     gigantes.slice(0, 5).join(', ') || 'nenhum');
+
   // --- as abas de detalhe continuam funcionando ---
   const abas = await page.evaluate(() => [...document.querySelectorAll('[data-t]')].map(b => b.dataset.t));
   ok(abas.length >= 4, 'drill-down preservado', abas.join(', '));
