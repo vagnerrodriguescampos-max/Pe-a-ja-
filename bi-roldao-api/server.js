@@ -27,13 +27,48 @@ if (!fs.existsSync(SEED_FILE) && fs.existsSync(path.join(__dirname, 'seed-initia
   try { fs.copyFileSync(path.join(__dirname, 'seed-initial.json'), SEED_FILE); console.log('base inicial copiada para o volume'); }
   catch (e) { console.error('falha ao inicializar seed:', e.message); }
 }
-// injeta a DRE inicial se o seed ainda não tiver `dre` (ex.: volume criado antes da DRE existir)
+/* Semente da DRE.
+ *
+ * O volume guarda o seed; um deploy troca o CÓDIGO e não reprocessa o DADO.
+ * Isso já custou caro: o parser foi corrigido, o deploy saiu, e o BI continuou
+ * mostrando o resultado do parser antigo porque ninguém tinha reenviado a
+ * planilha. Corrigir código e depender de alguém lembrar de reimportar não é
+ * uma correção — é uma pendência disfarçada.
+ *
+ * A semente sobe junto com o código e entra sozinha. É versionada, como a de
+ * regionais, com duas travas:
+ *   - só entra quando a versão embarcada é maior que a já aplicada;
+ *   - nunca entra por cima de uma base que a própria operação subiu.
+ * A segunda trava é a que importa: quem enviou a planilha pelo BI mandou mais
+ * que qualquer coisa que eu embarque aqui. */
 try {
-  if (fs.existsSync(SEED_FILE) && fs.existsSync(path.join(__dirname, 'dre-initial.json'))) {
-    const s = JSON.parse(fs.readFileSync(SEED_FILE, 'utf8'));
-    if (!s.dre) { s.dre = JSON.parse(fs.readFileSync(path.join(__dirname, 'dre-initial.json'), 'utf8')); fs.writeFileSync(SEED_FILE, JSON.stringify(s)); console.log('DRE inicial injetada no seed'); }
+  const arqSemente = path.join(__dirname, 'dre-inicial.json');
+  if (fs.existsSync(arqSemente)) {
+    /* Volume zerado não tem seed.json — a DRE não pode ficar de fora só por
+       isso, senão um volume novo sobe sem resultado nenhum. */
+    const s = fs.existsSync(SEED_FILE) ? JSON.parse(fs.readFileSync(SEED_FILE, 'utf8')) : {};
+    const semente = JSON.parse(fs.readFileSync(arqSemente, 'utf8'));
+    const versaoAplicada = s.dreSementeVersao || 0;
+    const daOperacao = !!s.dreDoUsuario;
+
+    if (!s.dre) {
+      s.dre = semente.dre; s.dreSementeVersao = semente.versao;
+      fs.writeFileSync(SEED_FILE, JSON.stringify(s));
+      console.log('DRE: semente v' + semente.versao + ' instalada (o volume não tinha DRE)');
+    } else if (daOperacao) {
+      console.log('DRE: semente v' + semente.versao + ' ignorada — a base atual foi enviada pela operação e manda mais');
+    } else if (versaoAplicada < semente.versao) {
+      const antes = (s.dre.stores || []).filter(x => s.dre.data && s.dre.data[x.name] && s.dre.data[x.name].receita_bruta).length;
+      s.dre = semente.dre; s.dreSementeVersao = semente.versao;
+      fs.writeFileSync(SEED_FILE, JSON.stringify(s));
+      const depois = (semente.dre.stores || []).filter(x => semente.dre.data[x.name] && semente.dre.data[x.name].receita_bruta).length;
+      console.log('DRE: semente v' + semente.versao + ' aplicada (v' + versaoAplicada + ' -> v' + semente.versao +
+        ') | lojas com P&L: ' + antes + ' -> ' + depois + ' | origem: ' + semente.origemArquivo);
+    } else {
+      console.log('DRE: semente v' + semente.versao + ' já aplicada');
+    }
   }
-} catch (e) { console.error('falha ao injetar DRE inicial:', e.message); }
+} catch (e) { console.error('falha ao aplicar semente da DRE:', e.message); }
 
 /* De-para de regionais: grava a lista oficial UMA VEZ, quando o volume ainda
    não tem a dele, e já corrige a base que estiver importada. Uma vez criado o
@@ -205,6 +240,8 @@ app.post('/api/upload-dre',
       const { dre, novasLojas, novosMeses } = mergeDre(seed.dre, recebida);
       const lairDerivados = derivarFechamento(dre);
       seed.dre = dre;
+      // A partir daqui a base é da operação: nenhuma semente futura passa por cima.
+      seed.dreDoUsuario = true;
       fs.writeFileSync(SEED_FILE, JSON.stringify(seed));
       const comPnL = dre.stores.filter(x => dre.data[x.name] && dre.data[x.name].receita_bruta);
       const porRegional = {};
