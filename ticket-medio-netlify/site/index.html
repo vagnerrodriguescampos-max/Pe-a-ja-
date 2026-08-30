@@ -70,7 +70,8 @@ h1,h2,h3{font-family:"Archivo","Archivo Narrow",Helvetica,Arial,sans-serif; marg
 
 /* ---- generic card ---- */
 .card{background:var(--card); border:1px solid var(--line); border-radius:10px; box-shadow:var(--shadow);}
-.card-h{padding:16px 18px 0; display:flex; justify-content:space-between; align-items:baseline; gap:12px; flex-wrap:wrap;}
+.card-h{padding:16px 18px 0; display:flex; justify-content:space-between; align-items:baseline; gap:6px 12px; flex-wrap:wrap;}
+.card-h .eyebrow + .eyebrow{margin-left:0}
 .card-h h2{font-size:16px; font-weight:600; letter-spacing:-.01em;}
 .card-h p{margin:2px 0 0; font-size:12.5px; color:var(--ink-3);}
 #scrollHint{white-space:nowrap}
@@ -163,7 +164,10 @@ tbody tr{border-bottom:1px solid var(--line-2); cursor:pointer;}
 tbody tr:hover td, tbody tr:hover td:first-child{background:var(--card-2);}
 tbody tr.sel td, tbody tr.sel td:first-child{background:var(--piso-soft);}
 td.resp{text-align:left; color:var(--ink-2); font-weight:500;}
-#tblReg tbody tr{cursor:pointer}
+#tblReg tbody tr, #tblReg tfoot tr{cursor:pointer}
+#tblReg tfoot tr:hover td{background:var(--card)}
+#tblReg tfoot tr.sel td{background:var(--piso-soft)}
+#tblReg tbody tr.sel td, #tblReg tbody tr.sel td:first-child{background:var(--piso-soft)}
 #tblReg tr.grp th.g-none{vertical-align:bottom}
 #tblReg thead tr.grp th:not(.g-none){text-align:center}
 td.k{font-family:"IBM Plex Mono",monospace; font-variant-numeric:tabular-nums;}
@@ -390,10 +394,11 @@ tbody td:first-child, tfoot td:first-child, tr.grp th:first-child{ position:stat
     </table></div>
   </section>
 
-  <section class="card" style="padding:16px 0 0">
+  <section class="card" style="padding:16px 0 0" id="secLojas">
     <div class="card-h" style="padding:0 18px 0">
       <div><h2>Ticket médio de cada loja, canal a canal</h2>
       <p>Faturamento, clientes e ticket médio de cada canal. Clique em uma loja para o detalhe diário; clique nos títulos para reordenar.</p></div>
+      <span class="eyebrow" id="lojasCap"></span>
       <span class="eyebrow no-print" id="scrollHint"></span>
     </div>
     <div class="tablewrap"><table id="tbl">
@@ -778,7 +783,7 @@ function renderReg(){
     <td class="k strong">${rs(r.tot_tm)}</td>
     <td class="k sep" style="color:var(--tele)">${rs(r.dif)}</td>
     <td class="k" style="color:var(--tele)">${r.dif_pct==null?'—':brl(r.dif_pct,1)+'%'}</td></tr>`).join('');
-  $('#regFoot').innerHTML=`<tr>
+  $('#regFoot').innerHTML=`<tr class="${regFiltro?'':'sel'}" data-rede="1">
     <td><span class="loja"><b>${A.lojas.length}</b><span class="lname" style="max-width:none">Rede</span></span></td>
     <td class="resp">Fabiano</td>
     <td class="k sep">${rs(T.piso_valor,0)}</td><td class="k">${int(T.piso_vendas)}</td>
@@ -794,13 +799,14 @@ function renderReg(){
     <td class="k">${rs(T.tot_tm)}</td>
     <td class="k sep" style="color:var(--tele)">${rs(T.piso_tm-T.tot_tm)}</td>
     <td class="k" style="color:var(--tele)">${brl((T.piso_tm-T.tot_tm)/T.tot_tm*100,1)}%</td></tr>`;
-  $('#regBody').querySelectorAll('tr').forEach(tr=>tr.addEventListener('click',()=>{
-    regFiltro = regFiltro===tr.dataset.reg ? null : tr.dataset.reg;
-    renderReg(); renderTable();
-  }));
+  const trocar=reg=>{ regFiltro=reg; renderReg(); renderTable();
+    document.getElementById('secLojas').scrollIntoView({behavior:'smooth',block:'start'}); };
+  $('#regBody').querySelectorAll('tr').forEach(tr=>tr.addEventListener('click',()=>
+    trocar(regFiltro===tr.dataset.reg ? null : tr.dataset.reg)));
+  $('#regFoot').querySelector('tr').addEventListener('click',()=>trocar(null));
   $('#regHint').innerHTML = regFiltro
-    ? `Mostrando apenas <b>${regFiltro}</b> na tabela de lojas — clique de novo na linha para ver a rede toda.`
-    : 'Clique numa regional para filtrar a tabela de lojas abaixo.';
+    ? `Mostrando <b>${regFiltro}</b> na tabela de lojas — clique em <b>Rede</b> para abrir as ${A.lojas.length} lojas.`
+    : `Mostrando as <b>${A.lojas.length} lojas</b> da rede. Clique numa regional para filtrar a tabela abaixo.`;
 }
 
 /* ---------------- tabela ---------------- */
@@ -852,6 +858,8 @@ function renderTable(){
     <td class="k">${rs(F.tot_tm)}</td>
     <td class="k sep" style="color:var(--tele)">${rs(F.piso_tm-F.tot_tm)}</td>
     <td class="k" style="color:var(--tele)">${brl((F.piso_tm-F.tot_tm)/F.tot_tm*100,1)}%</td></tr>`;
+  const cap=$('#lojasCap');
+  if(cap) cap.textContent = regFiltro ? `${regFiltro} · ${d.length} lojas` : `Rede · ${d.length} lojas`;
   document.querySelectorAll('#tbl th[data-k]').forEach(th=>{
     th.classList.toggle('on',th.dataset.k===sortK);
     th.querySelector('.ar').textContent=sortD<0?'▾':'▴';});
