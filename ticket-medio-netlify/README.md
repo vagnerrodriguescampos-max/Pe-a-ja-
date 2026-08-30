@@ -59,6 +59,37 @@ qualquer recorte.
 O bloco de dia da semana some quando a seleção cobre menos de três dias
 diferentes da semana: comparar "melhor dia" com uma ou duas barras não diz nada.
 
+## Atualizar a base pelo navegador
+
+A página lê a BASE_TICKET direto no navegador e refaz a conta — não há servidor
+nem upload para lugar nenhum, o arquivo não sai da máquina de quem envia.
+
+O leitor de `.xlsx` é próprio, sem biblioteca: um `.xlsx` é um zip de XMLs, e o
+navegador já traz `DecompressionStream` e leitura de texto. Isso evita depender
+de um CDN (que a rede da empresa pode bloquear) e mantém a página funcionando
+offline. A primeira versão usava `DOMParser` e levava 16 s na aba de 48 mil
+linhas do e-commerce, porque monta um nó por célula; a varredura direta do XML
+faz o mesmo em 0,9 s.
+
+A mesclagem é **por célula (dia x loja)**, não por dia inteiro: reenviar um dia
+parcial corrige as lojas presentes e não zera as demais. Dias inéditos entram,
+dias repetidos são regravados. O resultado fica no `localStorage` do navegador,
+então sobrevive ao recarregar, e o botão *Voltar à base original* desfaz.
+
+### Por que o identificador de cliente é um hash
+
+Clientes únicos não somam: quem compra em três dias é um cliente, não três.
+Para contar distintos em qualquer recorte a página precisa dos identificadores
+— mas publicar nome de cliente numa página web não se faz. Então o que viaja é
+um hash de 40 bits em base36, que conta e não identifica.
+
+O hash (FNV-1a, duas passadas) está implementado **duas vezes**: em Python, que
+gera a base embarcada, e em JavaScript, que processa o upload. Se as duas
+implementações discordassem, um cliente antigo e o mesmo cliente num arquivo
+novo virariam dois — e a contagem de únicos inflaria em silêncio. A paridade é
+verificada sobre o arquivo inteiro: 1.810 células, zero divergências, incluindo
+acentos e emoji.
+
 ## Publicação
 
 O site é servido da subpasta `site/`, então só o `index.html` vai para o ar.
