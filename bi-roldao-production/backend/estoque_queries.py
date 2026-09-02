@@ -16,6 +16,7 @@ class FiltroEstoque:
     data_posicao: date | None = None
     lojas: tuple[str, ...] = ()
     sem_acesso: bool = False
+    regional: str | None = None
     departamento: str | None = None
     secao: str | None = None
     categoria: str | None = None
@@ -68,6 +69,7 @@ class FiltroEstoque:
             data_posicao=data_val,
             lojas=tuple(lojas),
             sem_acesso=sem_acesso,
+            regional=corpo.get("regional"),
             departamento=corpo.get("departamento"),
             secao=corpo.get("secao"),
             categoria=corpo.get("categoria"),
@@ -111,7 +113,7 @@ def _where(f: FiltroEstoque, data_posicao: date, alias: str = "v") -> tuple[str,
     if f.lojas:
         cond.append(f"{alias}.loja IN ({','.join('?' for _ in f.lojas)})")
         params.extend(f.lojas)
-    for campo in ("departamento", "secao", "categoria", "fornecedor", "comprador", "curva_abc"):
+    for campo in ("regional", "departamento", "secao", "categoria", "fornecedor", "comprador", "curva_abc"):
         valor = getattr(f, campo)
         if valor not in (None, ""):
             cond.append(f"{alias}.{campo} = ?")
@@ -181,7 +183,7 @@ def resumo(con: Any, f: FiltroEstoque) -> dict:
 
 
 def ranking_ruptura(con: Any, f: FiltroEstoque, dimensao: str = "loja", limite: int = 50) -> list[dict]:
-    permitidas = {"loja", "departamento", "secao", "categoria", "fornecedor", "comprador", "curva_abc"}
+    permitidas = {"regional", "loja", "departamento", "secao", "categoria", "fornecedor", "comprador", "curva_abc"}
     if dimensao not in permitidas:
         raise ValueError("Dimensão não permitida")
     data = resolver_data_posicao(con, f.data_posicao)
@@ -266,8 +268,7 @@ def transferencias(con: Any, f: FiltroEstoque, limite: int = 200, reserva_origem
       origem AS (
         SELECT *, GREATEST(estoque_disponivel_qtd-(venda_31d_qtd/31.0)*?,0) transferivel
         FROM b WHERE COALESCE(venda_31d_qtd,0)>0 AND ddv_atual_31d>?
-      ),
-      destino AS (
+      ), destino AS (
         SELECT *, GREATEST((venda_31d_qtd/31.0)*?-estoque_disponivel_qtd,0) necessidade
         FROM b WHERE COALESCE(venda_31d_qtd,0)>0 AND COALESCE(ddv_atual_31d,0)<7
       )
