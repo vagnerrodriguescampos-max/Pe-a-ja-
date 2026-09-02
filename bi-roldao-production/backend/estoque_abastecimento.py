@@ -33,8 +33,6 @@ def abastecimento_compra(
     if not data or f.sem_acesso:
         return []
 
-    # O destino respeita exatamente o filtro da tela. A origem pode olhar outras
-    # lojas autorizadas; status_estoque do destino não deve restringir doadores.
     if escopo_origem is None:
         f_origem = replace(f, lojas=(), status_estoque=None)
     else:
@@ -171,6 +169,7 @@ def abastecimento_compra(
         abastecimento_previsto_qtd,
         necessidade_bruta_qtd,
         necessidade_liquida_qtd,
+        necessidade_liquida_qtd AS necessidade_qtd,
         transferivel_rede_qtd,
         transferencia_interna_qtd,
         CASE
