@@ -16,8 +16,8 @@ from .estoque_queries import (
     plano_acao,
     ranking_ruptura,
     resumo,
-    transferencias,
 )
+from .estoque_transferencias import transferencias
 
 
 def extrair_escopo_lojas(usuario: dict[str, Any]) -> list[str] | None:
@@ -38,19 +38,9 @@ def filtro_estoque(corpo: dict | None, usuario: dict[str, Any]) -> tuple[FiltroE
 
 def _payload_base(con: Any, filtro: FiltroEstoque) -> dict[str, Any]:
     if filtro.sem_acesso:
-        return {
-            "ok": True,
-            "sem_acesso": True,
-            "data_posicao": None,
-            "dados": [],
-        }
+        return {"ok": True, "sem_acesso": True, "data_posicao": None, "dados": []}
     meta = metadados_posicao(con, filtro)
-    return {
-        "ok": True,
-        "sem_acesso": False,
-        "data_posicao": meta.get("data_posicao"),
-        "posicao": meta,
-    }
+    return {"ok": True, "sem_acesso": False, "data_posicao": meta.get("data_posicao"), "posicao": meta}
 
 
 def endpoint_resumo(con: Any, corpo: dict | None, usuario: dict[str, Any]) -> dict[str, Any]:
@@ -105,16 +95,24 @@ def endpoint_transferencias(con: Any, corpo: dict | None, usuario: dict[str, Any
         return base
     corpo = corpo or {}
     limite = int(corpo.get("limite") or 200)
-    reserva = float(corpo.get("reserva_origem") or 30)
-    alvo = float(corpo.get("alvo_destino") or 30)
+    reserva = max(1.0, min(float(corpo.get("reserva_origem") or 30), 365.0))
+    alvo = max(1.0, min(float(corpo.get("alvo_destino") or 30), 365.0))
+    permitir_interregional = bool(corpo.get("permitir_interregional") is True)
     return {
         **base,
+        "politica_transferencia": {
+            "reserva_origem_dias": reserva,
+            "alvo_destino_dias": alvo,
+            "interregional": permitir_interregional,
+            "considera_abastecimento_destino": True,
+        },
         "dados": transferencias(
             con,
             filtro,
             limite=limite,
-            reserva_origem=max(1.0, min(reserva, 365.0)),
-            alvo_destino=max(1.0, min(alvo, 365.0)),
+            reserva_origem=reserva,
+            alvo_destino=alvo,
+            permitir_interregional=permitir_interregional,
         ),
     }
 
@@ -128,10 +126,7 @@ def endpoint_plano_acao(con: Any, corpo: dict | None, usuario: dict[str, Any]) -
     return {**base, "dados": plano_acao(con, filtro, limite)}
 
 
-ENDPOINTS_ESTOQUE_360: dict[
-    str,
-    Callable[[Any, dict | None, dict[str, Any]], dict[str, Any]],
-] = {
+ENDPOINTS_ESTOQUE_360: dict[str, Callable[[Any, dict | None, dict[str, Any]], dict[str, Any]]] = {
     "resumo": endpoint_resumo,
     "ruptura": endpoint_ruptura,
     "cobertura": endpoint_cobertura,
@@ -142,12 +137,7 @@ ENDPOINTS_ESTOQUE_360: dict[
 }
 
 
-def executar_endpoint(
-    nome: str,
-    con: Any,
-    corpo: dict | None,
-    usuario: dict[str, Any],
-) -> dict[str, Any]:
+def executar_endpoint(nome: str, con: Any, corpo: dict | None, usuario: dict[str, Any]) -> dict[str, Any]:
     funcao = ENDPOINTS_ESTOQUE_360.get(nome)
     if not funcao:
         raise ValueError(f"Endpoint Estoque 360 desconhecido: {nome}")
