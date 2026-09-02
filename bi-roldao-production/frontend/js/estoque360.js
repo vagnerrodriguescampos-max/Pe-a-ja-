@@ -1,4 +1,4 @@
-const ESTOQUE360_TABS = [
+const TABS = [
   ["cockpit", "Cockpit"],
   ["ruptura", "Ruptura"],
   ["cobertura", "Cobertura"],
@@ -8,7 +8,7 @@ const ESTOQUE360_TABS = [
   ["plano-acao", "Plano de Ação"],
 ];
 
-const DEFAULT_ENDPOINTS = {
+const ENDPOINTS = {
   resumo: "/api/estoque/resumo",
   ruptura: "/api/estoque/ruptura",
   cobertura: "/api/estoque/cobertura",
@@ -18,9 +18,9 @@ const DEFAULT_ENDPOINTS = {
   "plano-acao": "/api/estoque/plano-acao",
 };
 
-const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
-const num = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 1 });
-const inteiro = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 0 });
+const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
+const n1 = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 1 });
+const n0 = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 0 });
 
 function esc(v) {
   return String(v ?? "")
@@ -31,69 +31,63 @@ function esc(v) {
     .replaceAll("'", "&#039;");
 }
 
-function fmtData(v) {
+function money(v) { return Number.isFinite(Number(v)) ? brl.format(Number(v)) : "—"; }
+function num(v) { return Number.isFinite(Number(v)) ? n1.format(Number(v)) : "—"; }
+function inteiro(v) { return Number.isFinite(Number(v)) ? n0.format(Number(v)) : "—"; }
+function pct(v) { return Number.isFinite(Number(v)) ? `${n1.format(Number(v))}%` : "—"; }
+function dataBR(v) {
   if (!v) return "—";
   const d = new Date(`${String(v).slice(0, 10)}T12:00:00`);
   return Number.isNaN(d.getTime()) ? esc(v) : d.toLocaleDateString("pt-BR");
 }
 
-function fmtMoney(v) { return Number.isFinite(Number(v)) ? money.format(Number(v)) : "—"; }
-function fmtNum(v) { return Number.isFinite(Number(v)) ? num.format(Number(v)) : "—"; }
-function fmtInt(v) { return Number.isFinite(Number(v)) ? inteiro.format(Number(v)) : "—"; }
-function fmtPct(v) { return Number.isFinite(Number(v)) ? `${num.format(Number(v))}%` : "—"; }
+function cssVar(nome, fallback) {
+  const valor = getComputedStyle(document.documentElement).getPropertyValue(nome).trim();
+  return valor || fallback;
+}
 
-class ChartRegistry {
-  constructor() { this.items = new Map(); }
+function coresBI() {
+  return [
+    cssVar("--brand", "#fdb913"),
+    cssVar("--s1", "#2f80ed"),
+    cssVar("--s3", "#27ae60"),
+    cssVar("--s6", "#9b51e0"),
+    cssVar("--warn", "#f2994a"),
+    cssVar("--crit", "#eb5757"),
+  ];
+}
 
+class Charts {
+  constructor() { this.map = new Map(); }
   set(root, id, option) {
     if (!window.echarts) return false;
     const dom = root.querySelector(`#${CSS.escape(id)}`);
     if (!dom || !dom.isConnected) return false;
-
-    const anterior = this.items.get(id);
-    if (anterior && anterior.dom !== dom) {
-      try { anterior.chart.dispose(); } catch (_) {}
-      this.items.delete(id);
+    const antigo = this.map.get(id);
+    if (antigo && antigo.dom !== dom) {
+      try { antigo.chart.dispose(); } catch (_) {}
+      this.map.delete(id);
     }
-
     let chart = window.echarts.getInstanceByDom(dom);
     if (!chart) chart = window.echarts.init(dom);
-    chart.setOption(option, { notMerge: true, lazyUpdate: false });
-    this.items.set(id, { dom, chart });
-    requestAnimationFrame(() => {
-      if (dom.isConnected) {
-        try { chart.resize(); } catch (_) {}
-      }
-    });
+    chart.setOption({ color: coresBI(), ...option }, { notMerge: true, lazyUpdate: false });
+    this.map.set(id, { dom, chart });
+    requestAnimationFrame(() => { try { if (dom.isConnected) chart.resize(); } catch (_) {} });
     return true;
   }
-
-  resize() {
-    for (const { dom, chart } of this.items.values()) {
-      if (dom.isConnected) {
-        try { chart.resize(); } catch (_) {}
-      }
-    }
-  }
-
   cleanup(root) {
-    for (const [id, item] of this.items.entries()) {
+    for (const [id, item] of this.map.entries()) {
       if (!item.dom.isConnected || !root.contains(item.dom)) {
         try { item.chart.dispose(); } catch (_) {}
-        this.items.delete(id);
+        this.map.delete(id);
       }
     }
   }
-
-  dispose() {
-    for (const { chart } of this.items.values()) {
-      try { chart.dispose(); } catch (_) {}
-    }
-    this.items.clear();
-  }
+  resize() { for (const { chart } of this.map.values()) { try { chart.resize(); } catch (_) {} } }
+  dispose() { for (const { chart } of this.map.values()) { try { chart.dispose(); } catch (_) {} } this.map.clear(); }
 }
 
-async function defaultPost(url, body, signal) {
+async function postPadrao(url, body, signal) {
   const resp = await fetch(url, {
     method: "POST",
     credentials: "same-origin",
@@ -101,8 +95,25 @@ async function defaultPost(url, body, signal) {
     body: JSON.stringify(body || {}),
     signal,
   });
-  if (!resp.ok) throw new Error(`HTTP ${resp.status} em ${url}`);
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
   return resp.json();
+}
+
+function kpiHost({ title, value, accent = "--brand", cmp = "" }) {
+  if (typeof window.kpiCard === "function") {
+    try {
+      return window.kpiCard({ title, value, accent, cmp, src: "calc" });
+    } catch (_) {}
+  }
+  return `<div class="card"><div class="card-h"><h3>${esc(title)}</h3></div><div class="card-b"><div style="font-size:22px;font-weight:800">${esc(value)}</div>${cmp ? `<div style="margin-top:5px;color:var(--ink-3);font-size:11px">${esc(cmp)}</div>` : ""}</div></div>`;
+}
+
+function card(titulo, corpo, hint = "") {
+  return `<div class="card"><div class="card-h"><h3>${esc(titulo)}</h3>${hint ? `<span class="hint">${esc(hint)}</span>` : ""}</div><div class="card-b">${corpo}</div></div>`;
+}
+
+function tabela(cabecalhos, linhas, getter) {
+  return `<div class="e360-table-wrap"><table class="e360-table"><thead><tr>${cabecalhos.map(x => `<th>${esc(x)}</th>`).join("")}</tr></thead><tbody>${linhas.map(r => `<tr>${getter(r).map(v => `<td>${esc(v)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
 }
 
 export class Estoque360App {
@@ -110,90 +121,70 @@ export class Estoque360App {
     if (!root) throw new Error("Container do Estoque 360 não informado");
     this.root = root;
     this.options = options;
-    this.endpoints = { ...DEFAULT_ENDPOINTS, ...(options.endpoints || {}) };
-    this.post = options.post || defaultPost;
+    this.endpoints = { ...ENDPOINTS, ...(options.endpoints || {}) };
+    this.post = options.post || postPadrao;
     this.tab = "cockpit";
     this.filtros = {};
-    this.requestSeq = 0;
+    this.seq = 0;
     this.controller = null;
-    this.charts = new ChartRegistry();
+    this.charts = new Charts();
     this.destroyed = false;
-    this._resize = () => this.charts.resize();
-    window.addEventListener("resize", this._resize, { passive: true });
+    this.onResize = () => this.charts.resize();
+    window.addEventListener("resize", this.onResize, { passive: true });
     this.renderShell();
   }
 
   renderShell() {
     this.root.classList.add("estoque360");
     this.root.innerHTML = `
-      <section class="e360-header">
-        <div>
-          <div class="e360-eyebrow">GESTÃO DE ESTOQUE & ABASTECIMENTO</div>
-          <h2>Estoque 360</h2>
-          <div class="e360-subtitle">Ruptura, cobertura, excesso, abastecimento e plano de ação na mesma posição de dados.</div>
+      <div class="e360-toolbar">
+        <div class="e360-tabs" role="tablist" aria-label="Estoque 360">
+          ${TABS.map(([id, label]) => `<button type="button" class="btn ${id === this.tab ? "primary" : ""}" data-e360-tab="${id}">${esc(label)}</button>`).join("")}
         </div>
-        <div class="e360-posicao" data-e360-posicao>Posição: —</div>
-      </section>
-      <nav class="e360-tabs" aria-label="Visões do Estoque 360">
-        ${ESTOQUE360_TABS.map(([id, label]) => `<button type="button" data-e360-tab="${id}" class="${id === this.tab ? "ativo" : ""}">${label}</button>`).join("")}
-      </nav>
-      <section class="e360-content" data-e360-content></section>
-    `;
-
-    this.root.querySelectorAll("[data-e360-tab]").forEach((btn) => {
+        <div class="e360-posicao"><span class="src-tag src-calc">POSIÇÃO</span><b data-e360-posicao>—</b></div>
+      </div>
+      <div class="e360-content" data-e360-content></div>`;
+    this.root.querySelectorAll("[data-e360-tab]").forEach(btn => {
       btn.addEventListener("click", () => this.setTab(btn.dataset.e360Tab));
     });
   }
 
-  async start(filtrosIniciais = {}) {
-    this.filtros = { ...(filtrosIniciais || {}) };
-    await this.refresh();
-    return this;
-  }
-
-  async setGlobalFilters(filtros = {}) {
-    this.filtros = { ...(filtros || {}) };
-    await this.refresh();
-  }
+  async start(filtros = {}) { this.filtros = { ...filtros }; await this.refresh(); return this; }
+  async setGlobalFilters(filtros = {}) { this.filtros = { ...filtros }; await this.refresh(); }
 
   async setTab(tab) {
-    if (!ESTOQUE360_TABS.some(([id]) => id === tab) || tab === this.tab) return;
+    if (!TABS.some(([id]) => id === tab) || tab === this.tab) return;
     this.tab = tab;
-    this.root.querySelectorAll("[data-e360-tab]").forEach((btn) => {
-      btn.classList.toggle("ativo", btn.dataset.e360Tab === tab);
+    this.root.querySelectorAll("[data-e360-tab]").forEach(btn => {
+      const ativo = btn.dataset.e360Tab === tab;
+      btn.classList.toggle("primary", ativo);
+      btn.setAttribute("aria-selected", ativo ? "true" : "false");
     });
     await this.refresh();
   }
 
   payload(extra = {}) {
-    const base = { ...(this.filtros || {}) };
+    const base = { ...this.filtros };
     delete base.periodo_inicio;
     delete base.periodo_fim;
     return { ...base, ...extra };
   }
 
   contextoIA(dataPosicao) {
-    const detail = {
-      modulo: "ESTOQUE_360",
-      subaba: this.tab,
-      data_posicao: dataPosicao || null,
-      filtros: { ...(this.filtros || {}) },
-    };
+    const detail = { modulo: "ESTOQUE_360", subaba: this.tab, data_posicao: dataPosicao || null, filtros: { ...this.filtros } };
     this.root.dispatchEvent(new CustomEvent("estoque360:contexto", { bubbles: true, detail }));
     if (typeof this.options.onContextChange === "function") this.options.onContextChange(detail);
   }
 
   setLoading() {
-    const content = this.root.querySelector("[data-e360-content]");
-    if (content) content.innerHTML = `<div class="e360-state"><span class="e360-spinner"></span> Atualizando indicadores…</div>`;
+    this.root.querySelector("[data-e360-content]").innerHTML = `<div class="e360-state"><span class="e360-spinner"></span>Atualizando indicadores…</div>`;
   }
 
   setError(err) {
-    const content = this.root.querySelector("[data-e360-content]");
-    if (content) content.innerHTML = `<div class="e360-state e360-error"><strong>Não foi possível carregar esta visão.</strong><br>${esc(err?.message || err)}</div>`;
+    this.root.querySelector("[data-e360-content]").innerHTML = card("Falha ao carregar Estoque 360", `<div style="color:var(--crit)">${esc(err?.message || err)}</div>`);
   }
 
-  async request(nome, extra = {}, signal) {
+  async request(nome, extra, signal) {
     const url = this.endpoints[nome];
     if (!url) throw new Error(`Endpoint não configurado: ${nome}`);
     return this.post(url, this.payload(extra), signal);
@@ -201,12 +192,11 @@ export class Estoque360App {
 
   async refresh() {
     if (this.destroyed) return;
-    const seq = ++this.requestSeq;
+    const seq = ++this.seq;
     if (this.controller) this.controller.abort();
     this.controller = new AbortController();
-    const { signal } = this.controller;
+    const signal = this.controller.signal;
     this.setLoading();
-
     try {
       let result;
       if (this.tab === "cockpit") {
@@ -215,26 +205,28 @@ export class Estoque360App {
           this.request("cobertura", {}, signal),
         ]);
         result = { resumo, cobertura };
-      } else if (this.tab === "ruptura") {
-        result = await this.request("ruptura", { dimensao: "loja", limite: 60 }, signal);
-      } else if (this.tab === "cobertura") {
-        result = await this.request("cobertura", {}, signal);
-      } else if (this.tab === "excesso") {
-        result = await this.request("excesso", { limite: 250 }, signal);
-      } else if (this.tab === "abastecimento") {
-        result = await this.request("abastecimento", { limite: 250 }, signal);
-      } else if (this.tab === "transferencias") {
-        result = await this.request("transferencias", { limite: 250 }, signal);
-      } else {
-        result = await this.request("plano-acao", { limite: 400 }, signal);
-      }
-
-      if (seq !== this.requestSeq || signal.aborted || this.destroyed) return;
+      } else if (this.tab === "ruptura") result = await this.request("ruptura", { dimensao: "loja", limite: 60 }, signal);
+      else if (this.tab === "cobertura") result = await this.request("cobertura", {}, signal);
+      else if (this.tab === "excesso") result = await this.request("excesso", { limite: 250 }, signal);
+      else if (this.tab === "abastecimento") result = await this.request("abastecimento", { limite: 250 }, signal);
+      else if (this.tab === "transferencias") result = await this.request("transferencias", { limite: 250 }, signal);
+      else result = await this.request("plano-acao", { limite: 400 }, signal);
+      if (seq !== this.seq || signal.aborted || this.destroyed) return;
       this.renderResult(result);
     } catch (err) {
-      if (err?.name === "AbortError" || seq !== this.requestSeq || this.destroyed) return;
+      if (err?.name === "AbortError" || seq !== this.seq || this.destroyed) return;
       this.setError(err);
     }
+  }
+
+  updatePosicao(v) {
+    const el = this.root.querySelector("[data-e360-posicao]");
+    if (el) el.textContent = dataBR(v);
+  }
+
+  renderSemAcesso() {
+    this.updatePosicao(null);
+    this.root.querySelector("[data-e360-content]").innerHTML = card("Sem acesso", "Seu usuário não possui lojas liberadas para esta consulta.");
   }
 
   renderResult(result) {
@@ -244,22 +236,13 @@ export class Estoque360App {
     const posicao = result?.data_posicao || result?.posicao?.data_posicao;
     this.updatePosicao(posicao);
     this.contextoIA(posicao);
-    if (this.tab === "ruptura") return this.renderRuptura(result.dados || []);
-    if (this.tab === "cobertura") return this.renderCobertura(result.dados || []);
-    if (this.tab === "excesso") return this.renderExcesso(result.dados || []);
-    if (this.tab === "abastecimento") return this.renderAbastecimento(result.dados || []);
-    if (this.tab === "transferencias") return this.renderTransferencias(result.dados || []);
-    return this.renderPlano(result.dados || []);
-  }
-
-  updatePosicao(posicao) {
-    const el = this.root.querySelector("[data-e360-posicao]");
-    if (el) el.textContent = `Posição: ${fmtData(posicao)}`;
-  }
-
-  renderSemAcesso() {
-    this.updatePosicao(null);
-    this.root.querySelector("[data-e360-content]").innerHTML = `<div class="e360-state">Seu usuário não possui lojas liberadas para esta consulta.</div>`;
+    const dados = result?.dados || [];
+    if (this.tab === "ruptura") return this.renderRuptura(dados);
+    if (this.tab === "cobertura") return this.renderCobertura(dados);
+    if (this.tab === "excesso") return this.renderExcesso(dados);
+    if (this.tab === "abastecimento") return this.renderAbastecimento(dados);
+    if (this.tab === "transferencias") return this.renderTransferencias(dados);
+    return this.renderPlano(dados);
   }
 
   renderCockpit(resumoResp, coberturaResp) {
@@ -268,92 +251,82 @@ export class Estoque360App {
     const posicao = resumoResp?.data_posicao || d.data_posicao;
     this.updatePosicao(posicao);
     this.contextoIA(posicao);
-    const content = this.root.querySelector("[data-e360-content]");
-    const cards = [
-      ["Estoque disponível", fmtMoney(d.estoque_valor)],
-      ["DDV atual", `${fmtNum(d.ddv_atual)} dias`],
-      ["DDV projetado", `${fmtNum(d.ddv_projetado)} dias`],
-      ["Ruptura", fmtPct(d.ruptura_pct)],
-      ["Ruptura sem pedido", fmtInt(d.ruptura_sem_pedido)],
-      ["Ruptura com pedido", fmtInt(d.ruptura_com_pedido)],
-      ["Carteira", fmtMoney(d.carteira_valor)],
-      ["Capital excedente", fmtMoney(d.capital_excedente_estimado)],
-      ["Estoque sem venda", fmtMoney(d.estoque_sem_venda_valor)],
+    const kpis = [
+      ["Estoque disponível", money(d.estoque_valor), "--brand", "Valor disponível"],
+      ["DDV atual", `${num(d.ddv_atual)} dias`, "--s1", "Cobertura atual"],
+      ["DDV projetado", `${num(d.ddv_projetado)} dias`, "--s3", "Com trânsito + pedidos + carteira"],
+      ["Ruptura", pct(d.ruptura_pct), "--crit", "Itens em ruptura"],
+      ["Ruptura sem pedido", inteiro(d.ruptura_sem_pedido), "--crit", "Ação imediata"],
+      ["Ruptura com pedido", inteiro(d.ruptura_com_pedido), "--warn", "Acompanhar abastecimento"],
+      ["Carteira", money(d.carteira_valor), "--s6", "Valor em carteira"],
+      ["Capital excedente", money(d.capital_excedente_estimado), "--warn", `Acima do alvo de ${num(d.ddv_alvo)} dias`],
+      ["Estoque sem venda", money(d.estoque_sem_venda_valor), "--ink-3", "Sem venda no período-base"],
     ];
-    content.innerHTML = `
-      <div class="e360-kpis">${cards.map(([l, v]) => `<article class="e360-kpi"><span>${esc(l)}</span><strong>${esc(v)}</strong></article>`).join("")}</div>
-      <div class="e360-grid2">
-        <article class="e360-panel"><header><h3>Distribuição da cobertura</h3><span>Itens por faixa de DDV</span></header><div id="e360-chart-cobertura" class="e360-chart"></div></article>
-        <article class="e360-panel"><header><h3>Leitura executiva</h3><span>Atual x projetado</span></header>
-          <div class="e360-ddv-compare"><div><small>Atual</small><strong>${fmtNum(d.ddv_atual)}</strong><span>dias</span></div><div class="e360-arrow">→</div><div><small>Projetado</small><strong>${fmtNum(d.ddv_projetado)}</strong><span>dias</span></div></div>
-          <div class="e360-note">Meta de referência atual: ${fmtNum(d.ddv_alvo)} dias. A posição projetada incorpora estoque, trânsito, pedido pendente e carteira.</div>
-        </article>
+    this.root.querySelector("[data-e360-content]").innerHTML = `
+      <div class="kpi-grid e360-kpis">${kpis.map(([title,value,accent,cmp]) => kpiHost({title,value,accent,cmp})).join("")}</div>
+      <div class="e360-two">
+        ${card("Distribuição da cobertura", `<div id="e360-cobertura" class="e360-chart"></div>`, "Itens por faixa de DDV")}
+        ${card("DDV atual x projetado", `<div class="e360-ddv"><div><small>Atual</small><strong>${num(d.ddv_atual)}</strong><span>dias</span></div><div class="e360-ddv-arrow">→</div><div><small>Projetado</small><strong>${num(d.ddv_projetado)}</strong><span>dias</span></div></div><div class="e360-note">O projetado considera estoque disponível, trânsito, pedido pendente e carteira.</div>`)}
       </div>`;
     this.chartCobertura(coberturaResp?.dados || []);
   }
 
   chartCobertura(rows) {
-    const labels = rows.map((r) => r.faixa);
-    const vals = rows.map((r) => Number(r.itens || 0));
-    const ok = this.charts.set(this.root, "e360-chart-cobertura", {
+    this.charts.set(this.root, "e360-cobertura", {
       tooltip: { trigger: "axis" },
-      grid: { left: 42, right: 18, top: 25, bottom: 42 },
-      xAxis: { type: "category", data: labels, axisLabel: { interval: 0, rotate: 25 } },
-      yAxis: { type: "value" },
-      series: [{ type: "bar", data: vals, barMaxWidth: 44 }],
+      grid: { left: 48, right: 18, top: 24, bottom: 40 },
+      xAxis: { type: "category", data: rows.map(r => r.faixa), axisLabel: { interval: 0, rotate: 25, color: cssVar("--ink-3", "#888") } },
+      yAxis: { type: "value", axisLabel: { color: cssVar("--ink-3", "#888") }, splitLine: { lineStyle: { color: cssVar("--line", "#ddd") } } },
+      series: [{ type: "bar", data: rows.map(r => Number(r.itens || 0)), barMaxWidth: 42 }],
     });
-    if (!ok) this.fallbackChart("e360-chart-cobertura", rows.map((r) => `${r.faixa}: ${fmtInt(r.itens)}`));
-  }
-
-  fallbackChart(id, linhas) {
-    const el = this.root.querySelector(`#${CSS.escape(id)}`);
-    if (el) el.innerHTML = `<div class="e360-chart-fallback">${linhas.map((x) => `<span>${esc(x)}</span>`).join("")}</div>`;
   }
 
   renderRuptura(rows) {
-    const content = this.root.querySelector("[data-e360-content]");
-    content.innerHTML = `<div class="e360-grid2"><article class="e360-panel"><header><h3>Ruptura por loja</h3><span>Percentual e tratamento do pedido</span></header><div id="e360-chart-ruptura" class="e360-chart e360-chart-lg"></div></article><article class="e360-panel e360-table-panel">${this.table(["Loja","Ruptura %","Itens","Sem pedido","Com pedido"], rows, (r) => [r.dimensao, fmtPct(r.ruptura_pct), fmtInt(r.ruptura), fmtInt(r.sem_pedido), fmtInt(r.com_pedido)])}</article></div>`;
+    this.root.querySelector("[data-e360-content]").innerHTML = `<div class="e360-two">${card("Ruptura por loja", `<div id="e360-ruptura" class="e360-chart e360-chart-lg"></div>`, "Percentual de ruptura")}${card("Detalhamento", tabela(["Loja","Ruptura %","Itens","Sem pedido","Com pedido"], rows, r => [r.dimensao,pct(r.ruptura_pct),inteiro(r.ruptura),inteiro(r.sem_pedido),inteiro(r.com_pedido)]))}</div>`;
     const top = rows.slice(0, 20);
-    const ok = this.charts.set(this.root, "e360-chart-ruptura", {
-      tooltip: { trigger: "axis" }, grid: { left: 115, right: 25, top: 15, bottom: 25 },
-      xAxis: { type: "value" }, yAxis: { type: "category", inverse: true, data: top.map((r) => r.dimensao) },
-      series: [{ type: "bar", data: top.map((r) => Number(r.ruptura_pct || 0)), barMaxWidth: 24 }],
+    this.charts.set(this.root, "e360-ruptura", {
+      tooltip: { trigger: "axis" },
+      grid: { left: 115, right: 22, top: 18, bottom: 24 },
+      xAxis: { type: "value", axisLabel: { formatter: "{value}%", color: cssVar("--ink-3", "#888") }, splitLine: { lineStyle: { color: cssVar("--line", "#ddd") } } },
+      yAxis: { type: "category", inverse: true, data: top.map(r => r.dimensao || "—"), axisLabel: { color: cssVar("--ink-3", "#888") } },
+      series: [{ type: "bar", data: top.map(r => Number(r.ruptura_pct || 0)), barMaxWidth: 18 }],
     });
-    if (!ok) this.fallbackChart("e360-chart-ruptura", top.map((r) => `${r.dimensao}: ${fmtPct(r.ruptura_pct)}`));
   }
 
   renderCobertura(rows) {
-    this.root.querySelector("[data-e360-content]").innerHTML = `<article class="e360-panel"><header><h3>Faixas de cobertura</h3><span>Quantidade de itens e capital por faixa</span></header><div id="e360-chart-cobertura" class="e360-chart e360-chart-lg"></div>${this.table(["Faixa","Itens","Estoque R$"], rows, (r) => [r.faixa, fmtInt(r.itens), fmtMoney(r.estoque_valor)])}</article>`;
-    this.chartCobertura(rows);
+    this.root.querySelector("[data-e360-content]").innerHTML = card("Cobertura / DDV", `<div id="e360-cobertura-full" class="e360-chart e360-chart-lg"></div>`, "Faixas de cobertura da posição selecionada");
+    this.charts.set(this.root, "e360-cobertura-full", {
+      tooltip: { trigger: "axis" },
+      grid: { left: 50, right: 25, top: 22, bottom: 42 },
+      xAxis: { type: "category", data: rows.map(r => r.faixa), axisLabel: { color: cssVar("--ink-3", "#888") } },
+      yAxis: { type: "value", axisLabel: { color: cssVar("--ink-3", "#888") }, splitLine: { lineStyle: { color: cssVar("--line", "#ddd") } } },
+      series: [{ type: "bar", data: rows.map(r => Number(r.estoque_valor || 0)) }],
+    });
   }
 
   renderExcesso(rows) {
-    this.root.querySelector("[data-e360-content]").innerHTML = `<article class="e360-panel e360-table-panel"><header><h3>Excesso de estoque</h3><span>Ordenado pelo capital excedente estimado</span></header>${this.table(["Loja","SKU","Produto","Curva","DDV","Estoque R$","Excesso R$"], rows, (r) => [r.loja, r.sku, r.descricao, r.curva_abc, fmtNum(r.ddv_atual_31d), fmtMoney(r.estoque_disponivel_valor), fmtMoney(r.excesso_valor)])}</article>`;
+    this.root.querySelector("[data-e360-content]").innerHTML = card("Excesso de estoque", tabela(["Loja","SKU","Produto","Curva","DDV","Estoque R$","Excesso R$"], rows, r => [r.loja,r.sku,r.descricao,r.curva_abc,num(r.ddv_atual_31d),money(r.estoque_disponivel_valor),money(r.excesso_valor)]), "Prioridade por capital excedente");
   }
 
   renderAbastecimento(rows) {
-    this.root.querySelector("[data-e360-content]").innerHTML = `<article class="e360-panel e360-table-panel"><header><h3>Sugestão de abastecimento</h3><span>Necessidade após estoque, trânsito, pedidos e carteira</span></header>${this.table(["Loja","SKU","Produto","Curva","DDV","DDV proj.","Necessidade"], rows, (r) => [r.loja, r.sku, r.descricao, r.curva_abc, fmtNum(r.ddv_atual_31d), fmtNum(r.ddv_projetado_31d), fmtInt(r.necessidade_qtd)])}</article>`;
+    this.root.querySelector("[data-e360-content]").innerHTML = card("Sugestão de abastecimento", tabela(["Loja","SKU","Produto","Curva","DDV atual","DDV projetado","Necessidade"], rows, r => [r.loja,r.sku,r.descricao,r.curva_abc,num(r.ddv_atual_31d),num(r.ddv_projetado_31d),inteiro(r.necessidade_qtd)]), "Recomendação analítica; não gera pedido automático");
   }
 
   renderTransferencias(rows) {
-    this.root.querySelector("[data-e360-content]").innerHTML = `<article class="e360-panel e360-table-panel"><header><h3>Transferências sugeridas</h3><span>Origem com excesso para destino com baixa cobertura</span></header>${this.table(["SKU","Produto","Origem","Destino","DDV origem","DDV destino","Sugestão"], rows, (r) => [r.sku, r.descricao, r.loja_origem, r.loja_destino, fmtNum(r.ddv_origem), fmtNum(r.ddv_destino), fmtInt(r.sugestao_qtd)])}</article>`;
+    this.root.querySelector("[data-e360-content]").innerHTML = card("Transferências possíveis", tabela(["SKU","Produto","Origem","DDV origem","Destino","DDV destino","Sugestão"], rows, r => [r.sku,r.descricao,r.loja_origem,num(r.ddv_origem),r.loja_destino,num(r.ddv_destino),inteiro(r.sugestao_qtd)]), "Excesso em uma loja x baixa cobertura em outra");
   }
 
   renderPlano(rows) {
-    this.root.querySelector("[data-e360-content]").innerHTML = `<article class="e360-panel e360-table-panel"><header><h3>Plano de ação</h3><span>Fila operacional priorizada automaticamente</span></header>${this.table(["Prioridade","Loja","SKU","Produto","Curva","DDV","Ruptura","Ação"], rows, (r) => [`<span class="e360-prioridade ${esc(r.prioridade)}">${esc(r.prioridade)}</span>`, r.loja, r.sku, r.descricao, r.curva_abc, fmtNum(r.ddv_atual_31d), r.ruptura ? "Sim" : "Não", String(r.acao || "").replaceAll("_", " ")], true)}</article>`;
-  }
-
-  table(headers, rows, mapRow, allowHtml = false) {
-    if (!rows.length) return `<div class="e360-state">Nenhum registro encontrado para os filtros atuais.</div>`;
-    return `<div class="e360-table-wrap"><table class="e360-table"><thead><tr>${headers.map((h) => `<th>${esc(h)}</th>`).join("")}</tr></thead><tbody>${rows.map((row) => `<tr>${mapRow(row).map((v, i) => `<td>${allowHtml && i === 0 ? v : esc(v)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
+    this.root.querySelector("[data-e360-content]").innerHTML = card("Plano de ação", tabela(["Prioridade","Loja","SKU","Produto","Curva","DDV","Ruptura","Ação"], rows, r => [r.prioridade,r.loja,r.sku,r.descricao,r.curva_abc,num(r.ddv_atual_31d),r.ruptura ? "Sim" : "Não",r.acao]), "Fila operacional ordenada por criticidade");
   }
 
   destroy() {
     this.destroyed = true;
     if (this.controller) this.controller.abort();
-    window.removeEventListener("resize", this._resize);
     this.charts.dispose();
+    window.removeEventListener("resize", this.onResize);
     this.root.innerHTML = "";
+    this.root.classList.remove("estoque360");
   }
 }
 
