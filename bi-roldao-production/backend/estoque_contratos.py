@@ -1,0 +1,135 @@
+"""Contratos de importação do Estoque 360.
+
+Mapeia os campos mínimos esperados nas duas planilhas diárias e fornece regras
+para validação estrutural antes de qualquer promoção da carga.
+"""
+
+TIPO_ESTOQUE = "ESTOQUE"
+TIPO_RUPTURA = "RUPTURA"
+
+CONTRATOS_IMPORTACAO = {
+    TIPO_ESTOQUE: {
+        "abas_preferenciais": ["Estoque"],
+        "chave": ["loja", "sku"],
+        "campos_minimos": [
+            "loja",
+            "sku",
+            "descricao",
+            "estoque_disponivel_qtd",
+            "estoque_disponivel_valor",
+            "venda_31d_qtd",
+            "cmv_31d",
+        ],
+        "aliases": {
+            "sku": ["codigo material", "código material", "codigo", "material"],
+            "descricao": ["descricao", "descrição", "material descricao", "material descrição"],
+            "loja": ["loja", "filial"],
+            "departamento": ["departamento", "depto"],
+            "secao": ["secao", "seção"],
+            "categoria": ["categoria", "subcategoria"],
+            "fornecedor": ["fornecedor"],
+            "fabricante": ["fabricante"],
+            "comprador": ["comprador"],
+            "curva_abc": ["curva abc", "curva (abc)", "abc"],
+            "curva_geral": ["curva geral"],
+            "curva_loja": ["curva loja"],
+            "top_300": ["top 300", "top300"],
+            "nbo": ["nbo"],
+            "tabloide": ["tabloide", "tablóide", "jornal"],
+            "status_item": ["status item", "status"],
+            "pack": ["pack"],
+            "palete": ["palete", "pallet"],
+            "estoque_total_qtd": ["estoque total", "est total"],
+            "estoque_disponivel_qtd": ["estoque disponivel", "estoque disponível", "est livre", "estoque livre"],
+            "estoque_disponivel_caixas": ["estoque caixas", "est caixas"],
+            "estoque_disponivel_paletes": ["estoque paletes", "est paletes"],
+            "estoque_disponivel_valor": ["estoque r$", "estoque valor", "est r$"],
+            "estoque_reservado_qtd": ["reservado", "estoque reservado"],
+            "transito_qtd": ["transito", "trânsito", "transferencia", "transferência"],
+            "pedido_pendente_qtd": ["pedido pendente", "ped pendente", "pedido aberto"],
+            "pedido_pendente_valor": ["pedido pendente r$", "pedido valor"],
+            "preco_venda": ["preco venda", "preço venda"],
+            "venda_31d_qtd": ["venda 31d qtd", "venda qtd 31", "venda 31 dias qtd"],
+            "venda_31d_valor": ["venda 31d r$", "venda 31 dias r$", "venda valor 31"],
+            "venda_90d_qtd": ["venda 90d", "venda 90 dias", "venda 90d qtd"],
+            "cmv_31d": ["cmv", "cmv 31d", "cmv 31 dias"],
+            "carteira_qtd": ["carteira qtd", "carteira quantidade"],
+            "carteira_valor": ["carteira r$", "carteira valor"],
+        },
+    },
+    TIPO_RUPTURA: {
+        "abas_preferenciais": ["BD"],
+        "chave": ["loja", "sku"],
+        "campos_minimos": [
+            "loja",
+            "sku",
+            "descricao",
+            "item_ativo",
+            "ruptura",
+            "estoque_qtd",
+        ],
+        "aliases": {
+            "loja": ["loja", "filial"],
+            "sku": ["codigo material", "código material", "codigo", "material"],
+            "descricao": ["material", "descricao", "descrição"],
+            "subcategoria": ["subcategoria"],
+            "secao": ["secao", "seção"],
+            "fornecedor": ["fornecedor"],
+            "comprador": ["comprador"],
+            "regional": ["regional"],
+            "item_ativo": ["item ativo", "ativo", "itens ativos"],
+            "ruptura": ["ruptura", "itens ruptura", "item ruptura"],
+            "ruptura_pct": ["% ruptura", "ruptura %", "percentual ruptura"],
+            "estoque_qtd": ["estoque", "estoque qtd", "estoque quantidade"],
+            "venda_90d_qtd": ["venda 90 dias", "venda 90d", "venda 90 dias qtd"],
+            "venda_media_90d": ["venda media 90 dias", "venda média 90 dias", "media 90d"],
+            "dde": ["dde", "ddv"],
+            "pedido_aberto_qtd": ["pedido aberto", "pedido pendente"],
+            "distribuicao_cd_qtd": ["distribuicao cd", "distribuição cd"],
+            "pedido_total_qtd": ["pedido total"],
+            "ruptura_com_pedido": ["ruptura com pedido", "rup c/ pedido", "rup. ped. pend?"],
+            "curva_abc": ["curva abc", "curva (abc)", "abc"],
+            "nbo": ["nbo"],
+            "tabloide": ["tabloide", "tablóide", "jornal"],
+            "forma_distribuicao": ["forma distribuicao", "forma distribuição"],
+        },
+    },
+}
+
+
+def normalizar_cabecalho(valor: object) -> str:
+    """Normaliza cabeçalhos para comparação tolerante a acentos/caixa."""
+    import unicodedata
+
+    texto = "" if valor is None else str(valor)
+    texto = unicodedata.normalize("NFKD", texto)
+    texto = "".join(c for c in texto if not unicodedata.combining(c))
+    return " ".join(texto.strip().lower().split())
+
+
+def mapear_colunas(cabecalhos: list[object], tipo: str) -> dict[str, int]:
+    """Retorna campo canônico -> índice da coluna encontrada."""
+    contrato = CONTRATOS_IMPORTACAO[tipo]
+    normalizados = [normalizar_cabecalho(c) for c in cabecalhos]
+    encontrados: dict[str, int] = {}
+
+    for campo, aliases in contrato["aliases"].items():
+        candidatos = {normalizar_cabecalho(campo), *(normalizar_cabecalho(a) for a in aliases)}
+        for idx, nome in enumerate(normalizados):
+            if nome in candidatos:
+                encontrados[campo] = idx
+                break
+    return encontrados
+
+
+def validar_cabecalhos(cabecalhos: list[object], tipo: str) -> dict:
+    """Valida estrutura mínima antes de permitir a carga."""
+    mapeamento = mapear_colunas(cabecalhos, tipo)
+    obrigatorios = CONTRATOS_IMPORTACAO[tipo]["campos_minimos"]
+    faltantes = [c for c in obrigatorios if c not in mapeamento]
+    return {
+        "valido": not faltantes,
+        "tipo": tipo,
+        "mapeamento": mapeamento,
+        "faltantes": faltantes,
+    }
