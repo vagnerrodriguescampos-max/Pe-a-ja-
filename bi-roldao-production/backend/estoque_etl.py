@@ -1,9 +1,8 @@
-"""ETL transacional e idempotente do Estoque 360.
+"""ETL transacional, idempotente e orientado a lotes do Estoque 360.
 
-Recebe linhas já convertidas para o contrato canônico e promove uma posição diária
-somente depois de validar chaves e consistência mínima. A promoção substitui apenas
-a partição do mesmo tipo/data e ocorre dentro de transação, preservando a posição
-anterior em caso de falha.
+Recebe linhas já convertidas para o contrato canônico, normaliza e grava em uma
+tabela temporária por lotes. A posição oficial só é substituída depois que toda a
+carga foi validada, preservando a posição anterior em qualquer falha.
 """
 
 from __future__ import annotations
@@ -32,6 +31,10 @@ class ResultadoImportacao:
     linhas_rejeitadas: int
     mensagem: str = ""
 
+
+TAMANHO_LOTE_PADRAO = 5000
+TAMANHO_LOTE_MINIMO = 100
+TAMANHO_LOTE_MAXIMO = 50000
 
 CAMPOS_ESTOQUE = [
     "data_posicao", "loja", "sku", "descricao", "departamento", "secao",
@@ -90,7 +93,6 @@ def _numero(valor: Any) -> float | None:
     texto = str(valor).strip().replace("R$", "").replace(" ", "")
     if not texto:
         return None
-    # Aceita decimal brasileiro e formato internacional.
     if "," in texto and "." in texto:
         if texto.rfind(",") > texto.rfind("."):
             texto = texto.replace(".", "").replace(",", ".")
@@ -143,34 +145,6 @@ def _normalizar_linha(linha: dict[str, Any], tipo: str, data_posicao: date, impo
     return saida
 
 
-def _preparar_linhas(
-    linhas: Iterable[dict[str, Any]],
-    tipo: str,
-    data_posicao: date,
-    importacao_id: str,
-) -> tuple[list[dict[str, Any]], int]:
-    preparadas: list[dict[str, Any]] = []
-    chaves: set[tuple[str, str]] = set()
-    lidas = 0
-
-    for linha in linhas:
-        lidas += 1
-        if not linha or not any(v not in (None, "") for v in linha.values()):
-            continue
-        normalizada = _normalizar_linha(linha, tipo, data_posicao, importacao_id)
-        chave = (normalizada["loja"], normalizada["sku"])
-        if chave in chaves:
-            raise CargaEstoqueInvalida(
-                f"Chave duplicada na carga: loja={chave[0]!r}, sku={chave[1]!r}"
-            )
-        chaves.add(chave)
-        preparadas.append(normalizada)
-
-    if not preparadas:
-        raise CargaEstoqueInvalida("A carga não contém linhas válidas")
-    return preparadas, lidas
-
-
 def _buscar_importacao_por_hash(con: Any, tipo: str, hash_arquivo: str) -> tuple | None:
     return con.execute(
         "SELECT id, status, data_posicao, linhas_lidas, linhas_validas, linhas_rejeitadas "
@@ -220,6 +194,26 @@ def _finalizar_auditoria(
     )
 
 
+def _nome_staging(importacao_id: str, tipo: str) -> str:
+    seguro = "".join(ch for ch in str(importacao_id) if ch.isalnum())[:32] or uuid4().hex
+    prefixo = "est" if tipo == TIPO_ESTOQUE else "rup"
+    return f"tmp_e360_{prefixo}_{seguro}"
+
+
+def _tamanho_lote(valor: int | None) -> int:
+    if valor is None:
+        return TAMANHO_LOTE_PADRAO
+    try:
+        tamanho = int(valor)
+    except (TypeError, ValueError) as exc:
+        raise CargaEstoqueInvalida("tamanho_lote inválido") from exc
+    if tamanho < TAMANHO_LOTE_MINIMO or tamanho > TAMANHO_LOTE_MAXIMO:
+        raise CargaEstoqueInvalida(
+            f"tamanho_lote deve ficar entre {TAMANHO_LOTE_MINIMO} e {TAMANHO_LOTE_MAXIMO}"
+        )
+    return tamanho
+
+
 def promover_posicao(
     con: Any,
     *,
@@ -229,17 +223,19 @@ def promover_posicao(
     hash_arquivo: str,
     linhas: Iterable[dict[str, Any]],
     usuario: str | None = None,
+    tamanho_lote: int | None = None,
 ) -> ResultadoImportacao:
-    """Promove uma posição diária com idempotência e rollback integral.
+    """Promove uma posição diária com streaming, staging, idempotência e rollback.
 
-    Mesmo arquivo (mesmo hash + tipo) já concluído é ignorado. Um arquivo corrigido,
-    com hash diferente e mesma data, substitui somente a partição daquele tipo/data.
+    O processo mantém em memória apenas um lote de linhas. A tabela oficial não é
+    tocada até toda a carga estar no staging e sem duplicidades loja+sku.
     """
     if tipo not in {TIPO_ESTOQUE, TIPO_RUPTURA}:
         raise CargaEstoqueInvalida(f"Tipo de carga não suportado: {tipo}")
     if not hash_arquivo:
         raise CargaEstoqueInvalida("hash_arquivo é obrigatório")
 
+    lote_max = _tamanho_lote(tamanho_lote)
     garantir_schema(con)
     anterior = _buscar_importacao_por_hash(con, tipo, hash_arquivo)
     if anterior and anterior[1] == "SUCESSO":
@@ -255,29 +251,60 @@ def promover_posicao(
         )
 
     importacao_id = anterior[0] if anterior else str(uuid4())
-    _registrar_inicio(
-        con, importacao_id, tipo, arquivo_nome, data_posicao, hash_arquivo, usuario
-    )
+    _registrar_inicio(con, importacao_id, tipo, arquivo_nome, data_posicao, hash_arquivo, usuario)
+
+    tabela = "estoque_diario" if tipo == TIPO_ESTOQUE else "ruptura_diaria"
+    campos = CAMPOS_ESTOQUE if tipo == TIPO_ESTOQUE else CAMPOS_RUPTURA
+    staging = _nome_staging(importacao_id, tipo)
+    placeholders = ",".join("?" for _ in campos)
+    insert_staging = f"INSERT INTO {staging} ({','.join(campos)}) VALUES ({placeholders})"
+    colunas = ",".join(campos)
 
     lidas = validas = rejeitadas = 0
+    em_transacao = False
     try:
-        preparadas, lidas = _preparar_linhas(linhas, tipo, data_posicao, importacao_id)
-        validas = len(preparadas)
-
-        tabela = "estoque_diario" if tipo == TIPO_ESTOQUE else "ruptura_diaria"
-        campos = CAMPOS_ESTOQUE if tipo == TIPO_ESTOQUE else CAMPOS_RUPTURA
-        placeholders = ",".join("?" for _ in campos)
-        insert_sql = f"INSERT INTO {tabela} ({','.join(campos)}) VALUES ({placeholders})"
-        valores = [[linha.get(campo) for campo in campos] for linha in preparadas]
-
+        con.execute(f"DROP TABLE IF EXISTS {staging}")
+        con.execute(f"CREATE TEMP TABLE {staging} AS SELECT * FROM {tabela} WHERE 1=0")
         con.execute("BEGIN TRANSACTION")
+        em_transacao = True
+
+        lote: list[list[Any]] = []
+        for linha in linhas:
+            lidas += 1
+            if not linha or not any(v not in (None, "") for v in linha.values()):
+                continue
+            normalizada = _normalizar_linha(linha, tipo, data_posicao, importacao_id)
+            lote.append([normalizada.get(campo) for campo in campos])
+            if len(lote) >= lote_max:
+                con.executemany(insert_staging, lote)
+                validas += len(lote)
+                lote.clear()
+
+        if lote:
+            con.executemany(insert_staging, lote)
+            validas += len(lote)
+            lote.clear()
+
+        if validas == 0:
+            raise CargaEstoqueInvalida("A carga não contém linhas válidas")
+
+        duplicada = con.execute(
+            f"SELECT loja, sku, COUNT(*) AS qtd FROM {staging} "
+            "GROUP BY loja, sku HAVING COUNT(*) > 1 LIMIT 1"
+        ).fetchone()
+        if duplicada:
+            raise CargaEstoqueInvalida(
+                f"Chave duplicada na carga: loja={duplicada[0]!r}, sku={duplicada[1]!r}"
+            )
+
         con.execute(f"DELETE FROM {tabela} WHERE data_posicao = ?", [data_posicao])
-        con.executemany(insert_sql, valores)
+        con.execute(f"INSERT INTO {tabela} ({colunas}) SELECT {colunas} FROM {staging}")
         con.execute("COMMIT")
+        em_transacao = False
 
         _finalizar_auditoria(
             con, importacao_id, "SUCESSO", lidas, validas, rejeitadas,
-            f"Posição {data_posicao.isoformat()} promovida com sucesso.",
+            f"Posição {data_posicao.isoformat()} promovida com sucesso em lotes de até {lote_max} linhas.",
         )
         return ResultadoImportacao(
             importacao_id=importacao_id,
@@ -290,12 +317,16 @@ def promover_posicao(
             mensagem="Carga promovida com sucesso.",
         )
     except Exception as exc:
+        if em_transacao:
+            try:
+                con.execute("ROLLBACK")
+            except Exception:
+                pass
+        rejeitadas = max(lidas - validas, 0)
+        _finalizar_auditoria(con, importacao_id, "FALHA", lidas, validas, rejeitadas, str(exc))
+        raise
+    finally:
         try:
-            con.execute("ROLLBACK")
+            con.execute(f"DROP TABLE IF EXISTS {staging}")
         except Exception:
             pass
-        rejeitadas = max(lidas - validas, 0)
-        _finalizar_auditoria(
-            con, importacao_id, "FALHA", lidas, validas, rejeitadas, str(exc)
-        )
-        raise
