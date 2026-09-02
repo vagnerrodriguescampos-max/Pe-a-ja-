@@ -9,7 +9,6 @@ from typing import Any, Callable
 
 from .estoque_queries import (
     FiltroEstoque,
-    abastecimento,
     excesso,
     faixas_cobertura,
     metadados_posicao,
@@ -17,6 +16,7 @@ from .estoque_queries import (
     ranking_ruptura,
     resumo,
 )
+from .estoque_abastecimento import abastecimento_compra
 from .estoque_transferencias import transferencias
 
 
@@ -80,12 +80,29 @@ def endpoint_excesso(con: Any, corpo: dict | None, usuario: dict[str, Any]) -> d
 
 
 def endpoint_abastecimento(con: Any, corpo: dict | None, usuario: dict[str, Any]) -> dict[str, Any]:
-    filtro, _ = filtro_estoque(corpo, usuario)
+    filtro, escopo = filtro_estoque(corpo, usuario)
     base = _payload_base(con, filtro)
     if base.get("sem_acesso"):
         return base
     limite = int((corpo or {}).get("limite") or 200)
-    return {**base, "dados": abastecimento(con, filtro, limite)}
+    return {
+        **base,
+        "politica_abastecimento": {
+            "ddv_alvo_dias": filtro.ddv_alvo,
+            "considera_transito": True,
+            "considera_pedido_pendente": True,
+            "considera_carteira": True,
+            "considera_transferencia_interna": True,
+            "transferencia_so_excesso_acima_alvo": True,
+            "compra_e_recomendacao": True,
+        },
+        "dados": abastecimento_compra(
+            con,
+            filtro,
+            escopo_origem=escopo,
+            limite=limite,
+        ),
+    }
 
 
 def endpoint_transferencias(con: Any, corpo: dict | None, usuario: dict[str, Any]) -> dict[str, Any]:
