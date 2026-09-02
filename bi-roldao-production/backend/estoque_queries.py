@@ -1,7 +1,8 @@
 """Queries unificadas do Estoque 360.
 
 Todas as visões usam a mesma data, filtros e escopo. `escopo_lojas=None`
-significa acesso irrestrito; `escopo_lojas=[]` significa nenhum acesso.
+significa acesso irrestrito. Qualquer interseção vazia em escopo restrito
+é tratada como zero acesso e nunca como ausência de filtro.
 """
 from __future__ import annotations
 
@@ -14,6 +15,7 @@ from typing import Any
 class FiltroEstoque:
     data_posicao: date | None = None
     lojas: tuple[str, ...] = ()
+    sem_acesso: bool = False
     departamento: str | None = None
     secao: str | None = None
     categoria: str | None = None
@@ -34,12 +36,18 @@ class FiltroEstoque:
             solicitadas = [solicitadas]
         solicitadas = [str(x).strip() for x in solicitadas if str(x).strip()]
 
+        sem_acesso = False
         if escopo_lojas is None:
             lojas = solicitadas
         else:
             permitidas = {str(x).strip() for x in escopo_lojas if str(x).strip()}
-            # lista vazia é deliberadamente zero acesso
-            lojas = [x for x in solicitadas if x in permitidas] if solicitadas else sorted(permitidas)
+            if not permitidas:
+                lojas, sem_acesso = [], True
+            elif solicitadas:
+                lojas = [x for x in solicitadas if x in permitidas]
+                sem_acesso = len(lojas) == 0
+            else:
+                lojas = sorted(permitidas)
 
         data_val = corpo.get("data_posicao")
         if isinstance(data_val, str) and data_val:
@@ -49,18 +57,28 @@ class FiltroEstoque:
 
         def b(nome: str) -> bool | None:
             valor = corpo.get(nome)
-            if valor is None or valor == "": return None
-            if isinstance(valor, bool): return valor
-            return str(valor).strip().lower() in {"1","true","sim","s","yes"}
+            if valor is None or valor == "":
+                return None
+            if isinstance(valor, bool):
+                return valor
+            return str(valor).strip().lower() in {"1", "true", "sim", "s", "yes"}
 
         alvo = float(corpo.get("ddv_alvo") or 45)
         return cls(
-            data_posicao=data_val, lojas=tuple(lojas),
-            departamento=corpo.get("departamento"), secao=corpo.get("secao"),
-            categoria=corpo.get("categoria"), fornecedor=corpo.get("fornecedor"),
-            comprador=corpo.get("comprador"), curva_abc=corpo.get("curva_abc"),
-            top_300=b("top_300"), nbo=b("nbo"), tabloide=b("tabloide"),
-            status_estoque=corpo.get("status_estoque"), ddv_alvo=max(1.0, min(alvo, 365.0)),
+            data_posicao=data_val,
+            lojas=tuple(lojas),
+            sem_acesso=sem_acesso,
+            departamento=corpo.get("departamento"),
+            secao=corpo.get("secao"),
+            categoria=corpo.get("categoria"),
+            fornecedor=corpo.get("fornecedor"),
+            comprador=corpo.get("comprador"),
+            curva_abc=corpo.get("curva_abc"),
+            top_300=b("top_300"),
+            nbo=b("nbo"),
+            tabloide=b("tabloide"),
+            status_estoque=corpo.get("status_estoque"),
+            ddv_alvo=max(1.0, min(alvo, 365.0)),
         )
 
 
@@ -75,49 +93,63 @@ def resolver_data_posicao(con: Any, solicitada: date | None = None) -> date | No
     row = con.execute("""
         SELECT MAX(e.data_posicao)
         FROM estoque_diario e
-        WHERE EXISTS (SELECT 1 FROM ruptura_diaria r WHERE r.data_posicao=e.data_posicao)
+        WHERE EXISTS (
+            SELECT 1 FROM ruptura_diaria r WHERE r.data_posicao = e.data_posicao
+        )
     """).fetchone()
-    if row and row[0]: return row[0]
+    if row and row[0]:
+        return row[0]
     row = con.execute("SELECT MAX(data_posicao) FROM estoque_diario").fetchone()
     return row[0] if row else None
 
 
 def _where(f: FiltroEstoque, data_posicao: date, alias: str = "v") -> tuple[str, list[Any]]:
+    if f.sem_acesso:
+        return "1=0", []
     cond = [f"{alias}.data_posicao = ?"]
-    p: list[Any] = [data_posicao]
+    params: list[Any] = [data_posicao]
     if f.lojas:
-        cond.append(f"{alias}.loja IN ({','.join('?' for _ in f.lojas)})"); p.extend(f.lojas)
-    for campo in ("departamento","secao","categoria","fornecedor","comprador","curva_abc"):
+        cond.append(f"{alias}.loja IN ({','.join('?' for _ in f.lojas)})")
+        params.extend(f.lojas)
+    for campo in ("departamento", "secao", "categoria", "fornecedor", "comprador", "curva_abc"):
         valor = getattr(f, campo)
         if valor not in (None, ""):
-            cond.append(f"{alias}.{campo} = ?"); p.append(valor)
-    for campo in ("top_300","nbo","tabloide"):
+            cond.append(f"{alias}.{campo} = ?")
+            params.append(valor)
+    for campo in ("top_300", "nbo", "tabloide"):
         valor = getattr(f, campo)
         if valor is not None:
-            cond.append(f"COALESCE({alias}.{campo}, FALSE) = ?"); p.append(valor)
+            cond.append(f"COALESCE({alias}.{campo}, FALSE) = ?")
+            params.append(valor)
     if f.status_estoque:
-        cond.append(f"{alias}.status_estoque = ?"); p.append(f.status_estoque)
-    return " AND ".join(cond), p
-
-
-def _sem_acesso(f: FiltroEstoque, escopo_lojas: list[str] | None) -> bool:
-    return escopo_lojas is not None and len(escopo_lojas) == 0
+        cond.append(f"{alias}.status_estoque = ?")
+        params.append(f.status_estoque)
+    return " AND ".join(cond), params
 
 
 def metadados_posicao(con: Any, f: FiltroEstoque) -> dict:
     data = resolver_data_posicao(con, f.data_posicao)
-    if not data: return {"data_posicao": None, "estoque": False, "ruptura": False}
+    if not data:
+        return {"data_posicao": None, "estoque": False, "ruptura": False}
     e = con.execute("SELECT COUNT(*) FROM estoque_diario WHERE data_posicao=?", [data]).fetchone()[0]
     r = con.execute("SELECT COUNT(*) FROM ruptura_diaria WHERE data_posicao=?", [data]).fetchone()[0]
-    return {"data_posicao": data, "estoque": e > 0, "ruptura": r > 0, "linhas_estoque": e, "linhas_ruptura": r}
+    return {
+        "data_posicao": data,
+        "estoque": e > 0,
+        "ruptura": r > 0,
+        "linhas_estoque": e,
+        "linhas_ruptura": r,
+    }
 
 
-def resumo(con: Any, f: FiltroEstoque, escopo_lojas: list[str] | None = None) -> dict:
-    if _sem_acesso(f, escopo_lojas): return {"sem_acesso": True}
+def resumo(con: Any, f: FiltroEstoque) -> dict:
+    if f.sem_acesso:
+        return {"sem_acesso": True}
     data = resolver_data_posicao(con, f.data_posicao)
-    if not data: return {"data_posicao": None}
+    if not data:
+        return {"data_posicao": None}
     where, p = _where(f, data)
-    row = con.execute(f"""
+    cur = con.execute(f"""
         SELECT
           SUM(COALESCE(estoque_disponivel_valor,0)) estoque_valor,
           SUM(COALESCE(estoque_disponivel_qtd,0)) estoque_qtd,
@@ -135,10 +167,11 @@ def resumo(con: Any, f: FiltroEstoque, escopo_lojas: list[str] | None = None) ->
           SUM(CASE WHEN COALESCE(ruptura,FALSE) AND COALESCE(pedido_aberto_qtd,0)>0 THEN 1 ELSE 0 END) ruptura_com_pedido,
           SUM(CASE WHEN COALESCE(venda_31d_qtd,0)=0 AND COALESCE(estoque_disponivel_valor,0)>0 THEN estoque_disponivel_valor ELSE 0 END) estoque_sem_venda_valor,
           SUM(CASE WHEN COALESCE(ddv_atual_31d,0)>? AND COALESCE(estoque_disponivel_valor,0)>0
-                   THEN estoque_disponivel_valor * (1 - ?/ddv_atual_31d) ELSE 0 END) capital_excedente_estimado
+                   THEN estoque_disponivel_valor*(1-?/ddv_atual_31d) ELSE 0 END) capital_excedente_estimado
         FROM vw_estoque_360 v WHERE {where}
-    """, [f.ddv_alvo, f.ddv_alvo, *p]).fetchone()
-    nomes = [d[0] for d in con.description]
+    """, [f.ddv_alvo, f.ddv_alvo, *p])
+    row = cur.fetchone()
+    nomes = [d[0] for d in cur.description]
     out = dict(zip(nomes, row)) if row else {}
     itens = out.get("itens_posicao") or 0
     out["ruptura_pct"] = ((out.get("itens_ruptura") or 0) / itens * 100) if itens else 0
@@ -148,10 +181,12 @@ def resumo(con: Any, f: FiltroEstoque, escopo_lojas: list[str] | None = None) ->
 
 
 def ranking_ruptura(con: Any, f: FiltroEstoque, dimensao: str = "loja", limite: int = 50) -> list[dict]:
-    permitidas = {"loja","departamento","secao","categoria","fornecedor","comprador","curva_abc"}
-    if dimensao not in permitidas: raise ValueError("Dimensão não permitida")
+    permitidas = {"loja", "departamento", "secao", "categoria", "fornecedor", "comprador", "curva_abc"}
+    if dimensao not in permitidas:
+        raise ValueError("Dimensão não permitida")
     data = resolver_data_posicao(con, f.data_posicao)
-    if not data: return []
+    if not data or f.sem_acesso:
+        return []
     where, p = _where(f, data)
     return _rows(con.execute(f"""
         SELECT {dimensao} dimensao, COUNT(*) itens,
@@ -161,12 +196,13 @@ def ranking_ruptura(con: Any, f: FiltroEstoque, dimensao: str = "loja", limite: 
           100.0*SUM(CASE WHEN COALESCE(ruptura,FALSE) THEN 1 ELSE 0 END)/NULLIF(COUNT(*),0) ruptura_pct
         FROM vw_estoque_360 v WHERE {where}
         GROUP BY {dimensao} ORDER BY ruptura_pct DESC NULLS LAST LIMIT ?
-    """, [*p, max(1,min(int(limite),500))]))
+    """, [*p, max(1, min(int(limite), 500))]))
 
 
 def faixas_cobertura(con: Any, f: FiltroEstoque) -> list[dict]:
     data = resolver_data_posicao(con, f.data_posicao)
-    if not data: return []
+    if not data or f.sem_acesso:
+        return []
     where, p = _where(f, data)
     return _rows(con.execute(f"""
       SELECT CASE
@@ -186,46 +222,52 @@ def faixas_cobertura(con: Any, f: FiltroEstoque) -> list[dict]:
 
 def excesso(con: Any, f: FiltroEstoque, limite: int = 200) -> list[dict]:
     data = resolver_data_posicao(con, f.data_posicao)
-    if not data: return []
+    if not data or f.sem_acesso:
+        return []
     where, p = _where(f, data)
     return _rows(con.execute(f"""
       SELECT loja, sku, descricao, departamento, categoria, fornecedor, comprador, curva_abc,
         estoque_disponivel_qtd, estoque_disponivel_valor, venda_31d_qtd, ddv_atual_31d,
-        CASE WHEN ddv_atual_31d>? THEN GREATEST(estoque_disponivel_qtd-(venda_31d_qtd/31.0)*?,0) ELSE 0 END excesso_qtd,
-        CASE WHEN ddv_atual_31d>? AND estoque_disponivel_valor>0
-             THEN estoque_disponivel_valor*(1-?/ddv_atual_31d) ELSE 0 END excesso_valor
-      FROM vw_estoque_360 v WHERE {where} AND COALESCE(ddv_atual_31d,0)>?
+        GREATEST(estoque_disponivel_qtd-(venda_31d_qtd/31.0)*?,0) excesso_qtd,
+        CASE WHEN estoque_disponivel_valor>0 THEN estoque_disponivel_valor*(1-?/ddv_atual_31d) ELSE 0 END excesso_valor
+      FROM vw_estoque_360 v
+      WHERE {where} AND COALESCE(ddv_atual_31d,0)>?
       ORDER BY excesso_valor DESC NULLS LAST LIMIT ?
-    """, [f.ddv_alvo,f.ddv_alvo,f.ddv_alvo,f.ddv_alvo,*p,f.ddv_alvo,max(1,min(int(limite),2000))]))
+    """, [f.ddv_alvo, f.ddv_alvo, *p, f.ddv_alvo, max(1, min(int(limite), 2000))]))
 
 
 def abastecimento(con: Any, f: FiltroEstoque, limite: int = 200) -> list[dict]:
     data = resolver_data_posicao(con, f.data_posicao)
-    if not data: return []
+    if not data or f.sem_acesso:
+        return []
     where, p = _where(f, data)
     return _rows(con.execute(f"""
-      SELECT loja, sku, descricao, categoria, fornecedor, comprador, curva_abc, top_300, nbo, tabloide,
-        estoque_disponivel_qtd, venda_31d_qtd, ddv_atual_31d, transito_qtd, pedido_pendente_qtd,
-        carteira_qtd, ddv_projetado_31d, pack,
-        GREATEST((venda_31d_qtd/31.0)*? - COALESCE(estoque_disponivel_qtd,0)
-          - COALESCE(transito_qtd,0)-COALESCE(pedido_pendente_qtd,0)-COALESCE(carteira_qtd,0),0) necessidade_qtd
-      FROM vw_estoque_360 v WHERE {where} AND COALESCE(venda_31d_qtd,0)>0
-      QUALIFY necessidade_qtd>0
+      WITH x AS (
+        SELECT loja, sku, descricao, categoria, fornecedor, comprador, curva_abc, top_300, nbo, tabloide,
+          estoque_disponivel_qtd, venda_31d_qtd, ddv_atual_31d, transito_qtd, pedido_pendente_qtd,
+          carteira_qtd, ddv_projetado_31d, pack,
+          GREATEST((venda_31d_qtd/31.0)*? - COALESCE(estoque_disponivel_qtd,0)
+            - COALESCE(transito_qtd,0)-COALESCE(pedido_pendente_qtd,0)-COALESCE(carteira_qtd,0),0) necessidade_qtd
+        FROM vw_estoque_360 v WHERE {where} AND COALESCE(venda_31d_qtd,0)>0
+      )
+      SELECT * FROM x WHERE necessidade_qtd>0
       ORDER BY (CASE WHEN top_300 THEN 0 WHEN curva_abc='A' THEN 1 ELSE 2 END), necessidade_qtd DESC
       LIMIT ?
-    """, [f.ddv_alvo,*p,max(1,min(int(limite),2000))]))
+    """, [f.ddv_alvo, *p, max(1, min(int(limite), 2000))]))
 
 
 def transferencias(con: Any, f: FiltroEstoque, limite: int = 200, reserva_origem: float = 30.0, alvo_destino: float = 30.0) -> list[dict]:
     data = resolver_data_posicao(con, f.data_posicao)
-    if not data or len(f.lojas)==1: return []
+    if not data or f.sem_acesso or len(f.lojas) == 1:
+        return []
     where, p = _where(f, data, "v")
     return _rows(con.execute(f"""
       WITH b AS (SELECT * FROM vw_estoque_360 v WHERE {where}),
       origem AS (
         SELECT *, GREATEST(estoque_disponivel_qtd-(venda_31d_qtd/31.0)*?,0) transferivel
         FROM b WHERE COALESCE(venda_31d_qtd,0)>0 AND ddv_atual_31d>?
-      ), destino AS (
+      ),
+      destino AS (
         SELECT *, GREATEST((venda_31d_qtd/31.0)*?-estoque_disponivel_qtd,0) necessidade
         FROM b WHERE COALESCE(venda_31d_qtd,0)>0 AND COALESCE(ddv_atual_31d,0)<7
       )
@@ -235,34 +277,38 @@ def transferencias(con: Any, f: FiltroEstoque, limite: int = 200, reserva_origem
       FROM origem o JOIN destino d ON d.sku=o.sku AND d.loja<>o.loja
       WHERE LEAST(o.transferivel,d.necessidade)>0
       ORDER BY sugestao_qtd DESC LIMIT ?
-    """, [*p,reserva_origem,reserva_origem,alvo_destino,max(1,min(int(limite),2000))]))
+    """, [*p, reserva_origem, reserva_origem, alvo_destino, max(1, min(int(limite), 2000))]))
 
 
 def plano_acao(con: Any, f: FiltroEstoque, limite: int = 300) -> list[dict]:
     data = resolver_data_posicao(con, f.data_posicao)
-    if not data: return []
+    if not data or f.sem_acesso:
+        return []
     where, p = _where(f, data)
     return _rows(con.execute(f"""
-      SELECT loja, sku, descricao, categoria, fornecedor, comprador, curva_abc, top_300, nbo, tabloide,
-        estoque_disponivel_qtd, estoque_disponivel_valor, venda_31d_qtd, ddv_atual_31d, ddv_projetado_31d,
-        pedido_aberto_qtd, pedido_pendente_qtd, carteira_qtd, ruptura,
-        CASE
-          WHEN COALESCE(ruptura,FALSE) AND COALESCE(pedido_aberto_qtd,0)<=0 AND (top_300 OR curva_abc='A') THEN 'P1'
-          WHEN COALESCE(ruptura,FALSE) AND COALESCE(pedido_aberto_qtd,0)<=0 THEN 'P1'
-          WHEN COALESCE(ruptura,FALSE) THEN 'P2'
-          WHEN COALESCE(ddv_atual_31d,999)<7 THEN 'P2'
-          WHEN COALESCE(ddv_atual_31d,0)>90 THEN 'P3'
-          WHEN COALESCE(venda_31d_qtd,0)=0 AND COALESCE(estoque_disponivel_qtd,0)>0 THEN 'P3'
-          ELSE 'OK' END prioridade,
-        CASE
-          WHEN COALESCE(ruptura,FALSE) AND COALESCE(pedido_aberto_qtd,0)<=0 THEN 'ABASTECER_COMPRAR'
-          WHEN COALESCE(ruptura,FALSE) THEN 'ACOMPANHAR_PEDIDO'
-          WHEN COALESCE(ddv_atual_31d,999)<7 THEN 'PROGRAMAR_ABASTECIMENTO'
-          WHEN COALESCE(ddv_atual_31d,0)>90 THEN 'REDUZIR_COMPRA_OU_TRANSFERIR'
-          WHEN COALESCE(venda_31d_qtd,0)=0 AND COALESCE(estoque_disponivel_qtd,0)>0 THEN 'REVISAR_SORTIMENTO'
-          ELSE 'OK' END acao
-      FROM vw_estoque_360 v WHERE {where}
-      QUALIFY prioridade<>'OK'
-      ORDER BY prioridade, (CASE WHEN top_300 THEN 0 WHEN curva_abc='A' THEN 1 ELSE 2 END), estoque_disponivel_valor DESC NULLS LAST
+      WITH x AS (
+        SELECT loja, sku, descricao, categoria, fornecedor, comprador, curva_abc, top_300, nbo, tabloide,
+          estoque_disponivel_qtd, estoque_disponivel_valor, venda_31d_qtd, ddv_atual_31d, ddv_projetado_31d,
+          pedido_aberto_qtd, pedido_pendente_qtd, carteira_qtd, ruptura,
+          CASE
+            WHEN COALESCE(ruptura,FALSE) AND COALESCE(pedido_aberto_qtd,0)<=0 THEN 'P1'
+            WHEN COALESCE(ruptura,FALSE) THEN 'P2'
+            WHEN COALESCE(ddv_atual_31d,999)<7 THEN 'P2'
+            WHEN COALESCE(ddv_atual_31d,0)>90 THEN 'P3'
+            WHEN COALESCE(venda_31d_qtd,0)=0 AND COALESCE(estoque_disponivel_qtd,0)>0 THEN 'P3'
+            ELSE 'OK' END prioridade,
+          CASE
+            WHEN COALESCE(ruptura,FALSE) AND COALESCE(pedido_aberto_qtd,0)<=0 THEN 'ABASTECER_COMPRAR'
+            WHEN COALESCE(ruptura,FALSE) THEN 'ACOMPANHAR_PEDIDO'
+            WHEN COALESCE(ddv_atual_31d,999)<7 THEN 'PROGRAMAR_ABASTECIMENTO'
+            WHEN COALESCE(ddv_atual_31d,0)>90 THEN 'REDUZIR_COMPRA_OU_TRANSFERIR'
+            WHEN COALESCE(venda_31d_qtd,0)=0 AND COALESCE(estoque_disponivel_qtd,0)>0 THEN 'REVISAR_SORTIMENTO'
+            ELSE 'OK' END acao
+        FROM vw_estoque_360 v WHERE {where}
+      )
+      SELECT * FROM x WHERE prioridade<>'OK'
+      ORDER BY prioridade,
+        (CASE WHEN top_300 THEN 0 WHEN curva_abc='A' THEN 1 ELSE 2 END),
+        estoque_disponivel_valor DESC NULLS LAST
       LIMIT ?
-    """, [*p,max(1,min(int(limite),3000))]))
+    """, [*p, max(1, min(int(limite), 3000))]))
