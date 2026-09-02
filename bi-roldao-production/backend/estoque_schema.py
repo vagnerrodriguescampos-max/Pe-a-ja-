@@ -100,6 +100,7 @@ CREATE OR REPLACE VIEW vw_estoque_360 AS
 SELECT
     e.*,
     r.regional,
+    r.item_ativo,
     r.ruptura,
     r.ruptura_pct,
     r.ruptura_com_pedido,
@@ -118,8 +119,9 @@ SELECT
          ) / (e.venda_31d_qtd / 31.0)
     END AS ddv_projetado_31d,
     CASE
-        WHEN COALESCE(r.ruptura, FALSE) AND COALESCE(r.pedido_aberto_qtd,0) <= 0 THEN 'P1_RUPTURA_SEM_PEDIDO'
-        WHEN COALESCE(r.ruptura, FALSE) THEN 'P2_RUPTURA_COM_PEDIDO'
+        WHEN COALESCE(r.item_ativo, FALSE) AND COALESCE(r.ruptura, FALSE)
+             AND COALESCE(r.pedido_aberto_qtd,0) <= 0 THEN 'P1_RUPTURA_SEM_PEDIDO'
+        WHEN COALESCE(r.item_ativo, FALSE) AND COALESCE(r.ruptura, FALSE) THEN 'P2_RUPTURA_COM_PEDIDO'
         WHEN COALESCE(e.venda_31d_qtd,0) > 0 AND e.estoque_disponivel_qtd / (e.venda_31d_qtd/31.0) < 7 THEN 'P2_BAIXA_COBERTURA'
         WHEN COALESCE(e.venda_31d_qtd,0) = 0 AND COALESCE(e.estoque_disponivel_qtd,0) > 0 THEN 'P3_SEM_VENDA'
         WHEN COALESCE(e.venda_31d_qtd,0) > 0 AND e.estoque_disponivel_qtd / (e.venda_31d_qtd/31.0) > 90 THEN 'P3_EXCESSO'
