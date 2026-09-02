@@ -44,15 +44,12 @@ def _admin():
 def con():
     c = duckdb.connect(":memory:")
     estoque = [
-        # R1: origem com 100 dias, transferível = 700 un. mantendo 30 dias.
         _e("ORIGEM_R1", "1001", 1000),
         _e("DESTINO_R1_A", "1001", 0),
         _e("DESTINO_R1_B", "1001", 0),
         _e("DESTINO_R1_C", "1001", 0),
-        # R2: origem muito maior não deve concorrer com destinos R1 por padrão.
         _e("ORIGEM_R2", "1001", 2000),
         _e("DESTINO_R2", "1001", 0),
-        # SKU com abastecimento previsto: target 30 dias=300; 250 já a caminho => só 50 necessários.
         _e("ORIGEM_R1", "2002", 1000),
         _e("DESTINO_R1_A", "2002", 0, transito=100, pedido=100, carteira=50),
     ]
@@ -82,8 +79,8 @@ def test_origem_nunca_doar_acima_do_transferivel(con):
     resp = executar_endpoint("transferencias", con, {"reserva_origem": 30, "alvo_destino": 30}, _admin())
     r1 = [x for x in resp["dados"] if x["sku"] == "1001" and x["loja_origem"] == "ORIGEM_R1"]
     assert r1
-    # Venda diária=10, estoque=1000, reserva=30d => máximo doável 700.
-    assert sum(float(x["sugestao_qtd"]) for x in r1) <= pytest.approx(700.0)
+    total = sum(float(x["sugestao_qtd"]) for x in r1)
+    assert total <= 700.0 + 1e-6
     assert all(float(x["ddv_origem_pos"]) >= 30 - 1e-6 for x in r1)
 
 
@@ -103,7 +100,6 @@ def test_interregional_so_quando_explicitamente_liberado(con):
         "reserva_origem": 30, "alvo_destino": 30, "permitir_interregional": True
     }, _admin())
     assert liberado["politica_transferencia"]["interregional"] is True
-    # A engine pode continuar preferindo mesma regional; a autorização apenas torna o cruzamento elegível.
     assert liberado["dados"]
 
 
