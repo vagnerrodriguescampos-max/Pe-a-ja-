@@ -2,11 +2,12 @@ name: Estoque 360 Tests
 
 on:
   push:
-    branches: [estoque-360]
+    branches: [estoque-360, estoque-360-shell-safe]
     paths:
       - 'bi-roldao-production/backend/estoque_*.py'
       - 'bi-roldao-production/frontend/js/estoque360*.js'
       - 'bi-roldao-production/frontend/css/estoque360.css'
+      - 'bi-roldao-production/integration/**'
       - 'bi-roldao-production/tests/**'
       - '.github/workflows/estoque360-tests.yml'
   pull_request:
@@ -14,6 +15,7 @@ on:
       - 'bi-roldao-production/backend/estoque_*.py'
       - 'bi-roldao-production/frontend/js/estoque360*.js'
       - 'bi-roldao-production/frontend/css/estoque360.css'
+      - 'bi-roldao-production/integration/**'
       - 'bi-roldao-production/tests/**'
       - '.github/workflows/estoque360-tests.yml'
 
@@ -29,4 +31,8 @@ jobs:
       - name: Instalar dependências de teste
         run: python -m pip install --upgrade pip pytest duckdb
       - name: Rodar testes Estoque 360
-        run: python -m pytest -q bi-roldao-production/tests/test_estoque360.py bi-roldao-production/tests/test_estoque360_frontend_contract.py
+        run: >-
+          python -m pytest -q
+          bi-roldao-production/tests/test_estoque360.py
+          bi-roldao-production/tests/test_estoque360_frontend_contract.py
+          bi-roldao-production/tests/test_estoque360_integration_contract.py
