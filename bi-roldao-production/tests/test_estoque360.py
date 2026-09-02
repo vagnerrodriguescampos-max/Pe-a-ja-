@@ -122,6 +122,42 @@ def test_carga_duplicada_na_mesma_planilha_nao_substitui_posicao(con):
     assert depois == antes
 
 
+def test_streaming_usa_lotes_limitados():
+    class ConMonitor:
+        def __init__(self, con):
+            self.con = con
+            self.maior_lote = 0
+            self.chamadas = 0
+        def execute(self, *args, **kwargs):
+            return self.con.execute(*args, **kwargs)
+        def executemany(self, sql, valores):
+            self.maior_lote = max(self.maior_lote, len(valores))
+            self.chamadas += 1
+            return self.con.executemany(sql, valores)
+
+    base = duckdb.connect(":memory:")
+    monitor = ConMonitor(base)
+    linhas = ({"loja": f"L{i % 20:02d}", "sku": f"SKU{i:06d}", "descricao": f"Produto {i}", "estoque_disponivel_qtd": 1, "estoque_disponivel_valor": 10, "venda_31d_qtd": 1, "cmv_31d": 5} for i in range(1250))
+    resultado = promover_posicao(monitor, tipo=TIPO_ESTOQUE, arquivo_nome="teste-31.08.xlsx", data_posicao=POS, hash_arquivo="hash-stream", linhas=linhas, tamanho_lote=200)
+    assert resultado.status == "SUCESSO"
+    assert resultado.linhas_validas == 1250
+    assert monitor.maior_lote <= 200
+    assert monitor.chamadas == 7
+    assert base.execute("select count(*) from estoque_diario").fetchone()[0] == 1250
+    base.close()
+
+
+def test_falha_no_staging_preserva_posicao_e_remove_temporaria(con):
+    antes = con.execute("select loja, sku, estoque_disponivel_qtd from estoque_diario where data_posicao=? order by loja,sku", [POS]).fetchall()
+    linhas = [dict(estoque_rows()[0]), dict(estoque_rows()[1]), dict(estoque_rows()[0])]
+    with pytest.raises(CargaEstoqueInvalida):
+        promover_posicao(con, tipo=TIPO_ESTOQUE, arquivo_nome="duplicado-31.08.xlsx", data_posicao=POS, hash_arquivo="hash-staging-falha", linhas=linhas, tamanho_lote=100)
+    depois = con.execute("select loja, sku, estoque_disponivel_qtd from estoque_diario where data_posicao=? order by loja,sku", [POS]).fetchall()
+    assert depois == antes
+    temporarias = con.execute("select table_name from information_schema.tables where table_name like 'tmp_e360_%'").fetchall()
+    assert temporarias == []
+
+
 def test_ddv_atual_e_projetado(con):
     row = con.execute("select ddv_atual_31d, ddv_projetado_31d from vw_estoque_360 where loja='Indaiatuba' and sku='1002'").fetchone()
     assert row[0] == pytest.approx(31.0)
