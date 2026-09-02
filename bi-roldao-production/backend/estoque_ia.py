@@ -11,6 +11,30 @@ from typing import Any
 from .estoque_api import executar_endpoint
 
 
+_FILTROS_COMUNS = {
+    "data_posicao": {"type": "string", "description": "Data YYYY-MM-DD. Omitir para última posição completa."},
+    "regional": {"type": "string"},
+    "loja": {"type": "string"},
+    "lojas": {"type": "array", "items": {"type": "string"}},
+    "departamento": {"type": "string"},
+    "secao": {"type": "string"},
+    "categoria": {"type": "string"},
+    "fornecedor": {"type": "string"},
+    "comprador": {"type": "string"},
+    "curva_abc": {"type": "string"},
+    "top_300": {"type": "boolean"},
+    "nbo": {"type": "boolean"},
+    "tabloide": {"type": "boolean"},
+}
+
+
+def _props(*extras: tuple[str, dict[str, Any]]) -> dict[str, Any]:
+    out = dict(_FILTROS_COMUNS)
+    for nome, schema in extras:
+        out[nome] = schema
+    return out
+
+
 FERRAMENTAS_ESTOQUE_360 = [
     {
         "name": "estoque_resumo",
@@ -20,21 +44,7 @@ FERRAMENTAS_ESTOQUE_360 = [
         ),
         "parameters": {
             "type": "object",
-            "properties": {
-                "data_posicao": {"type": "string", "description": "Data YYYY-MM-DD. Omitir para última posição completa."},
-                "loja": {"type": "string"},
-                "lojas": {"type": "array", "items": {"type": "string"}},
-                "departamento": {"type": "string"},
-                "secao": {"type": "string"},
-                "categoria": {"type": "string"},
-                "fornecedor": {"type": "string"},
-                "comprador": {"type": "string"},
-                "curva_abc": {"type": "string"},
-                "top_300": {"type": "boolean"},
-                "nbo": {"type": "boolean"},
-                "tabloide": {"type": "boolean"},
-                "ddv_alvo": {"type": "number"},
-            },
+            "properties": _props(("ddv_alvo", {"type": "number"})),
             "additionalProperties": False,
         },
     },
@@ -46,25 +56,10 @@ FERRAMENTAS_ESTOQUE_360 = [
         ),
         "parameters": {
             "type": "object",
-            "properties": {
-                "data_posicao": {"type": "string"},
-                "loja": {"type": "string"},
-                "lojas": {"type": "array", "items": {"type": "string"}},
-                "departamento": {"type": "string"},
-                "secao": {"type": "string"},
-                "categoria": {"type": "string"},
-                "fornecedor": {"type": "string"},
-                "comprador": {"type": "string"},
-                "curva_abc": {"type": "string"},
-                "top_300": {"type": "boolean"},
-                "nbo": {"type": "boolean"},
-                "tabloide": {"type": "boolean"},
-                "dimensao": {
-                    "type": "string",
-                    "enum": ["loja", "departamento", "secao", "categoria", "fornecedor", "comprador", "curva_abc"],
-                },
-                "limite": {"type": "integer", "minimum": 1, "maximum": 500},
-            },
+            "properties": _props(
+                ("dimensao", {"type": "string", "enum": ["loja", "departamento", "secao", "categoria", "fornecedor", "comprador", "curva_abc"]}),
+                ("limite", {"type": "integer", "minimum": 1, "maximum": 500}),
+            ),
             "additionalProperties": False,
         },
     },
@@ -73,16 +68,7 @@ FERRAMENTAS_ESTOQUE_360 = [
         "description": "Distribui o estoque nas faixas de DDV/cobertura, incluindo sem venda e acima de 90 dias.",
         "parameters": {
             "type": "object",
-            "properties": {
-                "data_posicao": {"type": "string"},
-                "loja": {"type": "string"},
-                "lojas": {"type": "array", "items": {"type": "string"}},
-                "departamento": {"type": "string"},
-                "categoria": {"type": "string"},
-                "fornecedor": {"type": "string"},
-                "comprador": {"type": "string"},
-                "curva_abc": {"type": "string"},
-            },
+            "properties": _props(),
             "additionalProperties": False,
         },
     },
@@ -94,18 +80,10 @@ FERRAMENTAS_ESTOQUE_360 = [
         ),
         "parameters": {
             "type": "object",
-            "properties": {
-                "data_posicao": {"type": "string"},
-                "loja": {"type": "string"},
-                "lojas": {"type": "array", "items": {"type": "string"}},
-                "departamento": {"type": "string"},
-                "categoria": {"type": "string"},
-                "fornecedor": {"type": "string"},
-                "comprador": {"type": "string"},
-                "curva_abc": {"type": "string"},
-                "ddv_alvo": {"type": "number", "minimum": 1, "maximum": 365},
-                "limite": {"type": "integer", "minimum": 1, "maximum": 2000},
-            },
+            "properties": _props(
+                ("ddv_alvo", {"type": "number", "minimum": 1, "maximum": 365}),
+                ("limite", {"type": "integer", "minimum": 1, "maximum": 2000}),
+            ),
             "additionalProperties": False,
         },
     },
@@ -117,20 +95,10 @@ FERRAMENTAS_ESTOQUE_360 = [
         ),
         "parameters": {
             "type": "object",
-            "properties": {
-                "data_posicao": {"type": "string"},
-                "loja": {"type": "string"},
-                "lojas": {"type": "array", "items": {"type": "string"}},
-                "categoria": {"type": "string"},
-                "fornecedor": {"type": "string"},
-                "comprador": {"type": "string"},
-                "curva_abc": {"type": "string"},
-                "top_300": {"type": "boolean"},
-                "nbo": {"type": "boolean"},
-                "tabloide": {"type": "boolean"},
-                "ddv_alvo": {"type": "number", "minimum": 1, "maximum": 365},
-                "limite": {"type": "integer", "minimum": 1, "maximum": 2000},
-            },
+            "properties": _props(
+                ("ddv_alvo", {"type": "number", "minimum": 1, "maximum": 365}),
+                ("limite", {"type": "integer", "minimum": 1, "maximum": 2000}),
+            ),
             "additionalProperties": False,
         },
     },
@@ -141,16 +109,11 @@ FERRAMENTAS_ESTOQUE_360 = [
         ),
         "parameters": {
             "type": "object",
-            "properties": {
-                "data_posicao": {"type": "string"},
-                "lojas": {"type": "array", "items": {"type": "string"}},
-                "categoria": {"type": "string"},
-                "fornecedor": {"type": "string"},
-                "curva_abc": {"type": "string"},
-                "reserva_origem": {"type": "number", "minimum": 1, "maximum": 365},
-                "alvo_destino": {"type": "number", "minimum": 1, "maximum": 365},
-                "limite": {"type": "integer", "minimum": 1, "maximum": 2000},
-            },
+            "properties": _props(
+                ("reserva_origem", {"type": "number", "minimum": 1, "maximum": 365}),
+                ("alvo_destino", {"type": "number", "minimum": 1, "maximum": 365}),
+                ("limite", {"type": "integer", "minimum": 1, "maximum": 2000}),
+            ),
             "additionalProperties": False,
         },
     },
@@ -162,20 +125,7 @@ FERRAMENTAS_ESTOQUE_360 = [
         ),
         "parameters": {
             "type": "object",
-            "properties": {
-                "data_posicao": {"type": "string"},
-                "loja": {"type": "string"},
-                "lojas": {"type": "array", "items": {"type": "string"}},
-                "departamento": {"type": "string"},
-                "categoria": {"type": "string"},
-                "fornecedor": {"type": "string"},
-                "comprador": {"type": "string"},
-                "curva_abc": {"type": "string"},
-                "top_300": {"type": "boolean"},
-                "nbo": {"type": "boolean"},
-                "tabloide": {"type": "boolean"},
-                "limite": {"type": "integer", "minimum": 1, "maximum": 3000},
-            },
+            "properties": _props(("limite", {"type": "integer", "minimum": 1, "maximum": 3000})),
             "additionalProperties": False,
         },
     },
@@ -215,7 +165,6 @@ def combinar_argumentos_contexto(
     """Contexto da tela fornece defaults; argumentos explícitos da IA prevalecem."""
     base = _filtros_contexto(contexto)
     base.update(argumentos or {})
-    # Campos de período de venda do BI comercial não entram no estoque.
     base.pop("periodo_inicio", None)
     base.pop("periodo_fim", None)
     base.pop("mes", None)
@@ -244,7 +193,6 @@ def executar_ferramenta_estoque_360(
 
 
 def instrucoes_estoque_360() -> str:
-    """Bloco curto para acrescentar ao prompt de sistema do Analista de BI."""
     return (
         "Quando a pergunta envolver estoque, ruptura, DDV/DDE, cobertura, carteira, "
         "pedido pendente, abastecimento, excesso, estoque sem venda, Top 300, NBO, tabloide "
