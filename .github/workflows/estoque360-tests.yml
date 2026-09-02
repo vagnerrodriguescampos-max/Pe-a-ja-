@@ -1,0 +1,28 @@
+name: Estoque 360 Tests
+
+on:
+  push:
+    branches: [estoque-360]
+    paths:
+      - 'bi-roldao-production/backend/estoque_*.py'
+      - 'bi-roldao-production/tests/**'
+      - '.github/workflows/estoque360-tests.yml'
+  pull_request:
+    paths:
+      - 'bi-roldao-production/backend/estoque_*.py'
+      - 'bi-roldao-production/tests/**'
+      - '.github/workflows/estoque360-tests.yml'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Instalar dependências de teste
+        run: python -m pip install --upgrade pip pytest duckdb
+      - name: Rodar testes Estoque 360
+        run: python -m pytest -q bi-roldao-production/tests/test_estoque360.py
