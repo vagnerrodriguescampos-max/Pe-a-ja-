@@ -21,8 +21,8 @@ CONTRATOS_IMPORTACAO = {
             "cmv_31d",
         ],
         "aliases": {
-            "sku": ["codigo material", "código material", "codigo", "material"],
-            "descricao": ["descricao", "descrição", "material descricao", "material descrição"],
+            "sku": ["codigo material", "código material", "código do material", "codigo do material", "codigo produto", "código produto", "codigo do produto", "código do produto", "sku"],
+            "descricao": ["descricao", "descrição", "material", "material descricao", "material descrição", "descrição do produto", "descricao do produto"],
             "loja": ["loja", "filial"],
             "departamento": ["departamento", "depto"],
             "secao": ["secao", "seção"],
@@ -70,8 +70,8 @@ CONTRATOS_IMPORTACAO = {
         ],
         "aliases": {
             "loja": ["loja", "filial"],
-            "sku": ["codigo material", "código material", "codigo", "material"],
-            "descricao": ["material", "descricao", "descrição"],
+            "sku": ["codigo material", "código material", "código do material", "codigo do material", "codigo produto", "código produto", "codigo do produto", "código do produto", "sku"],
+            "descricao": ["material", "descricao", "descrição", "descrição do produto", "descricao do produto"],
             "subcategoria": ["subcategoria"],
             "secao": ["secao", "seção"],
             "fornecedor": ["fornecedor"],
