@@ -164,9 +164,10 @@ def resumo(con: Any, f: FiltroEstoque) -> dict:
           CASE WHEN SUM(COALESCE(venda_31d_qtd,0))>0
                THEN SUM(COALESCE(estoque_disponivel_qtd,0)+COALESCE(transito_qtd,0)+COALESCE(pedido_pendente_qtd,0)+COALESCE(carteira_qtd,0))/(SUM(COALESCE(venda_31d_qtd,0))/31.0) END ddv_projetado,
           COUNT(*) itens_posicao,
-          SUM(CASE WHEN COALESCE(ruptura,FALSE) THEN 1 ELSE 0 END) itens_ruptura,
-          SUM(CASE WHEN COALESCE(ruptura,FALSE) AND COALESCE(pedido_aberto_qtd,0)<=0 THEN 1 ELSE 0 END) ruptura_sem_pedido,
-          SUM(CASE WHEN COALESCE(ruptura,FALSE) AND COALESCE(pedido_aberto_qtd,0)>0 THEN 1 ELSE 0 END) ruptura_com_pedido,
+          SUM(CASE WHEN COALESCE(item_ativo,FALSE) THEN 1 ELSE 0 END) itens_ativos,
+          SUM(CASE WHEN COALESCE(item_ativo,FALSE) AND COALESCE(ruptura,FALSE) THEN 1 ELSE 0 END) itens_ruptura,
+          SUM(CASE WHEN COALESCE(item_ativo,FALSE) AND COALESCE(ruptura,FALSE) AND COALESCE(pedido_aberto_qtd,0)<=0 THEN 1 ELSE 0 END) ruptura_sem_pedido,
+          SUM(CASE WHEN COALESCE(item_ativo,FALSE) AND COALESCE(ruptura,FALSE) AND COALESCE(pedido_aberto_qtd,0)>0 THEN 1 ELSE 0 END) ruptura_com_pedido,
           SUM(CASE WHEN COALESCE(venda_31d_qtd,0)=0 AND COALESCE(estoque_disponivel_valor,0)>0 THEN estoque_disponivel_valor ELSE 0 END) estoque_sem_venda_valor,
           SUM(CASE WHEN COALESCE(ddv_atual_31d,0)>? AND COALESCE(estoque_disponivel_valor,0)>0
                    THEN estoque_disponivel_valor*(1-?/ddv_atual_31d) ELSE 0 END) capital_excedente_estimado
@@ -175,8 +176,8 @@ def resumo(con: Any, f: FiltroEstoque) -> dict:
     row = cur.fetchone()
     nomes = [d[0] for d in cur.description]
     out = dict(zip(nomes, row)) if row else {}
-    itens = out.get("itens_posicao") or 0
-    out["ruptura_pct"] = ((out.get("itens_ruptura") or 0) / itens * 100) if itens else 0
+    ativos = out.get("itens_ativos") or 0
+    out["ruptura_pct"] = ((out.get("itens_ruptura") or 0) / ativos * 100) if ativos else 0
     out["data_posicao"] = data
     out["ddv_alvo"] = f.ddv_alvo
     return out
@@ -191,11 +192,14 @@ def ranking_ruptura(con: Any, f: FiltroEstoque, dimensao: str = "loja", limite: 
         return []
     where, p = _where(f, data)
     return _rows(con.execute(f"""
-        SELECT {dimensao} dimensao, COUNT(*) itens,
-          SUM(CASE WHEN COALESCE(ruptura,FALSE) THEN 1 ELSE 0 END) ruptura,
-          SUM(CASE WHEN COALESCE(ruptura,FALSE) AND COALESCE(pedido_aberto_qtd,0)<=0 THEN 1 ELSE 0 END) sem_pedido,
-          SUM(CASE WHEN COALESCE(ruptura,FALSE) AND COALESCE(pedido_aberto_qtd,0)>0 THEN 1 ELSE 0 END) com_pedido,
-          100.0*SUM(CASE WHEN COALESCE(ruptura,FALSE) THEN 1 ELSE 0 END)/NULLIF(COUNT(*),0) ruptura_pct
+        SELECT {dimensao} dimensao,
+          COUNT(*) itens,
+          SUM(CASE WHEN COALESCE(item_ativo,FALSE) THEN 1 ELSE 0 END) itens_ativos,
+          SUM(CASE WHEN COALESCE(item_ativo,FALSE) AND COALESCE(ruptura,FALSE) THEN 1 ELSE 0 END) ruptura,
+          SUM(CASE WHEN COALESCE(item_ativo,FALSE) AND COALESCE(ruptura,FALSE) AND COALESCE(pedido_aberto_qtd,0)<=0 THEN 1 ELSE 0 END) sem_pedido,
+          SUM(CASE WHEN COALESCE(item_ativo,FALSE) AND COALESCE(ruptura,FALSE) AND COALESCE(pedido_aberto_qtd,0)>0 THEN 1 ELSE 0 END) com_pedido,
+          100.0*SUM(CASE WHEN COALESCE(item_ativo,FALSE) AND COALESCE(ruptura,FALSE) THEN 1 ELSE 0 END)
+            /NULLIF(SUM(CASE WHEN COALESCE(item_ativo,FALSE) THEN 1 ELSE 0 END),0) ruptura_pct
         FROM vw_estoque_360 v WHERE {where}
         GROUP BY {dimensao} ORDER BY ruptura_pct DESC NULLS LAST LIMIT ?
     """, [*p, max(1, min(int(limite), 500))]))
@@ -290,17 +294,17 @@ def plano_acao(con: Any, f: FiltroEstoque, limite: int = 300) -> list[dict]:
       WITH x AS (
         SELECT loja, sku, descricao, categoria, fornecedor, comprador, curva_abc, top_300, nbo, tabloide,
           estoque_disponivel_qtd, estoque_disponivel_valor, venda_31d_qtd, ddv_atual_31d, ddv_projetado_31d,
-          pedido_aberto_qtd, pedido_pendente_qtd, carteira_qtd, ruptura,
+          pedido_aberto_qtd, pedido_pendente_qtd, carteira_qtd, item_ativo, ruptura,
           CASE
-            WHEN COALESCE(ruptura,FALSE) AND COALESCE(pedido_aberto_qtd,0)<=0 THEN 'P1'
-            WHEN COALESCE(ruptura,FALSE) THEN 'P2'
+            WHEN COALESCE(item_ativo,FALSE) AND COALESCE(ruptura,FALSE) AND COALESCE(pedido_aberto_qtd,0)<=0 THEN 'P1'
+            WHEN COALESCE(item_ativo,FALSE) AND COALESCE(ruptura,FALSE) THEN 'P2'
             WHEN COALESCE(ddv_atual_31d,999)<7 THEN 'P2'
             WHEN COALESCE(ddv_atual_31d,0)>90 THEN 'P3'
             WHEN COALESCE(venda_31d_qtd,0)=0 AND COALESCE(estoque_disponivel_qtd,0)>0 THEN 'P3'
             ELSE 'OK' END prioridade,
           CASE
-            WHEN COALESCE(ruptura,FALSE) AND COALESCE(pedido_aberto_qtd,0)<=0 THEN 'ABASTECER_COMPRAR'
-            WHEN COALESCE(ruptura,FALSE) THEN 'ACOMPANHAR_PEDIDO'
+            WHEN COALESCE(item_ativo,FALSE) AND COALESCE(ruptura,FALSE) AND COALESCE(pedido_aberto_qtd,0)<=0 THEN 'ABASTECER_COMPRAR'
+            WHEN COALESCE(item_ativo,FALSE) AND COALESCE(ruptura,FALSE) THEN 'ACOMPANHAR_PEDIDO'
             WHEN COALESCE(ddv_atual_31d,999)<7 THEN 'PROGRAMAR_ABASTECIMENTO'
             WHEN COALESCE(ddv_atual_31d,0)>90 THEN 'REDUZIR_COMPRA_OU_TRANSFERIR'
             WHEN COALESCE(venda_31d_qtd,0)=0 AND COALESCE(estoque_disponivel_qtd,0)>0 THEN 'REVISAR_SORTIMENTO'
