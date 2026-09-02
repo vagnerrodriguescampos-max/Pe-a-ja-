@@ -99,6 +99,7 @@ CREATE TABLE IF NOT EXISTS ruptura_diaria (
 CREATE OR REPLACE VIEW vw_estoque_360 AS
 SELECT
     e.*,
+    r.regional,
     r.ruptura,
     r.ruptura_pct,
     r.ruptura_com_pedido,
