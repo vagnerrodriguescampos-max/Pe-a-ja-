@@ -40,6 +40,11 @@ function dataBR(v) {
   const d = new Date(`${String(v).slice(0, 10)}T12:00:00`);
   return Number.isNaN(d.getTime()) ? esc(v) : d.toLocaleDateString("pt-BR");
 }
+function dataHoraBR(v) {
+  if (!v) return "—";
+  const d = new Date(String(v));
+  return Number.isNaN(d.getTime()) ? esc(v) : d.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
+}
 
 function cssVar(nome, fallback) {
   const valor = getComputedStyle(document.documentElement).getPropertyValue(nome).trim();
@@ -248,10 +253,16 @@ export class Estoque360App {
   renderCockpit(resumoResp, coberturaResp) {
     if (resumoResp?.sem_acesso) return this.renderSemAcesso();
     const d = resumoResp?.dados || {};
+    const q = resumoResp?.qualidade_posicao || {};
     const posicao = resumoResp?.data_posicao || d.data_posicao;
     this.updatePosicao(posicao);
     this.contextoIA(posicao);
+
+    const saudeLabel = q.status === "SAUDAVEL" ? "Saudável" : q.status === "ATENCAO" ? "Atenção" : "Crítico";
+    const saudeAccent = q.nivel === "VERDE" ? "--s3" : q.nivel === "AMARELO" ? "--warn" : "--crit";
+    const saudeCmp = `Estoque ${dataBR(q.data_estoque)} · Ruptura ${dataBR(q.data_ruptura)}`;
     const kpis = [
+      ["Saúde da posição", saudeLabel, saudeAccent, saudeCmp],
       ["Estoque disponível", money(d.estoque_valor), "--brand", "Valor disponível"],
       ["DDV atual", `${num(d.ddv_atual)} dias`, "--s1", "Cobertura atual"],
       ["DDV projetado", `${num(d.ddv_projetado)} dias`, "--s3", "Com trânsito + pedidos + carteira"],
@@ -266,8 +277,38 @@ export class Estoque360App {
       ["Capital liberável", money(d.capital_excedente_estimado), "--warn", `Estimado acima de ${num(d.ddv_alvo)} dias`],
       ["Estoque sem venda", money(d.estoque_sem_venda_valor), "--ink-3", "Sem venda no período-base"],
     ];
+
+    const cargas = [
+      ["Estoque", q.ultima_carga_estoque],
+      ["Ruptura", q.ultima_carga_ruptura],
+    ];
+    const auditoria = tabela(
+      ["Base","Posição","Status","Linhas válidas","Rejeitadas","Arquivo"],
+      cargas,
+      ([base, carga]) => [
+        base,
+        dataBR(carga?.data_posicao),
+        carga?.status || "SEM CARGA",
+        inteiro(carga?.linhas_validas),
+        inteiro(carga?.linhas_rejeitadas),
+        carga?.arquivo_nome || "—",
+      ],
+    );
+    const alertas = Array.isArray(q.alertas) && q.alertas.length
+      ? `<div>${q.alertas.map(a => `<div class="e360-note">• ${esc(a)}</div>`).join("")}</div>`
+      : `<div class="e360-note">Nenhum alerta de qualidade na posição atual.</div>`;
+    const detalheQualidade = `
+      <div class="e360-note"><b>${esc(q.mensagem || "")}</b></div>
+      <div class="e360-note">Posição operacional: ${dataBR(q.data_operacional)} · Última atualização: ${dataHoraBR(q.ultima_atualizacao)}</div>
+      <div class="e360-note">Linhas promovidas — Estoque: ${inteiro(q.linhas_posicao_estoque)} · Ruptura: ${inteiro(q.linhas_posicao_ruptura)} · Falhas por duplicidade no histórico: ${inteiro(q.falhas_duplicidade_historico)}</div>
+      ${alertas}`;
+
     this.root.querySelector("[data-e360-content]").innerHTML = `
       <div class="kpi-grid e360-kpis">${kpis.map(([title,value,accent,cmp]) => kpiHost({title,value,accent,cmp})).join("")}</div>
+      <div class="e360-two">
+        ${card("Qualidade da carga", auditoria, `Saúde: ${saudeLabel}`)}
+        ${card("Situação da posição", detalheQualidade, q.datas_alinhadas ? "Bases alinhadas" : "Verificar alinhamento")}
+      </div>
       <div class="e360-two">
         ${card("Distribuição da cobertura", `<div id="e360-cobertura" class="e360-chart"></div>`, "Itens por faixa de DDV")}
         ${card("DDV atual x projetado", `<div class="e360-ddv"><div><small>Atual</small><strong>${num(d.ddv_atual)}</strong><span>dias</span></div><div class="e360-ddv-arrow">→</div><div><small>Projetado</small><strong>${num(d.ddv_projetado)}</strong><span>dias</span></div></div><div class="e360-note">O projetado considera estoque disponível, trânsito, pedido pendente e carteira. Compra e transferência usam as mesmas regras das filas operacionais.</div>`)}
