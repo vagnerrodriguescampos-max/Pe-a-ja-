@@ -255,18 +255,22 @@ export class Estoque360App {
       ["Estoque disponível", money(d.estoque_valor), "--brand", "Valor disponível"],
       ["DDV atual", `${num(d.ddv_atual)} dias`, "--s1", "Cobertura atual"],
       ["DDV projetado", `${num(d.ddv_projetado)} dias`, "--s3", "Com trânsito + pedidos + carteira"],
-      ["Ruptura", pct(d.ruptura_pct), "--crit", "Itens em ruptura"],
+      ["Ruptura", pct(d.ruptura_pct), "--crit", "Itens ativos em ruptura"],
       ["Ruptura sem pedido", inteiro(d.ruptura_sem_pedido), "--crit", "Ação imediata"],
       ["Ruptura com pedido", inteiro(d.ruptura_com_pedido), "--warn", "Acompanhar abastecimento"],
+      ["Compra sugerida", inteiro(d.compra_sugerida_qtd), "--crit", money(d.compra_valor_estimado)],
+      ["Potencial transferência", inteiro(d.transferencia_potencial_qtd), "--s3", money(d.transferencia_valor_estimado)],
+      ["Ações P1", inteiro(d.acoes_p1), "--crit", "Prioridade imediata"],
+      ["Ações P2", inteiro(d.acoes_p2), "--warn", "Atenção operacional"],
       ["Carteira", money(d.carteira_valor), "--s6", "Valor em carteira"],
-      ["Capital excedente", money(d.capital_excedente_estimado), "--warn", `Acima do alvo de ${num(d.ddv_alvo)} dias`],
+      ["Capital liberável", money(d.capital_excedente_estimado), "--warn", `Estimado acima de ${num(d.ddv_alvo)} dias`],
       ["Estoque sem venda", money(d.estoque_sem_venda_valor), "--ink-3", "Sem venda no período-base"],
     ];
     this.root.querySelector("[data-e360-content]").innerHTML = `
       <div class="kpi-grid e360-kpis">${kpis.map(([title,value,accent,cmp]) => kpiHost({title,value,accent,cmp})).join("")}</div>
       <div class="e360-two">
         ${card("Distribuição da cobertura", `<div id="e360-cobertura" class="e360-chart"></div>`, "Itens por faixa de DDV")}
-        ${card("DDV atual x projetado", `<div class="e360-ddv"><div><small>Atual</small><strong>${num(d.ddv_atual)}</strong><span>dias</span></div><div class="e360-ddv-arrow">→</div><div><small>Projetado</small><strong>${num(d.ddv_projetado)}</strong><span>dias</span></div></div><div class="e360-note">O projetado considera estoque disponível, trânsito, pedido pendente e carteira.</div>`)}
+        ${card("DDV atual x projetado", `<div class="e360-ddv"><div><small>Atual</small><strong>${num(d.ddv_atual)}</strong><span>dias</span></div><div class="e360-ddv-arrow">→</div><div><small>Projetado</small><strong>${num(d.ddv_projetado)}</strong><span>dias</span></div></div><div class="e360-note">O projetado considera estoque disponível, trânsito, pedido pendente e carteira. Compra e transferência usam as mesmas regras das filas operacionais.</div>`)}
       </div>`;
     this.chartCobertura(coberturaResp?.dados || []);
   }
