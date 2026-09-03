@@ -54,3 +54,16 @@ def test_modulo_nao_cria_sidebar_ou_header_proprios():
     ]
     for trecho in proibidos:
         assert trecho not in js
+
+
+def test_cockpit_exibe_saude_e_auditoria_da_carga():
+    js = _texto(MODULO)
+    assert "qualidade_posicao" in js
+    assert '"Saúde da posição"' in js
+    assert 'card("Qualidade da carga"' in js
+    assert 'card("Situação da posição"' in js
+    assert "linhas_posicao_estoque" in js
+    assert "linhas_posicao_ruptura" in js
+    assert "falhas_duplicidade_historico" in js
+    assert 'q.nivel === "VERDE"' in js
+    assert 'q.nivel === "AMARELO"' in js
