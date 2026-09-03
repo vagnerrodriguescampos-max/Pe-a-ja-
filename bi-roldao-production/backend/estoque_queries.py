@@ -90,6 +90,11 @@ def _rows(cur: Any) -> list[dict]:
 
 
 def resolver_data_posicao(con: Any, solicitada: date | None = None) -> date | None:
+    """Resolve somente posições completas quando a data não é explicitamente pedida.
+
+    Estoque 360 combina Estoque + Ruptura. Sem uma data comum, retornar uma posição
+    somente de Estoque faria indicadores como ruptura parecerem válidos quando não são.
+    """
     if solicitada:
         return solicitada
     row = con.execute("""
@@ -99,10 +104,7 @@ def resolver_data_posicao(con: Any, solicitada: date | None = None) -> date | No
             SELECT 1 FROM ruptura_diaria r WHERE r.data_posicao = e.data_posicao
         )
     """).fetchone()
-    if row and row[0]:
-        return row[0]
-    row = con.execute("SELECT MAX(data_posicao) FROM estoque_diario").fetchone()
-    return row[0] if row else None
+    return row[0] if row and row[0] else None
 
 
 def _where(f: FiltroEstoque, data_posicao: date, alias: str = "v") -> tuple[str, list[Any]]:
