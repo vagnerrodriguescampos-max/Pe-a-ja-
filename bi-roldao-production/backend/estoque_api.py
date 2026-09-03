@@ -19,6 +19,7 @@ from .estoque_abastecimento import abastecimento_compra
 from .estoque_transferencias import transferencias
 from .estoque_plano_acao import plano_acao_operacional
 from .estoque_cockpit import kpis_executivos
+from .estoque_qualidade import qualidade_posicao
 
 
 def extrair_escopo_lojas(usuario: dict[str, Any]) -> list[str] | None:
@@ -48,10 +49,14 @@ def endpoint_resumo(con: Any, corpo: dict | None, usuario: dict[str, Any]) -> di
     filtro, escopo = filtro_estoque(corpo, usuario)
     base = _payload_base(con, filtro)
     if base.get("sem_acesso"):
-        return {**base, "dados": {}}
+        return {**base, "dados": {}, "qualidade_posicao": None}
     dados = resumo(con, filtro)
     dados.update(kpis_executivos(con, filtro, escopo_origem=escopo))
-    return {**base, "dados": dados}
+    return {
+        **base,
+        "qualidade_posicao": qualidade_posicao(con, filtro.data_posicao),
+        "dados": dados,
+    }
 
 
 def endpoint_ruptura(con: Any, corpo: dict | None, usuario: dict[str, Any]) -> dict[str, Any]:
