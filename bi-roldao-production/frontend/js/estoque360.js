@@ -317,7 +317,24 @@ export class Estoque360App {
   }
 
   renderPlano(rows) {
-    this.root.querySelector("[data-e360-content]").innerHTML = card("Plano de ação", tabela(["Prioridade","Loja","SKU","Produto","Curva","DDV","Ruptura","Ação"], rows, r => [r.prioridade,r.loja,r.sku,r.descricao,r.curva_abc,num(r.ddv_atual_31d),r.ruptura ? "Sim" : "Não",r.acao]), "Fila operacional ordenada por criticidade");
+    this.root.querySelector("[data-e360-content]").innerHTML = card(
+      "Plano de ação",
+      tabela(
+        ["Prioridade","Loja","SKU","Ação","Motivo","Transferência","Compra","Responsável"],
+        rows,
+        r => [
+          r.prioridade,
+          r.loja,
+          r.sku,
+          r.acao_label || r.acao,
+          r.motivo_label || r.motivo,
+          inteiro(r.transferencia_sugerida_qtd),
+          inteiro(r.compra_sugerida_qtd),
+          [r.responsavel_area, r.responsavel_referencia].filter(Boolean).join(" · "),
+        ],
+      ),
+      "Fila operacional ordenada por criticidade e decisão recomendada",
+    );
   }
 
   destroy() {
