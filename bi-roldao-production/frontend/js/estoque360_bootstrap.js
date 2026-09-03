@@ -320,7 +320,7 @@ function observarFiltros() {
       appEstoque.setGlobalFilters(filtrosAtuais());
     };
     filterbar.addEventListener("change", onChange);
-    removers.push(() => filterbar.removeEventListener("change", onChange, true));
+    removers.push(() => filterbar.removeEventListener("change", onChange));
   }
 
   const clear = document.getElementById("btnClear");
