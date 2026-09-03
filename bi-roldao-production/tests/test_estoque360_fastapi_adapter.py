@@ -18,6 +18,10 @@ from integration.fastapi_adapter_estoque360 import (
 )
 
 
+class DummyRequest:
+    pass
+
+
 class FakeApp:
     def __init__(self):
         self.rotas = []
@@ -43,6 +47,7 @@ def _bindings(tmp_path: Path, app=None):
         resolver_usuario=lambda request: {"login": "teste", "escopo": {"irrestrito": True}},
         abrir_conexao=lambda request: object(),
         runtime_root=_runtime_python(tmp_path),
+        request_type=DummyRequest,
     )
 
 
@@ -61,6 +66,7 @@ def test_registra_exatamente_sete_posts_e_nenhuma_rota_legada(tmp_path):
     }
     assert all(r["methods"] == ("POST",) for r in b.app.rotas)
     assert all(r["path"].startswith("/api/estoque/") for r in b.app.rotas)
+    assert all(r["endpoint"].__annotations__["request"] is DummyRequest for r in b.app.rotas)
     assert "/api/kpis" not in rotas
     assert "/api/admin/importar" not in rotas
     assert "/api/ia/perguntar" not in rotas
@@ -75,6 +81,7 @@ def test_handler_usa_usuario_e_conexao_fornecidos_pelo_host(tmp_path, monkeypatc
         resolver_usuario=lambda request: usuario,
         abrir_conexao=lambda request: con,
         runtime_root=_runtime_python(tmp_path),
+        request_type=DummyRequest,
     )
     instalar_rotas_estoque360(b)
     chamada = {}
@@ -85,7 +92,7 @@ def test_handler_usa_usuario_e_conexao_fornecidos_pelo_host(tmp_path, monkeypatc
 
     monkeypatch.setattr(adapter, "executar_rota_estoque360", fake_executar)
     rota = next(r for r in app.rotas if r["path"] == "/api/estoque/resumo")
-    resultado = asyncio.run(rota["endpoint"](object(), {"lojas": [18]}))
+    resultado = asyncio.run(rota["endpoint"](DummyRequest(), {"lojas": [18]}))
     assert resultado == {"ok": True}
     assert chamada["caminho"] == "/api/estoque/resumo"
     assert chamada["con"] is con
@@ -93,14 +100,16 @@ def test_handler_usa_usuario_e_conexao_fornecidos_pelo_host(tmp_path, monkeypatc
     assert chamada["corpo"] == {"lojas": [18]}
 
 
-def test_fail_closed_sem_app_real_ou_sem_resolvers(tmp_path):
+def test_fail_closed_sem_app_resolvers_ou_request_real(tmp_path):
     root = _runtime_python(tmp_path)
     with pytest.raises(IntegracaoFastAPIIncompleta, match="app real"):
-        instalar_rotas_estoque360(FastAPIHostBindings(None, lambda r: {}, lambda r: object(), root))
+        instalar_rotas_estoque360(FastAPIHostBindings(None, lambda r: {}, lambda r: object(), root, DummyRequest))
     with pytest.raises(IntegracaoFastAPIIncompleta, match="usuário/escopo"):
-        instalar_rotas_estoque360(FastAPIHostBindings(FakeApp(), None, lambda r: object(), root))
+        instalar_rotas_estoque360(FastAPIHostBindings(FakeApp(), None, lambda r: object(), root, DummyRequest))
     with pytest.raises(IntegracaoFastAPIIncompleta, match="conexão"):
-        instalar_rotas_estoque360(FastAPIHostBindings(FakeApp(), lambda r: {}, None, root))
+        instalar_rotas_estoque360(FastAPIHostBindings(FakeApp(), lambda r: {}, None, root, DummyRequest))
+    with pytest.raises(IntegracaoFastAPIIncompleta, match="Request real"):
+        instalar_rotas_estoque360(FastAPIHostBindings(FakeApp(), lambda r: {}, lambda r: object(), root, None))
 
 
 def test_importacao_legada_nao_e_interceptada(tmp_path, monkeypatch):
