@@ -20,6 +20,7 @@ from .estoque_transferencias import transferencias
 from .estoque_plano_acao import plano_acao_operacional
 from .estoque_cockpit import kpis_executivos
 from .estoque_qualidade import qualidade_posicao
+from .estoque_filtros import opcoes_filtros
 
 
 def extrair_escopo_lojas(usuario: dict[str, Any]) -> list[str] | None:
@@ -49,12 +50,13 @@ def endpoint_resumo(con: Any, corpo: dict | None, usuario: dict[str, Any]) -> di
     filtro, escopo = filtro_estoque(corpo, usuario)
     base = _payload_base(con, filtro)
     if base.get("sem_acesso"):
-        return {**base, "dados": {}, "qualidade_posicao": None}
+        return {**base, "dados": {}, "qualidade_posicao": None, "filtros_disponiveis": {}}
     dados = resumo(con, filtro)
     dados.update(kpis_executivos(con, filtro, escopo_origem=escopo))
     return {
         **base,
         "qualidade_posicao": qualidade_posicao(con, filtro.data_posicao),
+        "filtros_disponiveis": opcoes_filtros(con, filtro, escopo),
         "dados": dados,
     }
 
