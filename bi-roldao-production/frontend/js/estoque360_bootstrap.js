@@ -72,13 +72,14 @@ function codigoLojaSelect() {
     if (match) return match[0].toUpperCase();
   }
 
-  // O shell histórico usa IDs numéricos (ex.: 46=Salto). O Estoque usa R046.
+  // O shell legado usa o número da loja (ex.: 18=Sorocaba) e a base de estoque usa R018.
+  // A correspondência foi validada nas bases reais: 18/R018, 26/R026, 27/R027, 29/R029 e 37/R037.
   if (/^\d{1,4}$/.test(String(valor || ""))) {
     const n = String(Number(valor));
     return `R${n.padStart(3, "0")}`;
   }
 
-  // Fallback tolerante para shells que usem o próprio nome como valor.
+  // Mantém compatibilidade se algum shell futuro passar diretamente o código/nome.
   return texto || valor;
 }
 
@@ -97,9 +98,13 @@ function filtrosAtuais() {
   const pares = [
     ["regional", valorSelect("fReg")],
     ["loja", codigoLojaSelect()],
-    ["categoria", valorSelect("fCat")],
+    // No BI legado, os valores de fCat coincidem com Departamento na base real de Estoque.
+    ["departamento", valorSelect("fCat")],
+    // Os valores de fSeg coincidem com Seção na base real de Estoque.
+    ["secao", valorSelect("fSeg")],
     ["data_posicao", valorExtra("e360DataPosicao")],
-    ["departamento", valorExtra("e360Departamento")],
+    // Categoria do Estoque 360 representa a Sub-Categoria da base de Ruptura.
+    ["categoria", valorExtra("e360Categoria")],
     ["fornecedor", valorExtra("e360Fornecedor")],
     ["comprador", valorExtra("e360Comprador")],
     ["curva_abc", valorExtra("e360CurvaABC")],
@@ -155,7 +160,7 @@ function montarFiltrosExtras() {
   const ancora = filterbar.querySelector(".filter-spacer") || document.getElementById("btnClear") || null;
   const defs = [
     ["e360DataPosicao", "Posição estoque"],
-    ["e360Departamento", "Departamento"],
+    ["e360Categoria", "Subcategoria estoque"],
     ["e360Fornecedor", "Fornecedor"],
     ["e360Comprador", "Comprador"],
     ["e360CurvaABC", "Curva ABC"],
@@ -197,7 +202,7 @@ function aplicarMesNaPosicao() {
 function aplicarOpcoesFiltros(opcoes = {}) {
   opcoesEstoque = opcoes || {};
   preencherSelect(document.getElementById("e360DataPosicao"), opcoes.posicoes, valorExtra("e360DataPosicao"), labelData);
-  preencherSelect(document.getElementById("e360Departamento"), opcoes.departamentos, valorExtra("e360Departamento"));
+  preencherSelect(document.getElementById("e360Categoria"), opcoes.categorias, valorExtra("e360Categoria"));
   preencherSelect(document.getElementById("e360Fornecedor"), opcoes.fornecedores, valorExtra("e360Fornecedor"));
   preencherSelect(document.getElementById("e360Comprador"), opcoes.compradores, valorExtra("e360Comprador"));
   preencherSelect(document.getElementById("e360CurvaABC"), opcoes.curvas_abc, valorExtra("e360CurvaABC"));
@@ -315,7 +320,7 @@ function observarFiltros() {
       appEstoque.setGlobalFilters(filtrosAtuais());
     };
     filterbar.addEventListener("change", onChange);
-    removers.push(() => filterbar.removeEventListener("change", onChange));
+    removers.push(() => filterbar.removeEventListener("change", onChange, true));
   }
 
   const clear = document.getElementById("btnClear");
