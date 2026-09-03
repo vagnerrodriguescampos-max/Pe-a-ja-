@@ -71,8 +71,11 @@ def test_ranking_ruptura_usa_mesma_regra_do_cockpit(con):
 def test_item_inativo_nao_vira_prioridade_de_ruptura(con):
     rows = executar_endpoint("plano-acao", con, {}, _usuario())["dados"]
     item_b = next((r for r in rows if r["sku"] == "B"), None)
-    # SKU B tem DDV normal (31 dias) e só apareceria como P1/P2 se a ruptura inativa vazasse.
-    assert item_b is None
+    # Pode aparecer como revisão de sortimento, mas nunca como P1/P2 por ruptura.
+    assert item_b is not None
+    assert item_b["prioridade"] == "P3"
+    assert item_b["acao"] == "REVISAR_SORTIMENTO"
+    assert item_b["motivo"] == "ITEM_INATIVO"
 
 
 def test_view_expoe_item_ativo_e_status_nao_trata_inativo_como_ruptura(con):
