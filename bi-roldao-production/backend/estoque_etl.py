@@ -7,6 +7,8 @@ carga foi validada, preservando a posição anterior em qualquer falha.
 
 from __future__ import annotations
 
+import math
+import re
 from dataclasses import dataclass
 from datetime import date
 from typing import Any, Iterable
@@ -35,6 +37,10 @@ class ResultadoImportacao:
 TAMANHO_LOTE_PADRAO = 5000
 TAMANHO_LOTE_MINIMO = 100
 TAMANHO_LOTE_MAXIMO = 50000
+
+# Nos arquivos reais do Roldão, Estoque usa "R002" e Ruptura usa, por exemplo,
+# "R002 ROLDÃO FREGUESIA DO". A chave de integração precisa ser o código da loja.
+_RE_CODIGO_LOJA = re.compile(r"\bR\d{3,4}\b", re.IGNORECASE)
 
 CAMPOS_ESTOQUE = [
     "data_posicao", "loja", "sku", "descricao", "departamento", "secao",
@@ -85,6 +91,43 @@ def _texto(valor: Any) -> str | None:
     return texto or None
 
 
+def _normalizar_loja_chave(valor: Any) -> str | None:
+    """Converte nomes extensos da Ruptura para o código canônico da loja."""
+    texto = _texto(valor)
+    if not texto:
+        return None
+    match = _RE_CODIGO_LOJA.search(texto)
+    if match:
+        return match.group(0).upper()
+    return texto
+
+
+def _normalizar_sku_chave(valor: Any) -> str | None:
+    """Evita chaves diferentes como 110, 110.0 e '110.0' para o mesmo SKU."""
+    if valor is None or valor == "":
+        return None
+    if isinstance(valor, bool):
+        return _texto(valor)
+    if isinstance(valor, int):
+        return str(valor)
+    if isinstance(valor, float):
+        if math.isfinite(valor) and valor.is_integer():
+            return str(int(valor))
+        return _texto(format(valor, ".15g"))
+
+    texto = _texto(valor)
+    if not texto:
+        return None
+    numero_txt = texto.replace(",", ".")
+    try:
+        numero = float(numero_txt)
+        if math.isfinite(numero) and numero.is_integer():
+            return str(int(numero))
+    except ValueError:
+        pass
+    return texto
+
+
 def _numero(valor: Any) -> float | None:
     if valor is None or valor == "":
         return None
@@ -123,7 +166,9 @@ def _booleano(valor: Any) -> bool | None:
     return None
 
 
-def _normalizar_linha(linha: dict[str, Any], tipo: str, data_posicao: date, importacao_id: str) -> dict[str, Any]:
+def _normalizar_linha(
+    linha: dict[str, Any], tipo: str, data_posicao: date, importacao_id: str
+) -> dict[str, Any]:
     campos = CAMPOS_ESTOQUE if tipo == TIPO_ESTOQUE else CAMPOS_RUPTURA
     saida: dict[str, Any] = {}
     for campo in campos:
@@ -138,8 +183,8 @@ def _normalizar_linha(linha: dict[str, Any], tipo: str, data_posicao: date, impo
         else:
             saida[campo] = _texto(linha.get(campo))
 
-    saida["loja"] = _texto(linha.get("loja"))
-    saida["sku"] = _texto(linha.get("sku"))
+    saida["loja"] = _normalizar_loja_chave(linha.get("loja"))
+    saida["sku"] = _normalizar_sku_chave(linha.get("sku"))
     if not saida["loja"] or not saida["sku"]:
         raise CargaEstoqueInvalida("Linha sem chave obrigatória loja + sku")
     return saida
