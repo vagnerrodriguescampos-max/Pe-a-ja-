@@ -33,23 +33,26 @@ def test_bootstrap_nao_remove_paginas_existentes():
     assert 'view.remove()' not in js
 
 
-def test_filtros_globais_do_bi_sao_reutilizados_e_loja_vira_codigo_roldao():
+def test_filtros_globais_do_bi_sao_mapeados_para_dimensoes_reais_do_estoque():
     js = _texto(BOOT)
-    assert 'valorSelect("fReg")' in js
-    assert 'codigoLojaSelect()' in js
-    assert 'valorSelect("fCat")' in js
+    assert '["regional", valorSelect("fReg")]' in js
+    assert '["loja", codigoLojaSelect()]' in js
+    assert '["departamento", valorSelect("fCat")]' in js
+    assert '["secao", valorSelect("fSeg")]' in js
+    assert '["categoria", valorExtra("e360Categoria")]' in js
     assert 'valorSelect("fMes")' in js
     assert 'document.getElementById("filterbar")' in js
     assert 'document.getElementById("btnClear")' in js
-    assert 'padStart(3, "0")' in js
     assert 'return `R${n.padStart(3, "0")}`' in js
+    # Impede regressão para o mapeamento incorreto anterior fCat -> categoria.
+    assert '["categoria", valorSelect("fCat")]' not in js
 
 
 def test_filtros_exclusivos_so_sao_montados_no_estoque_e_removidos_ao_sair():
     js = _texto(BOOT)
     for filtro in (
         "e360DataPosicao",
-        "e360Departamento",
+        "e360Categoria",
         "e360Fornecedor",
         "e360Comprador",
         "e360CurvaABC",
@@ -59,9 +62,17 @@ def test_filtros_exclusivos_so_sao_montados_no_estoque_e_removidos_ao_sair():
         "e360Status",
     ):
         assert filtro in js
+    assert "e360Departamento" not in js
     assert "montarFiltrosExtras();" in js
     assert "removerFiltrosExtras();" in js
     assert 'document.querySelectorAll(`[${EXTRA_ATTR}]`).forEach(el => el.remove())' in js
+
+
+def test_listener_filterbar_e_removido_com_mesma_semantica_de_capture():
+    js = _texto(BOOT)
+    assert 'filterbar.addEventListener("change", onChange);' in js
+    assert 'filterbar.removeEventListener("change", onChange);' in js
+    assert 'filterbar.removeEventListener("change", onChange, true)' not in js
 
 
 def test_mes_existente_controla_ultima_posicao_disponivel_do_estoque():
@@ -75,6 +86,7 @@ def test_opcoes_dos_filtros_vem_do_resumo_sem_criar_nova_rota():
     js = _texto(BOOT)
     assert 'String(url).endsWith("/api/estoque/resumo")' in js
     assert "filtros_disponiveis" in js
+    assert "opcoes.categorias" in js
     assert "/api/estoque/filtros" not in js
 
 
