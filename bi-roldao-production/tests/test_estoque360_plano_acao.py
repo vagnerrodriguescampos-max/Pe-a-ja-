@@ -47,12 +47,12 @@ def _base():
         _e("DESTINO", "1001", 0),
         # 2002: aguardará abastecimento — alvo 300 e 300 chegando.
         _e("DESTINO", "2002", 0, transito=100, pedido=100, carteira=100),
-        # 3003: transferir — origem tem excesso suficiente acima do alvo 45 dias.
+        # 3003: transferir — origem tem excesso suficiente acima do alvo 30 dias.
         _e("DESTINO", "3003", 0),
         _e("ORIGEM", "3003", 1000),
         # 4004: transferência parcial + compra residual.
         _e("DESTINO", "4004", 0),
-        _e("ORIGEM", "4004", 500),  # venda=10/dia; acima de 45d só 50 transferíveis
+        _e("ORIGEM", "4004", 350),  # venda=10/dia; acima de 30d só 50 transferíveis
         # 5005: excesso P3.
         _e("DESTINO", "5005", 1000),
         # 6006: sem venda P3.
@@ -78,8 +78,8 @@ def _base():
 def test_plano_herda_mesma_decisao_do_abastecimento():
     con = _base()
     try:
-        abastecimento = executar_endpoint("abastecimento", con, {"loja": "DESTINO", "ddv_alvo": 45}, _admin())
-        plano = executar_endpoint("plano-acao", con, {"loja": "DESTINO", "ddv_alvo": 45}, _admin())
+        abastecimento = executar_endpoint("abastecimento", con, {"loja": "DESTINO", "ddv_alvo": 30}, _admin())
+        plano = executar_endpoint("plano-acao", con, {"loja": "DESTINO", "ddv_alvo": 30}, _admin())
         mapa_ab = {(x["loja"], x["sku"]): x["acao_recomendada"] for x in abastecimento["dados"]}
         mapa_pl = {(x["loja"], x["sku"]): x["acao"] for x in plano["dados"]}
         for sku in ("1001", "2002", "3003", "4004"):
@@ -91,7 +91,7 @@ def test_plano_herda_mesma_decisao_do_abastecimento():
 def test_plano_detalha_compra_transferencia_e_responsavel():
     con = _base()
     try:
-        resp = executar_endpoint("plano-acao", con, {"loja": "DESTINO", "ddv_alvo": 45}, _admin())
+        resp = executar_endpoint("plano-acao", con, {"loja": "DESTINO", "ddv_alvo": 30}, _admin())
         rows = {x["sku"]: x for x in resp["dados"] if x["loja"] == "DESTINO"}
 
         comprar = rows["1001"]
@@ -124,7 +124,7 @@ def test_plano_detalha_compra_transferencia_e_responsavel():
 def test_plano_inclui_excesso_sem_venda_e_resumo():
     con = _base()
     try:
-        resp = executar_endpoint("plano-acao", con, {"loja": "DESTINO", "ddv_alvo": 45}, _admin())
+        resp = executar_endpoint("plano-acao", con, {"loja": "DESTINO", "ddv_alvo": 30}, _admin())
         rows = {x["sku"]: x for x in resp["dados"] if x["loja"] == "DESTINO"}
         assert rows["5005"]["acao"] == "REDUZIR_COMPRA_OU_TRANSFERIR"
         assert rows["5005"]["prioridade"] == "P3"
