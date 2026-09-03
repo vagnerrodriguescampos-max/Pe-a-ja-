@@ -5,6 +5,7 @@ para estas funções sem duplicar filtros, regras ou escopo.
 """
 from __future__ import annotations
 
+import re
 from typing import Any, Callable
 
 from .estoque_queries import (
@@ -22,6 +23,42 @@ from .estoque_cockpit import kpis_executivos
 from .estoque_qualidade import qualidade_posicao
 from .estoque_filtros import opcoes_filtros
 
+_RE_LOJA = re.compile(r"\bR\s*0*(\d{1,4})\b", re.IGNORECASE)
+
+
+def normalizar_codigo_loja(valor: Any) -> str | None:
+    """Converte IDs legados do shell para a chave Rxxx usada no estoque.
+
+    Exemplos: 46 -> R046, '018' -> R018, 'R35' -> R035 e
+    'R002 ROLDÃO FREGUESIA' -> R002. Valores não reconhecidos são preservados
+    para compatibilidade com ambientes que já forneçam outra chave canônica.
+    """
+    if valor is None:
+        return None
+    texto = str(valor).strip()
+    if not texto:
+        return None
+    match = _RE_LOJA.search(texto)
+    if match:
+        numero = str(int(match.group(1)))
+        return f"R{numero.zfill(3)}"
+    if texto.isdigit() and len(texto) <= 4:
+        numero = str(int(texto))
+        return f"R{numero.zfill(3)}"
+    return texto
+
+
+def _normalizar_lojas_corpo(corpo: dict | None) -> dict:
+    saida = dict(corpo or {})
+    if "lojas" in saida and saida.get("lojas") not in (None, ""):
+        valores = saida.get("lojas")
+        if isinstance(valores, str):
+            valores = [valores]
+        saida["lojas"] = [x for x in (normalizar_codigo_loja(v) for v in valores or []) if x]
+    elif "loja" in saida and saida.get("loja") not in (None, ""):
+        saida["loja"] = normalizar_codigo_loja(saida.get("loja"))
+    return saida
+
 
 def extrair_escopo_lojas(usuario: dict[str, Any]) -> list[str] | None:
     """Replica a semântica de segurança do BI: None=irrestrito, []=zero acesso."""
@@ -31,12 +68,13 @@ def extrair_escopo_lojas(usuario: dict[str, Any]) -> list[str] | None:
     lojas = escopo.get("lojas")
     if lojas is None:
         return []
-    return [str(loja).strip() for loja in lojas if str(loja).strip()]
+    return [x for x in (normalizar_codigo_loja(loja) for loja in lojas) if x]
 
 
 def filtro_estoque(corpo: dict | None, usuario: dict[str, Any]) -> tuple[FiltroEstoque, list[str] | None]:
     escopo = extrair_escopo_lojas(usuario)
-    return FiltroEstoque.de_dict(corpo or {}, escopo_lojas=escopo), escopo
+    corpo_normalizado = _normalizar_lojas_corpo(corpo)
+    return FiltroEstoque.de_dict(corpo_normalizado, escopo_lojas=escopo), escopo
 
 
 def _payload_base(con: Any, filtro: FiltroEstoque) -> dict[str, Any]:
