@@ -38,13 +38,15 @@ class FastAPIHostBindings:
 
     resolver_usuario(request): deve devolver o mesmo dict de usuário/escopo usado
     pelo BI atual. abrir_conexao(request): deve devolver uma conexão DuckDB ou um
-    context manager que produza a conexão. Nenhuma credencial é resolvida aqui.
+    context manager que produza a conexão. request_type deve ser o Request real do
+    Starlette/FastAPI usado pelo host. Nenhuma credencial é resolvida aqui.
     """
 
     app: Any
     resolver_usuario: Callable[[Any], Any]
     abrir_conexao: Callable[[Any], Any]
     runtime_root: str | Path
+    request_type: Any = None
 
 
 def _validar_bindings(bindings: FastAPIHostBindings) -> None:
@@ -56,6 +58,10 @@ def _validar_bindings(bindings: FastAPIHostBindings) -> None:
         raise IntegracaoFastAPIIncompleta("Resolver de usuário/escopo real não identificado.")
     if not callable(bindings.abrir_conexao):
         raise IntegracaoFastAPIIncompleta("Fábrica/resolver de conexão real não identificado.")
+    if bindings.request_type is None or not isinstance(bindings.request_type, type):
+        raise IntegracaoFastAPIIncompleta(
+            "Tipo Request real do FastAPI/Starlette não identificado; integração não instalada."
+        )
     validar_runtime_python(bindings.runtime_root)
 
 
@@ -88,7 +94,7 @@ def criar_handler_estoque360(acao: str, bindings: FastAPIHostBindings) -> Callab
     if acao not in ACOES_API:
         raise ValueError(f"Ação Estoque 360 desconhecida: {acao}")
 
-    async def handler(request: Any, corpo: dict | None = None) -> dict[str, Any]:
+    async def handler(request, corpo: dict | None = None) -> dict[str, Any]:
         usuario = _normalizar_usuario(await _talvez_await(bindings.resolver_usuario(request)))
         recurso = await _talvez_await(bindings.abrir_conexao(request))
         if recurso is None:
@@ -101,6 +107,9 @@ def criar_handler_estoque360(acao: str, bindings: FastAPIHostBindings) -> Callab
                 usuario=usuario,
             )
 
+    # FastAPI reconhece Request pela anotação no momento de add_api_route.
+    # O tipo vem explicitamente do runtime host para não adicionar dependência ao motor.
+    handler.__annotations__["request"] = bindings.request_type
     handler.__name__ = f"estoque360_{acao.replace('-', '_')}"
     handler.__doc__ = f"Endpoint aditivo Estoque 360: {acao}."
     return handler
