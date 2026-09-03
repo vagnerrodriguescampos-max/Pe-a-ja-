@@ -26,6 +26,22 @@ from .estoque_filtros import opcoes_filtros
 _RE_LOJA = re.compile(r"\bR\s*0*(\d{1,4})\b", re.IGNORECASE)
 
 
+def _inteiro_limitado(valor: Any, padrao: int, minimo: int, maximo: int) -> int:
+    try:
+        numero = int(valor)
+    except (TypeError, ValueError, OverflowError):
+        numero = padrao
+    return max(minimo, min(numero, maximo))
+
+
+def _float_limitado(valor: Any, padrao: float, minimo: float, maximo: float) -> float:
+    try:
+        numero = float(valor)
+    except (TypeError, ValueError, OverflowError):
+        numero = padrao
+    return max(minimo, min(numero, maximo))
+
+
 def normalizar_codigo_loja(valor: Any) -> str | None:
     """Converte IDs legados do shell para a chave Rxxx usada no estoque.
 
@@ -106,7 +122,7 @@ def endpoint_ruptura(con: Any, corpo: dict | None, usuario: dict[str, Any]) -> d
         return base
     corpo = corpo or {}
     dimensao = str(corpo.get("dimensao") or "loja")
-    limite = int(corpo.get("limite") or 50)
+    limite = _inteiro_limitado(corpo.get("limite"), 50, 1, 500)
     return {**base, "dados": ranking_ruptura(con, filtro, dimensao, limite)}
 
 
@@ -123,7 +139,7 @@ def endpoint_excesso(con: Any, corpo: dict | None, usuario: dict[str, Any]) -> d
     base = _payload_base(con, filtro)
     if base.get("sem_acesso"):
         return base
-    limite = int((corpo or {}).get("limite") or 200)
+    limite = _inteiro_limitado((corpo or {}).get("limite"), 200, 1, 2000)
     return {**base, "dados": excesso(con, filtro, limite)}
 
 
@@ -132,7 +148,7 @@ def endpoint_abastecimento(con: Any, corpo: dict | None, usuario: dict[str, Any]
     base = _payload_base(con, filtro)
     if base.get("sem_acesso"):
         return base
-    limite = int((corpo or {}).get("limite") or 200)
+    limite = _inteiro_limitado((corpo or {}).get("limite"), 200, 1, 2000)
     return {
         **base,
         "politica_abastecimento": {
@@ -159,9 +175,9 @@ def endpoint_transferencias(con: Any, corpo: dict | None, usuario: dict[str, Any
     if base.get("sem_acesso"):
         return base
     corpo = corpo or {}
-    limite = int(corpo.get("limite") or 200)
-    reserva = max(1.0, min(float(corpo.get("reserva_origem") or 30), 365.0))
-    alvo = max(1.0, min(float(corpo.get("alvo_destino") or 30), 365.0))
+    limite = _inteiro_limitado(corpo.get("limite"), 200, 1, 2000)
+    reserva = _float_limitado(corpo.get("reserva_origem"), 30.0, 1.0, 365.0)
+    alvo = _float_limitado(corpo.get("alvo_destino"), 30.0, 1.0, 365.0)
     permitir_interregional = bool(corpo.get("permitir_interregional") is True)
     return {
         **base,
@@ -187,7 +203,7 @@ def endpoint_plano_acao(con: Any, corpo: dict | None, usuario: dict[str, Any]) -
     base = _payload_base(con, filtro)
     if base.get("sem_acesso"):
         return base
-    limite = int((corpo or {}).get("limite") or 300)
+    limite = _inteiro_limitado((corpo or {}).get("limite"), 300, 1, 3000)
     dados = plano_acao_operacional(
         con,
         filtro,
