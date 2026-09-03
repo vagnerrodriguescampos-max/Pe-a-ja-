@@ -1,0 +1,3 @@
+# Dependência específica do importador Estoque 360.
+# Deve ser incorporada ao requirements real do backend na integração final.
+python-calamine==0.8.2
