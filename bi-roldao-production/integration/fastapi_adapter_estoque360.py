@@ -73,8 +73,14 @@ async def _talvez_await(valor: Any) -> Any:
 def _conexao_contexto(valor: Any) -> Iterator[Any]:
     """Aceita conexão direta ou context manager fornecido pelo host.
 
-    Conexão direta NÃO é fechada aqui, pois pertence ao ciclo de vida do host.
+    Uma conexão direta (objeto que expõe ``execute``) pertence ao ciclo de vida do
+    host e NÃO é fechada aqui, mesmo que a biblioteca também implemente
+    ``__enter__/__exit__`` — como ocorre com DuckDB. Apenas wrappers de context
+    manager sem interface de conexão são abertos/fechados pelo adaptador.
     """
+    if callable(getattr(valor, "execute", None)):
+        yield valor
+        return
     if hasattr(valor, "__enter__") and hasattr(valor, "__exit__"):
         with valor as con:
             yield con
