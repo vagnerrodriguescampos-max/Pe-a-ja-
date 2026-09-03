@@ -1,0 +1,24 @@
+name: Estoque 360 Export Wheels
+
+on:
+  push:
+    branches: [estoque-360-shell-safe]
+    paths:
+      - '.github/workflows/estoque360-export-wheels.yml'
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Baixar wheels aprovados
+        run: |
+          mkdir -p wheels
+          python -m pip download --only-binary=:all: --dest wheels duckdb==1.5.5 python-calamine==0.8.2
+      - uses: actions/upload-artifact@v4
+        with:
+          name: e360-local-wheels
+          path: wheels/*.whl
+          retention-days: 1
