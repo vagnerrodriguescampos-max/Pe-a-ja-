@@ -71,7 +71,7 @@ def test_filtros_exclusivos_so_sao_montados_no_estoque_e_removidos_ao_sair():
 def test_listener_filterbar_e_removido_com_mesma_semantica_de_capture():
     js = _texto(BOOT)
     assert 'filterbar.addEventListener("change", onChange);' in js
-    assert 'filterbar.removeEventListener("change", onChange);' in js
+    assert 'filterbar.removeEventListener("change", onChange)' in js
     assert 'filterbar.removeEventListener("change", onChange, true)' not in js
 
 
