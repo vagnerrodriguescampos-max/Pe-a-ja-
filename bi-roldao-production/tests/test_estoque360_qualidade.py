@@ -12,6 +12,7 @@ sys.path.insert(0, str(ROOT))
 from backend.estoque_api import executar_endpoint
 from backend.estoque_contratos import TIPO_ESTOQUE, TIPO_RUPTURA
 from backend.estoque_etl import promover_posicao
+from backend.estoque_ia import executar_ferramenta_estoque_360, instrucoes_estoque_360
 from backend.estoque_qualidade import qualidade_posicao
 
 D30 = date(2026, 8, 30)
@@ -149,3 +150,29 @@ def test_resumo_expoe_qualidade_para_cockpit_e_ia():
         assert resp["dados"]["data_posicao"] == D31
     finally:
         con.close()
+
+
+def test_toda_ferramenta_ia_recebe_qualidade_da_posicao():
+    con = duckdb.connect(":memory:")
+    try:
+        _carga(con, TIPO_ESTOQUE, D31, "e31-ia")
+        _carga(con, TIPO_RUPTURA, D31, "r31-ia")
+        resp = executar_ferramenta_estoque_360(
+            "estoque_ruptura",
+            con,
+            {"dimensao": "loja"},
+            _admin(),
+            {"modulo": "ESTOQUE_360", "subaba": "ruptura", "data_posicao": "2026-08-31", "filtros": {}},
+        )
+        assert resp["qualidade_posicao"]["nivel"] == "VERDE"
+        assert resp["ferramenta"] == "estoque_ruptura"
+    finally:
+        con.close()
+
+
+def test_prompt_ia_obriga_tratamento_de_amarelo_e_vermelho():
+    texto = instrucoes_estoque_360()
+    assert "qualidade_posicao" in texto
+    assert "nivel=AMARELO" in texto
+    assert "nivel=VERMELHO" in texto
+    assert "não trate indicadores combinados" in texto
