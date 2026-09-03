@@ -2,13 +2,15 @@
 
 A IA nunca consulta as planilhas brutas diretamente. Todas as respostas passam pela
 mesma camada de API/queries usada pelo frontend e, portanto, herdam data de posição,
-filtros e escopo de lojas do usuário.
+filtros, escopo de lojas e saúde da carga.
 """
 from __future__ import annotations
 
+from datetime import date
 from typing import Any
 
 from .estoque_api import executar_endpoint
+from .estoque_qualidade import qualidade_posicao
 
 
 _FILTROS_COMUNS = {
@@ -36,11 +38,11 @@ def _props(*extras: tuple[str, dict[str, Any]]) -> dict[str, Any]:
 
 
 FERRAMENTAS_ESTOQUE_360 = [
-    {"name": "estoque_resumo", "description": "Resume a posição de estoque com valor disponível, DDV atual e projetado, ruptura, ruptura com/sem pedido, carteira, estoque sem venda e capital excedente.", "parameters": {"type": "object", "properties": _props(("ddv_alvo", {"type": "number"})), "additionalProperties": False}},
+    {"name": "estoque_resumo", "description": "Resume a posição com saúde da carga, valor disponível, DDV atual/projetado, ruptura, compra sugerida, potencial de transferência, prioridades, carteira, estoque sem venda e capital excedente.", "parameters": {"type": "object", "properties": _props(("ddv_alvo", {"type": "number"})), "additionalProperties": False}},
     {"name": "estoque_ruptura", "description": "Analisa ruptura por loja, categoria, fornecedor, comprador, seção, departamento ou curva ABC, separando ruptura com pedido e sem pedido.", "parameters": {"type": "object", "properties": _props(("dimensao", {"type": "string", "enum": ["loja", "departamento", "secao", "categoria", "fornecedor", "comprador", "curva_abc"]}), ("limite", {"type": "integer", "minimum": 1, "maximum": 500})), "additionalProperties": False}},
     {"name": "estoque_cobertura", "description": "Distribui o estoque nas faixas de DDV/cobertura, incluindo sem venda e acima de 90 dias.", "parameters": {"type": "object", "properties": _props(), "additionalProperties": False}},
     {"name": "estoque_excesso", "description": "Lista SKUs com cobertura acima do alvo e estima quantidade e capital excedente. Use para perguntas sobre estoque alto, capital parado e redução de compras.", "parameters": {"type": "object", "properties": _props(("ddv_alvo", {"type": "number", "minimum": 1, "maximum": 365}), ("limite", {"type": "integer", "minimum": 1, "maximum": 2000})), "additionalProperties": False}},
-    {"name": "estoque_abastecimento", "description": "Lista necessidades sugeridas de abastecimento considerando venda média, estoque disponível, trânsito, pedido pendente e carteira. Não gera pedido de compra.", "parameters": {"type": "object", "properties": _props(("ddv_alvo", {"type": "number", "minimum": 1, "maximum": 365}), ("limite", {"type": "integer", "minimum": 1, "maximum": 2000})), "additionalProperties": False}},
+    {"name": "estoque_abastecimento", "description": "Lista necessidades sugeridas de abastecimento considerando estoque, trânsito, pedido pendente, carteira e possibilidade de transferência antes da compra. Não gera pedido de compra.", "parameters": {"type": "object", "properties": _props(("ddv_alvo", {"type": "number", "minimum": 1, "maximum": 365}), ("limite", {"type": "integer", "minimum": 1, "maximum": 2000})), "additionalProperties": False}},
     {
         "name": "estoque_transferencias",
         "description": (
@@ -59,7 +61,7 @@ FERRAMENTAS_ESTOQUE_360 = [
             "additionalProperties": False,
         },
     },
-    {"name": "estoque_plano_acao", "description": "Gera a fila de ação operacional do estoque, ordenada por prioridade: ruptura sem pedido, ruptura com pedido, baixa cobertura, excesso e estoque sem venda.", "parameters": {"type": "object", "properties": _props(("limite", {"type": "integer", "minimum": 1, "maximum": 3000})), "additionalProperties": False}},
+    {"name": "estoque_plano_acao", "description": "Gera a fila operacional unificada com prioridades e decisões de aguardar, transferir, transferir+comprar, comprar, reduzir compra/transferir e revisar sortimento.", "parameters": {"type": "object", "properties": _props(("limite", {"type": "integer", "minimum": 1, "maximum": 3000})), "additionalProperties": False}},
 ]
 
 
@@ -92,12 +94,28 @@ def combinar_argumentos_contexto(argumentos: dict[str, Any] | None, contexto: di
     return base
 
 
+def _data_resposta(valor: Any) -> date | None:
+    if isinstance(valor, date):
+        return valor
+    if isinstance(valor, str) and valor:
+        try:
+            return date.fromisoformat(valor[:10])
+        except ValueError:
+            return None
+    return None
+
+
 def executar_ferramenta_estoque_360(nome: str, con: Any, argumentos: dict[str, Any] | None, usuario: dict[str, Any], contexto: dict[str, Any] | None = None) -> dict[str, Any]:
     endpoint = _MAPA_ENDPOINTS.get(nome)
     if not endpoint:
         raise ValueError(f"Ferramenta do Estoque 360 desconhecida: {nome}")
     corpo = combinar_argumentos_contexto(argumentos, contexto)
     resposta = executar_endpoint(endpoint, con, corpo, usuario)
+    if "qualidade_posicao" not in resposta:
+        resposta["qualidade_posicao"] = qualidade_posicao(
+            con,
+            _data_resposta(resposta.get("data_posicao")),
+        )
     resposta["ferramenta"] = nome
     resposta["contexto_aplicado"] = {"modulo": (contexto or {}).get("modulo"), "subaba": (contexto or {}).get("subaba")}
     return resposta
@@ -108,6 +126,9 @@ def instrucoes_estoque_360() -> str:
         "Quando a pergunta envolver estoque, ruptura, DDV/DDE, cobertura, carteira, pedido pendente, "
         "abastecimento, excesso, estoque sem venda, Top 300, NBO, tabloide ou transferência entre lojas, "
         "use as ferramentas estoque_* antes de responder. Nunca estime números de estoque sem ferramenta. "
+        "Inspecione sempre qualidade_posicao na resposta da ferramenta. Se nivel=AMARELO, informe ao usuário "
+        "qual é a posição operacional utilizada e a ressalva de carga. Se nivel=VERMELHO, não trate indicadores "
+        "combinados de Estoque e Ruptura como uma posição válida; explique que as bases precisam ser alinhadas. "
         "Diferencie DDV atual de DDV projetado; o projetado incorpora estoque, trânsito, pedido pendente e carteira. "
         "Transferências devem preservar a reserva da origem e considerar o abastecimento já previsto no destino. "
         "Não permita análise inter-regional salvo pedido explícito do usuário. Sugestões são recomendações analíticas, "
