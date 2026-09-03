@@ -8,8 +8,6 @@ from __future__ import annotations
 from datetime import date
 from typing import Any
 
-from .estoque_queries import resolver_data_posicao
-
 TIPOS = ("ESTOQUE", "RUPTURA")
 
 
@@ -32,6 +30,17 @@ def _ultima_importacao(con: Any, tipo: str, *, somente_sucesso: bool) -> dict[st
         ORDER BY COALESCE(concluido_em, criado_em) DESC, criado_em DESC
         LIMIT 1
     """, [tipo]))
+
+
+def _ultima_posicao_comum(con: Any) -> date | None:
+    row = con.execute("""
+        SELECT MAX(e.data_posicao)
+        FROM estoque_diario e
+        WHERE EXISTS (
+            SELECT 1 FROM ruptura_diaria r WHERE r.data_posicao=e.data_posicao
+        )
+    """).fetchone()
+    return row[0] if row and row[0] else None
 
 
 def _serializar_importacao(item: dict[str, Any] | None) -> dict[str, Any] | None:
@@ -60,7 +69,8 @@ def qualidade_posicao(con: Any, data_solicitada: date | None = None) -> dict[str
 
     data_estoque = sucessos["ESTOQUE"].get("data_posicao") if sucessos["ESTOQUE"] else None
     data_ruptura = sucessos["RUPTURA"].get("data_posicao") if sucessos["RUPTURA"] else None
-    data_operacional = resolver_data_posicao(con, data_solicitada)
+    data_comum = _ultima_posicao_comum(con)
+    data_operacional = data_solicitada or data_comum
 
     linhas_posicao_estoque = 0
     linhas_posicao_ruptura = 0
@@ -109,17 +119,25 @@ def qualidade_posicao(con: Any, data_solicitada: date | None = None) -> dict[str
         alertas.append(
             f"Datas desalinhadas: Estoque {data_estoque.isoformat()} x Ruptura {data_ruptura.isoformat()}."
         )
-    if data_operacional and not posicao_completa:
-        alertas.append("A posição operacional selecionada não possui as duas bases promovidas.")
+    if data_solicitada and not posicao_completa:
+        alertas.append("A posição selecionada não possui as duas bases promovidas.")
+    if not data_solicitada and ambas_com_sucesso and not data_comum:
+        alertas.append("Não existe nenhuma data com Estoque e Ruptura promovidos em conjunto.")
 
-    if not ambas_com_sucesso or (data_operacional and not posicao_completa):
+    sem_posicao_util = bool(
+        not ambas_com_sucesso
+        or (data_solicitada is not None and not posicao_completa)
+        or (data_solicitada is None and data_comum is None)
+    )
+
+    if sem_posicao_util:
         nivel = "VERMELHO"
         status = "CRITICO"
-        mensagem = "Posição incompleta: Estoque 360 não possui as duas bases válidas para a posição."
+        mensagem = "Posição incompleta: Estoque 360 não possui as duas bases válidas em uma mesma data utilizável."
     elif not datas_alinhadas or falha_recente or processando:
         nivel = "AMARELO"
         status = "ATENCAO"
-        mensagem = "Posição utilizável, mas há desalinhamento ou ocorrência de carga que exige atenção."
+        mensagem = "Há uma posição completa utilizável, mas as cargas mais recentes exigem atenção."
     else:
         nivel = "VERDE"
         status = "SAUDAVEL"
@@ -137,6 +155,7 @@ def qualidade_posicao(con: Any, data_solicitada: date | None = None) -> dict[str
         "status": status,
         "mensagem": mensagem,
         "data_operacional": data_operacional,
+        "data_comum_mais_recente": data_comum,
         "data_estoque": data_estoque,
         "data_ruptura": data_ruptura,
         "datas_alinhadas": datas_alinhadas,
