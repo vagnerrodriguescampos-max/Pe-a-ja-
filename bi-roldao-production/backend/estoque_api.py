@@ -5,6 +5,7 @@ para estas funções sem duplicar filtros, regras ou escopo.
 """
 from __future__ import annotations
 
+from datetime import date
 import re
 from typing import Any, Callable
 
@@ -73,6 +74,16 @@ def _normalizar_lojas_corpo(corpo: dict | None) -> dict:
         saida["lojas"] = [x for x in (normalizar_codigo_loja(v) for v in valores or []) if x]
     elif "loja" in saida and saida.get("loja") not in (None, ""):
         saida["loja"] = normalizar_codigo_loja(saida.get("loja"))
+
+    saida["ddv_alvo"] = _float_limitado(saida.get("ddv_alvo"), 45.0, 1.0, 365.0)
+    data_val = saida.get("data_posicao")
+    if isinstance(data_val, str) and data_val:
+        try:
+            date.fromisoformat(data_val[:10])
+        except ValueError:
+            saida.pop("data_posicao", None)
+    elif data_val not in (None, "") and not isinstance(data_val, date):
+        saida.pop("data_posicao", None)
     return saida
 
 
