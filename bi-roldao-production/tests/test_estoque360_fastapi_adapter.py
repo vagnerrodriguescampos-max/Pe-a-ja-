@@ -131,7 +131,12 @@ def test_ia_e_aditiva_e_nao_intercepta_tool_legada(monkeypatch):
     legado = [{"name": "kpis", "description": "legado"}]
     catalogo = hook_catalogo_ia_estoque360(legado)
     assert any(x.get("name") == "kpis" for x in catalogo)
-    assert len([x for x in catalogo if str(x.get("name", "")).startswith("estoque_")]) == 7
+    nomes_estoque = {
+        str((x.get("function") or {}).get("name") or x.get("name") or "")
+        for x in catalogo
+        if isinstance(x, dict)
+    }
+    assert len([nome for nome in nomes_estoque if nome.startswith("estoque_")]) == 7
 
     tratado, resultado = hook_execucao_ia_estoque360(
         "ranking", {}, con=object(), usuario={"escopo": {"irrestrito": True}}
