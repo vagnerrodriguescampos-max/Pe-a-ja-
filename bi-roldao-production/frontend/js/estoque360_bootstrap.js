@@ -5,11 +5,14 @@ const NAV_SELECTOR = '[data-page="canais"]';
 const VIEW_SELECTOR = "#view";
 const STYLE_ID = "estoque360-style";
 const STYLE_HREF = "/css/estoque360.css";
+const EXTRA_ATTR = "data-e360-extra-filter";
 
 let appEstoque = null;
 let navEstoque = null;
 let iniciou = false;
 let removers = [];
+let opcoesEstoque = {};
+let autoPosicaoAplicada = false;
 
 function garantirCss() {
   if (document.getElementById(STYLE_ID)) return;
@@ -59,20 +62,171 @@ function textoSelect(id) {
   return txt && !/^(todas|todos)$/i.test(txt) ? txt : null;
 }
 
+function codigoLojaSelect() {
+  const valor = valorSelect("fLoja");
+  const texto = textoSelect("fLoja");
+  if (!valor && !texto) return null;
+
+  for (const candidato of [valor, texto]) {
+    const match = String(candidato || "").match(/\bR\d{3,4}\b/i);
+    if (match) return match[0].toUpperCase();
+  }
+
+  // O shell histórico usa IDs numéricos (ex.: 46=Salto). O Estoque usa R046.
+  if (/^\d{1,4}$/.test(String(valor || ""))) {
+    const n = String(Number(valor));
+    return `R${n.padStart(3, "0")}`;
+  }
+
+  // Fallback tolerante para shells que usem o próprio nome como valor.
+  return texto || valor;
+}
+
+function valorExtra(id) {
+  const valor = valorSelect(id);
+  return valor || null;
+}
+
 function filtrosAtuais() {
   if (typeof window.getEstoque360Filtros === "function") {
     const custom = window.getEstoque360Filtros();
     return custom && typeof custom === "object" ? custom : {};
   }
 
-  const regional = valorSelect("fReg");
-  const loja = textoSelect("fLoja");
-  const categoria = valorSelect("fCat");
   const filtros = {};
-  if (regional) filtros.regional = regional;
-  if (loja) filtros.loja = loja;
-  if (categoria) filtros.categoria = categoria;
+  const pares = [
+    ["regional", valorSelect("fReg")],
+    ["loja", codigoLojaSelect()],
+    ["categoria", valorSelect("fCat")],
+    ["data_posicao", valorExtra("e360DataPosicao")],
+    ["departamento", valorExtra("e360Departamento")],
+    ["fornecedor", valorExtra("e360Fornecedor")],
+    ["comprador", valorExtra("e360Comprador")],
+    ["curva_abc", valorExtra("e360CurvaABC")],
+    ["top_300", valorExtra("e360Top300")],
+    ["nbo", valorExtra("e360NBO")],
+    ["tabloide", valorExtra("e360Tabloide")],
+    ["status_estoque", valorExtra("e360Status")],
+  ];
+  pares.forEach(([chave, valor]) => { if (valor !== null && valor !== "") filtros[chave] = valor; });
   return filtros;
+}
+
+function criarFiltro(id, label, options = []) {
+  const box = document.createElement("div");
+  box.className = "fltr";
+  box.setAttribute(EXTRA_ATTR, "1");
+  const lbl = document.createElement("label");
+  lbl.htmlFor = id;
+  lbl.textContent = label;
+  const select = document.createElement("select");
+  select.id = id;
+  box.append(lbl, select);
+  preencherSelect(select, options, null);
+  return box;
+}
+
+function labelData(iso) {
+  const m = String(iso || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : String(iso || "");
+}
+
+function preencherSelect(select, valores, atual, labeler = x => x) {
+  if (!select) return;
+  const anterior = atual ?? select.value ?? "";
+  select.innerHTML = "";
+  const todos = document.createElement("option");
+  todos.value = "";
+  todos.textContent = "Todos";
+  select.appendChild(todos);
+  (valores || []).forEach(valor => {
+    if (valor === null || valor === undefined || String(valor).trim() === "") return;
+    const option = document.createElement("option");
+    option.value = String(valor);
+    option.textContent = String(labeler(valor));
+    select.appendChild(option);
+  });
+  if ([...select.options].some(o => o.value === String(anterior))) select.value = String(anterior);
+}
+
+function montarFiltrosExtras() {
+  const filterbar = document.getElementById("filterbar");
+  if (!filterbar || filterbar.querySelector(`[${EXTRA_ATTR}]`)) return;
+  const ancora = filterbar.querySelector(".filter-spacer") || document.getElementById("btnClear") || null;
+  const defs = [
+    ["e360DataPosicao", "Posição estoque"],
+    ["e360Departamento", "Departamento"],
+    ["e360Fornecedor", "Fornecedor"],
+    ["e360Comprador", "Comprador"],
+    ["e360CurvaABC", "Curva ABC"],
+    ["e360Top300", "Top 300", [["true", "Sim"], ["false", "Não"]]],
+    ["e360NBO", "NBO", [["true", "Sim"], ["false", "Não"]]],
+    ["e360Tabloide", "Tabloide", [["true", "Sim"], ["false", "Não"]]],
+    ["e360Status", "Status estoque"],
+  ];
+  defs.forEach(([id, label, fixas]) => {
+    const box = criarFiltro(id, label);
+    if (fixas) {
+      const select = box.querySelector("select");
+      select.innerHTML = '<option value="">Todos</option>';
+      fixas.forEach(([value, texto]) => {
+        const o = document.createElement("option");
+        o.value = value; o.textContent = texto; select.appendChild(o);
+      });
+    }
+    filterbar.insertBefore(box, ancora);
+  });
+}
+
+function removerFiltrosExtras() {
+  document.querySelectorAll(`[${EXTRA_ATTR}]`).forEach(el => el.remove());
+  opcoesEstoque = {};
+  autoPosicaoAplicada = false;
+}
+
+function aplicarMesNaPosicao() {
+  const mes = valorSelect("fMes");
+  const select = document.getElementById("e360DataPosicao");
+  if (!mes || !select) return false;
+  const encontrada = [...select.options].find(o => o.value && o.value.startsWith(`${mes}-`));
+  if (!encontrada || select.value === encontrada.value) return false;
+  select.value = encontrada.value;
+  return true;
+}
+
+function aplicarOpcoesFiltros(opcoes = {}) {
+  opcoesEstoque = opcoes || {};
+  preencherSelect(document.getElementById("e360DataPosicao"), opcoes.posicoes, valorExtra("e360DataPosicao"), labelData);
+  preencherSelect(document.getElementById("e360Departamento"), opcoes.departamentos, valorExtra("e360Departamento"));
+  preencherSelect(document.getElementById("e360Fornecedor"), opcoes.fornecedores, valorExtra("e360Fornecedor"));
+  preencherSelect(document.getElementById("e360Comprador"), opcoes.compradores, valorExtra("e360Comprador"));
+  preencherSelect(document.getElementById("e360CurvaABC"), opcoes.curvas_abc, valorExtra("e360CurvaABC"));
+  preencherSelect(document.getElementById("e360Status"), opcoes.status_estoque, valorExtra("e360Status"));
+
+  if (!autoPosicaoAplicada && !valorExtra("e360DataPosicao")) {
+    autoPosicaoAplicada = true;
+    return aplicarMesNaPosicao();
+  }
+  return false;
+}
+
+async function postEstoque360(url, body, signal) {
+  const resp = await fetch(url, {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body || {}),
+    signal,
+  });
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+  const data = await resp.json();
+  if (String(url).endsWith("/api/estoque/resumo")) {
+    const mudouPosicao = aplicarOpcoesFiltros(data?.filtros_disponiveis || {});
+    if (mudouPosicao) {
+      setTimeout(() => appEstoque?.setGlobalFilters(filtrosAtuais()), 0);
+    }
+  }
+  return data;
 }
 
 function marcarAtivo() {
@@ -94,6 +248,7 @@ function montarView() {
     appEstoque = null;
   }
 
+  montarFiltrosExtras();
   view.innerHTML = `
     <div>
       <div class="view-head">
@@ -107,12 +262,11 @@ function montarView() {
     </div>`;
 
   const root = document.getElementById("estoque360-root");
-  appEstoque = mountEstoque360(root, { onContextChange: contextoParaIA });
+  appEstoque = mountEstoque360(root, { onContextChange: contextoParaIA, post: postEstoque360 });
   return appEstoque.start(filtrosAtuais());
 }
 
 function abrirEstoque(event) {
-  // Impede apenas o roteador antigo de tentar interpretar uma página que ele ainda não conhece.
   event?.preventDefault();
   event?.stopPropagation();
   event?.stopImmediatePropagation?.();
@@ -124,9 +278,11 @@ function abrirEstoque(event) {
 }
 
 function sairDoEstoque() {
-  if (!appEstoque) return;
-  try { appEstoque.destroy(); } catch (_) {}
-  appEstoque = null;
+  if (appEstoque) {
+    try { appEstoque.destroy(); } catch (_) {}
+    appEstoque = null;
+  }
+  removerFiltrosExtras();
   navEstoque?.classList.remove("active");
   delete window.__BI_CONTEXTO_ESTOQUE360__;
 }
@@ -145,11 +301,18 @@ function observarNavegacao() {
   removers.push(() => nav.removeEventListener("click", onNavCapture, true));
 }
 
+function limparFiltrosExtras() {
+  document.querySelectorAll(`[${EXTRA_ATTR}] select`).forEach(el => { el.value = ""; });
+  autoPosicaoAplicada = false;
+}
+
 function observarFiltros() {
   const filterbar = document.getElementById("filterbar");
   if (filterbar) {
-    const onChange = () => {
-      if (appEstoque) appEstoque.setGlobalFilters(filtrosAtuais());
+    const onChange = event => {
+      if (!appEstoque) return;
+      if (event?.target?.id === "fMes") aplicarMesNaPosicao();
+      appEstoque.setGlobalFilters(filtrosAtuais());
     };
     filterbar.addEventListener("change", onChange);
     removers.push(() => filterbar.removeEventListener("change", onChange));
@@ -159,6 +322,7 @@ function observarFiltros() {
   if (clear) {
     const onClear = () => {
       if (!appEstoque) return;
+      limparFiltrosExtras();
       setTimeout(() => appEstoque?.setGlobalFilters(filtrosAtuais()), 0);
     };
     clear.addEventListener("click", onClear);
@@ -188,7 +352,6 @@ export function removerIntegracaoEstoque360() {
 function autoStart() {
   try { integrarEstoque360(); }
   catch (_) {
-    // O shell pode ainda estar sendo montado; uma única tentativa posterior é suficiente.
     window.addEventListener("load", () => {
       try { integrarEstoque360(); } catch (err) { console.error("Estoque 360:", err); }
     }, { once: true });
