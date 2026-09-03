@@ -49,7 +49,7 @@ def test_rejeita_runtime_sem_arquivos_centrais_reais(tmp_path):
     root = _runtime_python(tmp_path)
     (root / "backend" / "ia.py").unlink()
 
-    with pytest.raises(RuntimeIncompativel, match="arquivos centrais"):
+    with pytest.raises(RuntimeIncompativel, match="[Aa]rquivos centrais"):
         validar_runtime_python(root)
 
 
