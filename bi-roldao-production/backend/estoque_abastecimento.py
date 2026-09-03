@@ -6,6 +6,8 @@ A necessidade é classificada em três camadas, nesta ordem:
 3. compra residual do fornecedor.
 
 A compra é sempre recomendação analítica. Este módulo não emite pedido.
+O CTE central é reutilizado pelo detalhamento e pelos KPIs executivos para evitar
+fórmulas paralelas.
 """
 from __future__ import annotations
 
@@ -16,23 +18,13 @@ from .estoque_queries import FiltroEstoque, _rows, resolver_data_posicao
 from .estoque_transferencias import _where_transferencia
 
 
-def abastecimento_compra(
-    con: Any,
+def cte_decisao_abastecimento(
     f: FiltroEstoque,
     *,
+    data_posicao: Any,
     escopo_origem: list[str] | None,
-    limite: int = 200,
-) -> list[dict]:
-    """Classifica a necessidade por loja/SKU sem recomendar compra desnecessária.
-
-    `f.lojas` representa o(s) destino(s) filtrado(s) na tela. `escopo_origem`
-    representa todas as lojas que o usuário pode usar como universo de doadores.
-    Para usuário irrestrito, escopo_origem=None significa toda a rede.
-    """
-    data = resolver_data_posicao(con, f.data_posicao)
-    if not data or f.sem_acesso:
-        return []
-
+) -> tuple[str, list[Any]]:
+    """Retorna o CTE canônico e seus parâmetros, sem SELECT final nem LIMIT."""
     if escopo_origem is None:
         f_origem = replace(f, lojas=(), status_estoque=None)
     else:
@@ -43,16 +35,14 @@ def abastecimento_compra(
         )
 
     where_d, p_d = _where_transferencia(
-        f, data, alias="v", regional_expr="COALESCE(v.regional, lrd.regional)"
+        f, data_posicao, alias="v", regional_expr="COALESCE(v.regional, lrd.regional)"
     )
     where_o, p_o = _where_transferencia(
-        f_origem, data, alias="v", regional_expr="COALESCE(v.regional, lro.regional)"
+        f_origem, data_posicao, alias="v", regional_expr="COALESCE(v.regional, lro.regional)"
     )
 
     alvo = max(1.0, min(float(f.ddv_alvo), 365.0))
-    limit = max(1, min(int(limite), 2000))
-
-    sql = f"""
+    cte = f"""
       WITH loja_regional AS (
         SELECT loja, MAX(regional) FILTER (WHERE regional IS NOT NULL AND TRIM(regional)<>'') regional
         FROM ruptura_diaria
@@ -160,7 +150,86 @@ def abastecimento_compra(
             WHEN COALESCE(venda_31d_qtd,0)>0 THEN cmv_31d/venda_31d_qtd
           END custo_unit_estimado
         FROM alocado
+      ),
+      decidido AS (
+        SELECT
+          *,
+          CASE
+            WHEN item_ativo IS FALSE THEN 0
+            WHEN compra_base_qtd<=0 THEN 0
+            WHEN COALESCE(pack,0)>0 THEN CEIL(compra_base_qtd/pack)*pack
+            ELSE compra_base_qtd
+          END compra_sugerida_qtd,
+          CASE
+            WHEN item_ativo IS FALSE THEN 0
+            WHEN compra_base_qtd<=0 THEN 0
+            WHEN COALESCE(custo_unit_estimado,0)>0 THEN
+              (CASE WHEN COALESCE(pack,0)>0 THEN CEIL(compra_base_qtd/pack)*pack ELSE compra_base_qtd END)
+              * custo_unit_estimado
+            ELSE NULL
+          END compra_valor_estimado,
+          CASE
+            WHEN item_ativo IS FALSE THEN 0
+            WHEN transferencia_interna_qtd>0 AND COALESCE(custo_unit_estimado,0)>0
+              THEN transferencia_interna_qtd*custo_unit_estimado
+            ELSE 0
+          END transferencia_valor_estimado,
+          CASE
+            WHEN item_ativo IS FALSE THEN 'REVISAR_SORTIMENTO'
+            WHEN necessidade_bruta_qtd>0 AND necessidade_liquida_qtd<=0 THEN 'AGUARDAR_ABASTECIMENTO'
+            WHEN necessidade_liquida_qtd>0 AND transferencia_interna_qtd>=necessidade_liquida_qtd THEN 'TRANSFERIR'
+            WHEN transferencia_interna_qtd>0 AND compra_base_qtd>0 THEN 'TRANSFERIR_E_COMPRAR'
+            WHEN compra_base_qtd>0 THEN 'COMPRAR'
+            ELSE 'SEM_ACAO'
+          END acao_recomendada,
+          CASE
+            WHEN item_ativo IS FALSE THEN 'ITEM_INATIVO'
+            WHEN necessidade_bruta_qtd>0 AND necessidade_liquida_qtd<=0 THEN 'ABASTECIMENTO_PREVISTO_COBRE_ALVO'
+            WHEN necessidade_liquida_qtd>0 AND transferencia_interna_qtd>=necessidade_liquida_qtd THEN 'EXCESSO_INTERNO_COBRE_ALVO'
+            WHEN transferencia_interna_qtd>0 AND compra_base_qtd>0 THEN 'REDE_COBRE_PARCIALMENTE'
+            WHEN compra_base_qtd>0 THEN 'DEFICIT_APOS_ESTOQUE_REDE'
+            ELSE 'COBERTURA_SUFICIENTE'
+          END motivo
+        FROM calculado
+      ),
+      decisao AS (
+        SELECT
+          *,
+          CASE
+            WHEN COALESCE(item_ativo,FALSE) AND COALESCE(ruptura,FALSE)
+              AND COALESCE(pedido_aberto_qtd,0)<=0
+              AND acao_recomendada IN ('COMPRAR','TRANSFERIR','TRANSFERIR_E_COMPRAR') THEN 'P1'
+            WHEN COALESCE(item_ativo,FALSE) AND COALESCE(ruptura,FALSE) THEN 'P2'
+            WHEN COALESCE(ddv_projetado_31d,999)<7 THEN 'P2'
+            WHEN acao_recomendada<>'SEM_ACAO' THEN 'P3'
+            ELSE 'OK'
+          END prioridade_operacional
+        FROM decidido
       )
+    """
+    params = [data_posicao, *p_d, *p_o, alvo, alvo, alvo, alvo, alvo]
+    return cte, params
+
+
+def abastecimento_compra(
+    con: Any,
+    f: FiltroEstoque,
+    *,
+    escopo_origem: list[str] | None,
+    limite: int = 200,
+) -> list[dict]:
+    """Classifica a necessidade por loja/SKU sem recomendar compra desnecessária."""
+    data = resolver_data_posicao(con, f.data_posicao)
+    if not data or f.sem_acesso:
+        return []
+
+    cte, params = cte_decisao_abastecimento(
+        f,
+        data_posicao=data,
+        escopo_origem=escopo_origem,
+    )
+    limit = max(1, min(int(limite), 2000))
+    sql = cte + """
       SELECT
         loja, sku, descricao, regional, departamento, categoria, fornecedor, comprador,
         curva_abc, top_300, nbo, tabloide, item_ativo, ruptura,
@@ -172,37 +241,13 @@ def abastecimento_compra(
         necessidade_liquida_qtd AS necessidade_qtd,
         transferivel_rede_qtd,
         transferencia_interna_qtd,
-        CASE
-          WHEN item_ativo IS FALSE THEN 0
-          WHEN compra_base_qtd<=0 THEN 0
-          WHEN COALESCE(pack,0)>0 THEN CEIL(compra_base_qtd/pack)*pack
-          ELSE compra_base_qtd
-        END compra_sugerida_qtd,
-        CASE
-          WHEN item_ativo IS FALSE THEN 0
-          WHEN compra_base_qtd<=0 THEN 0
-          WHEN COALESCE(custo_unit_estimado,0)>0 THEN
-            (CASE WHEN COALESCE(pack,0)>0 THEN CEIL(compra_base_qtd/pack)*pack ELSE compra_base_qtd END)
-            * custo_unit_estimado
-          ELSE NULL
-        END compra_valor_estimado,
-        CASE
-          WHEN item_ativo IS FALSE THEN 'REVISAR_SORTIMENTO'
-          WHEN necessidade_bruta_qtd>0 AND necessidade_liquida_qtd<=0 THEN 'AGUARDAR_ABASTECIMENTO'
-          WHEN necessidade_liquida_qtd>0 AND transferencia_interna_qtd>=necessidade_liquida_qtd THEN 'TRANSFERIR'
-          WHEN transferencia_interna_qtd>0 AND compra_base_qtd>0 THEN 'TRANSFERIR_E_COMPRAR'
-          WHEN compra_base_qtd>0 THEN 'COMPRAR'
-          ELSE 'SEM_ACAO'
-        END acao_recomendada,
-        CASE
-          WHEN item_ativo IS FALSE THEN 'ITEM_INATIVO'
-          WHEN necessidade_bruta_qtd>0 AND necessidade_liquida_qtd<=0 THEN 'ABASTECIMENTO_PREVISTO_COBRE_ALVO'
-          WHEN necessidade_liquida_qtd>0 AND transferencia_interna_qtd>=necessidade_liquida_qtd THEN 'EXCESSO_INTERNO_COBRE_ALVO'
-          WHEN transferencia_interna_qtd>0 AND compra_base_qtd>0 THEN 'REDE_COBRE_PARCIALMENTE'
-          WHEN compra_base_qtd>0 THEN 'DEFICIT_APOS_ESTOQUE_REDE'
-          ELSE 'COBERTURA_SUFICIENTE'
-        END motivo
-      FROM calculado
+        transferencia_valor_estimado,
+        compra_sugerida_qtd,
+        compra_valor_estimado,
+        acao_recomendada,
+        motivo,
+        prioridade_operacional
+      FROM decisao
       WHERE necessidade_bruta_qtd>0
       ORDER BY prioridade_ordem,
         CASE acao_recomendada
@@ -215,8 +260,4 @@ def abastecimento_compra(
         necessidade_liquida_qtd DESC
       LIMIT ?
     """
-
-    return _rows(con.execute(
-        sql,
-        [data, *p_d, *p_o, alvo, alvo, alvo, alvo, alvo, limit],
-    ))
+    return _rows(con.execute(sql, [*params, limit]))
