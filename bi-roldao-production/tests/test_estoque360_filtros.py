@@ -9,7 +9,7 @@ import duckdb
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from backend.estoque_api import executar_endpoint
+from backend.estoque_api import executar_endpoint, normalizar_codigo_loja
 from backend.estoque_contratos import TIPO_ESTOQUE, TIPO_RUPTURA
 from backend.estoque_etl import promover_posicao
 
@@ -145,5 +145,56 @@ def test_data_posicao_filtra_opcoes_na_posicao_escolhida():
         assert op["departamentos"] == ["MERCEARIA"]
         assert op["fornecedores"] == ["FORN A"]
         assert resp["data_posicao"] == POS1
+    finally:
+        con.close()
+
+
+def test_normalizacao_codigo_loja_aceita_formatos_do_shell_e_da_ruptura():
+    assert normalizar_codigo_loja(46) == "R046"
+    assert normalizar_codigo_loja("018") == "R018"
+    assert normalizar_codigo_loja("R35") == "R035"
+    assert normalizar_codigo_loja("R002 ROLDÃO FREGUESIA DO") == "R002"
+    assert normalizar_codigo_loja("R046") == "R046"
+
+
+def test_filtro_loja_numerico_do_shell_encontra_chave_rxxx():
+    con = duckdb.connect(":memory:")
+    try:
+        _carregar(con)
+        resp = executar_endpoint(
+            "resumo",
+            con,
+            {"loja": "46"},
+            {"escopo": {"irrestrito": True}},
+        )
+        assert resp["sem_acesso"] is False
+        assert resp["dados"]["itens_posicao"] == 1
+        assert resp["dados"]["estoque_qtd"] == 100
+    finally:
+        con.close()
+
+
+def test_escopo_numerico_legado_intersecta_com_filtro_rxxx():
+    con = duckdb.connect(":memory:")
+    try:
+        _carregar(con)
+        usuario = {"escopo": {"irrestrito": False, "lojas": ["46"]}}
+        resp = executar_endpoint("resumo", con, {"loja": "R046"}, usuario)
+        assert resp["sem_acesso"] is False
+        assert resp["dados"]["itens_posicao"] == 1
+        assert resp["filtros_disponiveis"]["departamentos"] == ["BAZAR"]
+    finally:
+        con.close()
+
+
+def test_escopo_com_nome_extenso_da_ruptura_vira_codigo_canonico():
+    con = duckdb.connect(":memory:")
+    try:
+        _carregar(con)
+        usuario = {"escopo": {"irrestrito": False, "lojas": ["R002 ROLDÃO FREGUESIA DO"]}}
+        resp = executar_endpoint("resumo", con, {"loja": "2"}, usuario)
+        assert resp["sem_acesso"] is False
+        assert resp["dados"]["itens_posicao"] == 1
+        assert resp["dados"]["itens_ruptura"] == 1
     finally:
         con.close()
