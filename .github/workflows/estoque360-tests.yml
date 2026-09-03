@@ -28,7 +28,9 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Instalar dependências de teste
-        run: python -m pip install --upgrade pip pytest duckdb
+      - name: Instalar dependências de teste e parser Excel
+        run: python -m pip install --upgrade pip pytest duckdb python-calamine
+      - name: Smoke test python-calamine
+        run: python -c "from python_calamine import CalamineWorkbook; assert hasattr(CalamineWorkbook, 'from_path')"
       - name: Rodar testes Estoque 360
         run: python -m pytest -q bi-roldao-production/tests/test_estoque360*.py
