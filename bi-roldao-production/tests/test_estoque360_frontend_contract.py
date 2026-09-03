@@ -27,20 +27,55 @@ def test_modulo_renderiza_somente_no_view_existente():
 
 def test_bootstrap_nao_remove_paginas_existentes():
     js = _texto(BOOT)
-    # A única remoção permitida é do próprio navEstoque no teardown explícito.
     assert 'querySelectorAll(".nav-item").forEach' not in js
     assert 'navEstoque?.remove()' in js
     assert 'canal.remove()' not in js
     assert 'view.remove()' not in js
 
 
-def test_filtros_globais_do_bi_sao_reutilizados():
+def test_filtros_globais_do_bi_sao_reutilizados_e_loja_vira_codigo_roldao():
     js = _texto(BOOT)
     assert 'valorSelect("fReg")' in js
-    assert 'textoSelect("fLoja")' in js
+    assert 'codigoLojaSelect()' in js
     assert 'valorSelect("fCat")' in js
+    assert 'valorSelect("fMes")' in js
     assert 'document.getElementById("filterbar")' in js
     assert 'document.getElementById("btnClear")' in js
+    assert 'padStart(3, "0")' in js
+    assert 'return `R${n.padStart(3, "0")}`' in js
+
+
+def test_filtros_exclusivos_so_sao_montados_no_estoque_e_removidos_ao_sair():
+    js = _texto(BOOT)
+    for filtro in (
+        "e360DataPosicao",
+        "e360Departamento",
+        "e360Fornecedor",
+        "e360Comprador",
+        "e360CurvaABC",
+        "e360Top300",
+        "e360NBO",
+        "e360Tabloide",
+        "e360Status",
+    ):
+        assert filtro in js
+    assert "montarFiltrosExtras();" in js
+    assert "removerFiltrosExtras();" in js
+    assert 'document.querySelectorAll(`[${EXTRA_ATTR}]`).forEach(el => el.remove())' in js
+
+
+def test_mes_existente_controla_ultima_posicao_disponivel_do_estoque():
+    js = _texto(BOOT)
+    assert "aplicarMesNaPosicao" in js
+    assert 'o.value.startsWith(`${mes}-`)' in js
+    assert 'event?.target?.id === "fMes"' in js
+
+
+def test_opcoes_dos_filtros_vem_do_resumo_sem_criar_nova_rota():
+    js = _texto(BOOT)
+    assert 'String(url).endsWith("/api/estoque/resumo")' in js
+    assert "filtros_disponiveis" in js
+    assert "/api/estoque/filtros" not in js
 
 
 def test_modulo_nao_cria_sidebar_ou_header_proprios():
