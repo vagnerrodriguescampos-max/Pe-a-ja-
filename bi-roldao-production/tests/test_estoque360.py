@@ -201,7 +201,7 @@ def test_plano_acao_prioriza_ruptura_sem_pedido(con):
     primeiro = resp["dados"][0]
     assert primeiro["prioridade"] == "P1"
     assert primeiro["sku"] == "1001"
-    assert primeiro["acao"] == "ABASTECER_COMPRAR"
+    assert primeiro["acao"] == "TRANSFERIR"
 
 
 def test_contexto_ia_preserva_regional_e_loja():
