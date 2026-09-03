@@ -12,12 +12,12 @@ from .estoque_queries import (
     excesso,
     faixas_cobertura,
     metadados_posicao,
-    plano_acao,
     ranking_ruptura,
     resumo,
 )
 from .estoque_abastecimento import abastecimento_compra
 from .estoque_transferencias import transferencias
+from .estoque_plano_acao import plano_acao_operacional
 
 
 def extrair_escopo_lojas(usuario: dict[str, Any]) -> list[str] | None:
@@ -135,12 +135,33 @@ def endpoint_transferencias(con: Any, corpo: dict | None, usuario: dict[str, Any
 
 
 def endpoint_plano_acao(con: Any, corpo: dict | None, usuario: dict[str, Any]) -> dict[str, Any]:
-    filtro, _ = filtro_estoque(corpo, usuario)
+    filtro, escopo = filtro_estoque(corpo, usuario)
     base = _payload_base(con, filtro)
     if base.get("sem_acesso"):
         return base
     limite = int((corpo or {}).get("limite") or 300)
-    return {**base, "dados": plano_acao(con, filtro, limite)}
+    dados = plano_acao_operacional(
+        con,
+        filtro,
+        escopo_origem=escopo,
+        limite=limite,
+    )
+    contagem_prioridade: dict[str, int] = {}
+    contagem_acao: dict[str, int] = {}
+    for item in dados:
+        p = str(item.get("prioridade") or "SEM_PRIORIDADE")
+        a = str(item.get("acao") or "SEM_ACAO")
+        contagem_prioridade[p] = contagem_prioridade.get(p, 0) + 1
+        contagem_acao[a] = contagem_acao.get(a, 0) + 1
+    return {
+        **base,
+        "resumo_plano": {
+            "total_acoes": len(dados),
+            "por_prioridade": contagem_prioridade,
+            "por_acao": contagem_acao,
+        },
+        "dados": dados,
+    }
 
 
 ENDPOINTS_ESTOQUE_360: dict[str, Callable[[Any, dict | None, dict[str, Any]], dict[str, Any]]] = {
