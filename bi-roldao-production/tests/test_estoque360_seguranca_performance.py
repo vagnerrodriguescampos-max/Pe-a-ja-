@@ -22,7 +22,6 @@ ADMIN = {"escopo": {"irrestrito": True}}
 
 def _estoque_rows(qtd: int = 4000):
     for i in range(qtd):
-        # metade com falta/baixa cobertura, metade com excesso.
         baixo = i % 2 == 0
         yield {
             "loja": f"R{18 + (i % 20):03d}",
@@ -160,7 +159,6 @@ def test_sete_endpoints_em_carga_de_4000_skus_ficam_em_teto_conservador(con_gran
         assert resposta["ok"] is True
         assert resposta["data_posicao"] == POS
     duracao = perf_counter() - inicio
-    # Não é benchmark de produção; é um detector de regressão catastrófica no runner.
     assert duracao < 10.0, f"Sete endpoints demoraram {duracao:.2f}s para 4000 SKUs"
 
 
@@ -169,11 +167,11 @@ def test_idempotencia_e_rollback_continuam_validos_sob_gate_final():
     try:
         primeira = promover_posicao(
             con, tipo=TIPO_ESTOQUE, arquivo_nome="e.xlsx", data_posicao=POS,
-            hash_arquivo="gate-hash", linhas=list(_estoque_rows(20)), tamanho_lote=7,
+            hash_arquivo="gate-hash", linhas=list(_estoque_rows(20)), tamanho_lote=100,
         )
         repetida = promover_posicao(
             con, tipo=TIPO_ESTOQUE, arquivo_nome="e.xlsx", data_posicao=POS,
-            hash_arquivo="gate-hash", linhas=list(_estoque_rows(20)), tamanho_lote=7,
+            hash_arquivo="gate-hash", linhas=list(_estoque_rows(20)), tamanho_lote=100,
         )
         assert primeira.status == "SUCESSO"
         assert repetida.status == "IGNORADO_DUPLICADO"
@@ -184,7 +182,7 @@ def test_idempotencia_e_rollback_continuam_validos_sob_gate_final():
         with pytest.raises(CargaEstoqueInvalida):
             promover_posicao(
                 con, tipo=TIPO_ESTOQUE, arquivo_nome="falha.xlsx", data_posicao=POS,
-                hash_arquivo="gate-falha", linhas=duplicadas, tamanho_lote=3,
+                hash_arquivo="gate-falha", linhas=duplicadas, tamanho_lote=100,
             )
         depois = con.execute("SELECT COUNT(*) FROM estoque_diario").fetchone()[0]
         assert depois == antes == 20
