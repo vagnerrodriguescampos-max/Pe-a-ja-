@@ -5,6 +5,7 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { NoDataGate } from '@/components/layout/NoDataGate';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/Card';
 import { TrendLineChart } from '@/components/charts/TrendLineChart';
+import { ChartSlot } from '@/components/charts/ChartSlot';
 import { KpiCard } from '@/components/kpi/KpiCard';
 import { useFilteredApi } from '@/hooks/useFilteredApi';
 import type { DailyPoint } from '@/lib/query/aggregate';
@@ -12,7 +13,6 @@ import type { ExecutiveKpis } from '@/lib/kpi/executive';
 import { moneyCard, pctCard, trendFromValue } from '@/lib/kpi/toCard';
 import { formatPercent } from '@/lib/kpi/format';
 import clsx from 'clsx';
-import { Skeleton } from '@/components/ui/Skeleton';
 
 type Granularidade = 'diario' | 'semanal' | 'mensal' | 'acumulado';
 
@@ -88,7 +88,9 @@ function Content() {
           </div>
         </CardHeader>
         <CardBody>
-          {loading || !points.length ? <Skeleton className="h-80 w-full" /> : <TrendLineChart points={points.map((p) => ({ data: p.data, venda: p.venda, vendaAnoAnterior: p.vendaAnoAnterior, orcamento: p.orcamento }))} height={340} />}
+          <ChartSlot carregando={loading} vazio={!points.length} altura={340}>
+            <TrendLineChart points={points.map((p) => ({ data: p.data, venda: p.venda, vendaAnoAnterior: p.vendaAnoAnterior, orcamento: p.orcamento }))} height={340} />
+          </ChartSlot>
         </CardBody>
       </Card>
 
