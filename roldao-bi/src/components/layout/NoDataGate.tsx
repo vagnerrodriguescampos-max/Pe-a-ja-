@@ -33,7 +33,7 @@ export function NoDataGate({ children }: { children: React.ReactNode }) {
     return (
       <EmptyState
         title="Nenhuma base importada ainda"
-        description="Importe a planilha 'INFORMATIVO DE VENDAS' do Roldão para começar a visualizar os indicadores. Nenhum dado é inventado — os painéis só são preenchidos após uma importação."
+        description="Importe a planilha de informativo de vendas para começar a visualizar os indicadores. Nenhum dado é inventado — os painéis só são preenchidos após uma importação."
         ctaHref="/importar"
         ctaLabel="Importar planilha"
       />

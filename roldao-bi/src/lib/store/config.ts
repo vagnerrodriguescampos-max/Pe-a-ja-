@@ -17,7 +17,7 @@ export const DEFAULT_CONFIG: BiConfig = {
   crescimentoRelevante: 10,
   quedaRelevante: -5,
   margemReferencia: 12,
-  usuarioLogado: 'Vagner Campos',
+  usuarioLogado: 'Administrador',
 };
 
 const CONFIG_KEY = 'config.json';
