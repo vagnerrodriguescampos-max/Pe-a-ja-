@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Table, Th, Td, Tr } from '@/components/ui/Table';
 import { useApi } from '@/hooks/useApi';
 import type { ImportRecord } from '@/lib/types';
+import type { BiConfig } from '@/lib/store/config';
 import { formatDateBR, formatNumber } from '@/lib/kpi/format';
 import { CheckCircle2, FileSpreadsheet, Loader2, UploadCloud, XCircle, AlertTriangle } from 'lucide-react';
 import clsx from 'clsx';
@@ -24,13 +25,16 @@ export default function ImportarPage() {
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const history = useApi<{ imports: ImportRecord[] }>('/api/import/history');
+  // Quem assina a importação é o usuário configurado em Configurações; antes
+  // era um nome fixo no código, que ficava errado em qualquer outra instalação.
+  const { data: configData } = useApi<{ config: BiConfig }>('/api/config');
 
   async function handleFile(file: File) {
     setUploading(true); setError(null); setResult(null);
     const form = new FormData();
     form.append('file', file);
     form.append('activate', 'true');
-    form.append('importedBy', 'Vagner Campos');
+    form.append('importedBy', configData?.config.usuarioLogado ?? 'Usuário');
     try {
       const res = await fetch('/api/import/upload', { method: 'POST', body: form });
       const json = await res.json();

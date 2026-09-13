@@ -8,6 +8,7 @@ import { useApi } from '@/hooks/useApi';
 import { formatDateBR } from '@/lib/kpi/format';
 import type { ImportRecord, DimensionOptions, GlobalFilters } from '@/lib/types';
 import type { BiConfig } from '@/lib/store/config';
+import { MARCA } from '@/lib/branding';
 
 interface MetaResponse { record: ImportRecord | null; options: DimensionOptions; config: BiConfig }
 
@@ -28,8 +29,8 @@ export function Header({ onMenu }: { onMenu: () => void }) {
           <Activity size={18} />
         </div>
         <div>
-          <p className="text-sm font-bold leading-tight tracking-wide text-base-text">ROLDÃO ATACADISTA</p>
-          <p className="text-[11px] font-medium uppercase tracking-widest text-base-muted">BI de Performance Comercial</p>
+          <p className="text-sm font-bold leading-tight tracking-wide text-base-text">{MARCA.empresa.toUpperCase()}</p>
+          <p className="text-[11px] font-medium uppercase tracking-widest text-base-muted">{MARCA.produto}</p>
         </div>
       </div>
 

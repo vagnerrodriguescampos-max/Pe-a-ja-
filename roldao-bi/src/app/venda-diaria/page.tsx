@@ -4,8 +4,8 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { NoDataGate } from '@/components/layout/NoDataGate';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/Card';
 import { TrendLineChart } from '@/components/charts/TrendLineChart';
+import { ChartSlot } from '@/components/charts/ChartSlot';
 import { HeatmapGrid, type HeatCell } from '@/components/charts/HeatmapGrid';
-import { Skeleton } from '@/components/ui/Skeleton';
 import { useFilteredApi } from '@/hooks/useFilteredApi';
 import { useApi } from '@/hooks/useApi';
 import type { DailyPoint } from '@/lib/query/aggregate';
@@ -36,7 +36,9 @@ function Content() {
       <Card>
         <CardHeader><CardTitle>Venda por Dia — Atual, Orçamento e Ano Anterior</CardTitle></CardHeader>
         <CardBody>
-          {loading || !series.length ? <Skeleton className="h-80 w-full" /> : <TrendLineChart points={series.map((p) => ({ data: p.data, venda: p.venda, vendaAnoAnterior: p.vendaAnoAnterior, orcamento: p.orcamento }))} height={320} />}
+          <ChartSlot carregando={loading} vazio={!series.length} altura={320}>
+            <TrendLineChart points={series.map((p) => ({ data: p.data, venda: p.venda, vendaAnoAnterior: p.vendaAnoAnterior, orcamento: p.orcamento }))} height={320} />
+          </ChartSlot>
         </CardBody>
       </Card>
 

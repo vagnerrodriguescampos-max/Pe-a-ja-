@@ -3,13 +3,14 @@ import { Inter, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
 import { ThemeProvider } from '@/components/theme/ThemeProvider';
 import { AppShell } from '@/components/layout/AppShell';
+import { MARCA, marcaCompleta } from '@/lib/branding';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'swap' });
 const mono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-mono', display: 'swap' });
 
 export const metadata: Metadata = {
-  title: 'Roldão Atacadista · BI de Performance Comercial',
-  description: 'Cockpit executivo de vendas do Roldão Atacadista.',
+  title: marcaCompleta(),
+  description: `Cockpit executivo de vendas — ${MARCA.empresa}.`,
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

@@ -4,8 +4,8 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { NoDataGate } from '@/components/layout/NoDataGate';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/Card';
 import { TrendLineChart } from '@/components/charts/TrendLineChart';
+import { ChartSlot } from '@/components/charts/ChartSlot';
 import { KpiCard } from '@/components/kpi/KpiCard';
-import { Skeleton } from '@/components/ui/Skeleton';
 import { useFilteredApi } from '@/hooks/useFilteredApi';
 import type { DailyPoint } from '@/lib/query/aggregate';
 import type { ExecutiveKpis } from '@/lib/kpi/executive';
@@ -57,7 +57,9 @@ function Content() {
       <Card>
         <CardHeader><CardTitle>Evolução Acumulada</CardTitle></CardHeader>
         <CardBody>
-          {loading || !data?.series.length ? <Skeleton className="h-80 w-full" /> : <TrendLineChart points={data.series.map((p) => ({ data: p.data, venda: p.venda, vendaAnoAnterior: p.vendaAnoAnterior, orcamento: p.orcamento }))} height={340} />}
+          <ChartSlot carregando={loading} vazio={!data?.series.length} altura={340}>
+            <TrendLineChart points={(data?.series ?? []).map((p) => ({ data: p.data, venda: p.venda, vendaAnoAnterior: p.vendaAnoAnterior, orcamento: p.orcamento }))} height={340} />
+          </ChartSlot>
         </CardBody>
       </Card>
     </div>

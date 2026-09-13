@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
   const form = await req.formData();
   const file = form.get('file');
   const activate = form.get('activate') !== 'false';
-  const importedBy = (form.get('importedBy') as string) || 'Usuário Roldão';
+  const importedBy = (form.get('importedBy') as string) || 'Usuário';
 
   if (!file || !(file instanceof File)) {
     return NextResponse.json({ error: 'Nenhum arquivo enviado.' }, { status: 400 });

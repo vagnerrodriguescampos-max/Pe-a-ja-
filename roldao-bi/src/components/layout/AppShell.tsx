@@ -5,6 +5,7 @@ import { X } from 'lucide-react';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { FilterBar } from '../filters/FilterBar';
+import { marcaCompleta } from '@/lib/branding';
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -35,7 +36,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <FilterBar />
         <main className="flex-1 px-4 py-5 lg:px-6 lg:py-6">{children}</main>
         <footer className="border-t border-base-border px-6 py-3 text-center text-[11px] text-base-muted">
-          Roldão Atacadista · BI de Performance Comercial — dados tratados a partir das planilhas importadas, histórico preservado.
+          {marcaCompleta()} — dados tratados a partir das planilhas importadas, histórico preservado.
         </footer>
       </div>
     </div>

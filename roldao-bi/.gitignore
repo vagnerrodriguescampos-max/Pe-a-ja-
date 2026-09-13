@@ -2,9 +2,15 @@ node_modules
 .next
 out
 .netlify
+# Armazenamento local (gerado pela importação quando o BI roda fora do Netlify)
+.data
 data/imports
 data/registry.json
 data/uploads
 *.log
 .DS_Store
 .env*.local
+# Planilha de demonstração: gerada por `npm run sample:generate`, determinística.
+# Fica fora do versionamento por ser um artefato de alguns MB que se reproduz
+# com um comando.
+sample/
