@@ -6,24 +6,34 @@ Sistema de Business Intelligence para a rede de atacarejo **Roldão Atacadista**
 
 ## Como rodar
 
-O armazenamento (histórico de importações, fatos, configurações) usa **Netlify Blobs** — para ter isso emulado localmente, rode com o Netlify CLI:
-
 ```bash
 cd roldao-bi
 npm install
-npx netlify link --id <SITE_ID>   # uma vez, para conectar ao site bi-roldao
-npx netlify dev                    # http://localhost:8888
+npm run dev                  # http://localhost:3000
 ```
 
-`npm run dev` (sem o CLI) também sobe o site, mas qualquer rota que leia/grave dados (import, KPIs, config...) falha com "environment has not been configured to use Netlify Blobs" — use `netlify dev` para ter isso funcionando localmente.
+Só isso. O armazenamento (histórico de importações, fatos, configurações) usa
+**Netlify Blobs** quando `NETLIFY_BLOBS_SITE_ID`/`NETLIFY_BLOBS_TOKEN` existem, e
+cai para **disco** (`.data/`, ou `BI_DATA_DIR`) quando não existem. Produção não
+muda; o que muda é que a máquina local não precisa mais da credencial do site de
+produção para abrir o projeto.
 
-Não há nenhuma base pré-carregada — a tela inicial pede para importar uma planilha. Para gerar uma planilha de exemplo (dados fictícios, mesma estrutura de abas do Roldão) e testar o fluxo completo sem precisar do arquivo real:
+Não há base pré-carregada — a tela inicial pede para importar uma planilha:
 
 ```bash
-npm run sample:generate     # gera sample/roldao-informativo-vendas-exemplo.xlsx
+npm run sample:generate     # gera sample/informativo-vendas-demo.xlsx
 ```
 
-Depois é só ir em **Importar Base** e enviar o arquivo gerado (ou a planilha real do Roldão).
+Depois é só ir em **Importar Base** e enviar o arquivo gerado.
+
+A planilha gerada é de uma rede **fictícia** (`PRIMA ATACADISTA LTDA`), com nomes
+de loja e números inventados, e cobre 13 meses — o mês de referência e os 12
+anteriores, para que os indicadores de comparação com o ano anterior tenham com o
+que comparar. Para uma demonstração com outro nome de rede:
+
+```bash
+DEMO_EMPRESA="ATACADO EXEMPLO LTDA" npm run sample:generate
+```
 
 ```bash
 npm run build && npm start  # build de produção
