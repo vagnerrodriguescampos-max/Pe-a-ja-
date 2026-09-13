@@ -1,4 +1,5 @@
 import { getStore } from '@netlify/blobs';
+import { caminhoDoArmazenamentoLocal, criarArmazenamentoLocal } from './localStore';
 
 /**
  * Único "store" de blobs do BI — registry de importações, configurações e
@@ -25,12 +26,18 @@ export function getBiStore() {
     console.log(
       siteID && token
         ? `[blobStore] modo manual — siteID=${siteID.slice(0, 8)}… token=${token.slice(0, 6)}…(${token.length} chars)`
-        : '[blobStore] modo automático (NETLIFY_BLOBS_SITE_ID/NETLIFY_BLOBS_TOKEN ausentes) — só funciona dentro do runtime do Netlify.'
+        : `[blobStore] sem credenciais do Netlify — usando armazenamento local em ${caminhoDoArmazenamentoLocal()}`
     );
     loggedMode = true;
   }
   if (siteID && token) {
     return getStore({ name: 'roldao-bi', siteID, token });
   }
-  return getStore('roldao-bi');
+  // Sem credenciais, `getStore('roldao-bi')` só funciona dentro do runtime do
+  // Netlify — fora dele ele lança, e antes disso a exceção derrubava TODAS as
+  // rotas de API, deixando as 17 páginas em branco. Cair para o disco mantém o
+  // projeto utilizável fora do Netlify (máquina local, demonstração, Railway)
+  // sem precisar do segredo que dá acesso aos dados reais.
+  if (process.env.NETLIFY || process.env.NETLIFY_DEV) return getStore('roldao-bi');
+  return criarArmazenamentoLocal();
 }
